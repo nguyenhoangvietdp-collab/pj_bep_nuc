@@ -1,0 +1,15 @@
+# Local/runtime data
+**/node_modules/
+**/.next/
+**/.next-build/
+**/.data/
+**/.npm-cache/
+**/.env.local
+**/*.tsbuildinfo
+
+# Private and generated workspace material
+private-backups/
+private-fixtures/
+artifacts/
+repository/.venv/
+repository/__pycache__/

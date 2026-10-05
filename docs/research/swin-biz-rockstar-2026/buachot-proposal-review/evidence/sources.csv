@@ -1,0 +1,9 @@
+id,title,url,verified_at,type,access_status,claim_supported,limits
+S1,Swin-Biz Rockstar 2026,https://swinbizrockstar.swin.edu.vn/2026,2026-10-05,Organizer webpage,Read via in-app browser,Deadline 27 October email language required sections and proposal length,Submission hour and full rubric not confirmed
+S2,CrumbUp,https://www.crumbup.store/,2026-10-05,Company website,Opened,End-of-day boxes and promotions marketed in Vietnam,No independently verified transaction volume
+S3,ResQ Food Rescue Vietnam,https://play.google.com/store/apps/details?id=vn.d2tech.resq,2026-10-05,Developer app-store listing,Opened,Describes surplus reservations store pickup and seller tools,No independently verified active usage
+S4,Too Good To Go app workflow,https://www.toogoodtogo.com/en-us/how-does-the-app-work,2026-10-05,Company documentation,Opened,Surplus pickup workflow already exists,Does not validate campus behavior
+S5,User proposal,proposal-input.txt,2026-10-05,User supplied draft,Read in full,Defines proposed mechanism and uncollected fieldwork targets,Proposal assertions are not observed evidence
+X1,Managing near-expired food commercialization under different commission schemes,https://www.sciencedirect.com/science/article/pii/S136655452600325X,2026-10-05,Research publisher,Search snippet only; open failed,Not used as evidence,No full text verification
+X2,Navigating the Waste-Markdown Tradeoff,https://research.tilburguniversity.edu/en/publications/navigating-the-waste-markdown-tradeoff-a-field-experiment-compari/,2026-10-05,University metadata,Opened metadata only,Confirms title authors 2026 and DOI 10.2139/ssrn.7048139,No effect estimates or limitations inferred from metadata
+X3,Switchback Price Experiments with Forward-Looking Demand,https://arxiv.org/html/2410.14904v1,2026-10-05,Research preprint,Opened for search boundary,Not used as primary support for recommended pilot,Full method not transferred to BuaChot and infinite-supply assumptions differ

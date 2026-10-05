@@ -1,0 +1,43 @@
+{
+  "status": "passed",
+  "assumptionsOnly": true,
+  "scenarios": [
+    {
+      "original": 30000,
+      "shopNet": 19500,
+      "variableCost": 3000,
+      "requiredContribution": 2000,
+      "maxVoucher": 0.14035087719298245,
+      "paymentAtCap": 24500,
+      "totalDiscountAtCap": 0.18333333333333335,
+      "voucher20Eligible": false
+    },
+    {
+      "original": 50000,
+      "shopNet": 32500,
+      "variableCost": 3000,
+      "requiredContribution": 2000,
+      "maxVoucher": 0.21052631578947367,
+      "paymentAtCap": 37500,
+      "totalDiscountAtCap": 0.25,
+      "voucher20Eligible": true
+    },
+    {
+      "original": 100000,
+      "shopNet": 65000,
+      "variableCost": 3000,
+      "requiredContribution": 2000,
+      "maxVoucher": 0.26315789473684215,
+      "paymentAtCap": 70000,
+      "totalDiscountAtCap": 0.30000000000000004,
+      "voucher20Eligible": true
+    }
+  ],
+  "maxFloorFor30kAt20": 17800,
+  "extraSavingsAt1km": [
+    2280,
+    7600
+  ],
+  "requiredPickupProbabilityRatio": 4,
+  "note": "Mathematical checks; not observed demand or causal outcomes"
+}

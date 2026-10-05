@@ -1,0 +1,7 @@
+id,source_primitive,target_primitive,shared_relation,break_point,test_condition
+M1,LLM query reformulation,AI context collector,Missing problem description reduces solution accuracy,English-language research may not transfer to Vietnamese older adults,Compare raw request versus clarified request on expert-rated diagnosis accuracy
+M2,Peer-led onboarding,Older peer digital navigator,Trust and patience affect adoption,Peer supply quality and willingness to work are unknown,Compare peer guide with younger helper on completion confidence and support minutes
+M3,Interactive tutorial by demonstration,Versioned task graph,A helper demonstration can become reusable guidance,App updates can invalidate recorded steps,Track tutorial failure rate after interface/version changes
+M4,Technology caregiving framework,Escalation with retained context,Support is relational and ongoing rather than one-off IT repair,Users may reject non-family helpers,Measure repeat use and preferred helper type
+M5,B2B digital onboarding,Partner-funded DễDùng,Provider benefits when users complete onboarding,Local providers may not own a measurable support budget,Obtain a paid or scoped pilot with support-cost baseline
+M6,Human plus AI visual assistance,Confidence-gated screen support,AI handles routine cases and humans handle uncertainty,Screenshot privacy and misclassification create harm,Measure escalation precision privacy incidents and task completion
