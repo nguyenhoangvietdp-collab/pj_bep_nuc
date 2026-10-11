@@ -1,0 +1,222 @@
+BữaChốt – Swin-Biz Rockstar 2026 Proposal
+Oct 5, 2026 · @Viet
+Team information
+Track: Gen Z Economy. Submission email: swinbiz@fe.edu.vn. Deadline: 11:59 PM, 27 October 2026.
+• Team name: BữaChốt
+• Team leader: [full name]
+• Contact email: [email]
+#
+Full name
+Year of birth
+Gender
+Role in team
+School / University
+Year of study
+Email
+1
+[name]
+[yyyy]
+[ ]
+Leader / Business
+[ ]
+[ ]
+[ ]
+2
+[name]
+[yyyy]
+[ ]
+Product / Tech
+[ ]
+[ ]
+[ ]
+3
+[name]
+[yyyy]
+[ ]
+Design / Research
+[ ]
+[ ]
+[ ]
+4
+[optional]
+
+
+
+
+
+
+5
+[optional]
+
+
+
+
+
+
+Executive summary
+BữaChốt is a pickup marketplace that turns small food shops' end-of-day surplus into discounted meals for students living around one campus, while guaranteeing each shop an agreed minimum net payout.
+Every evening a student receives three one-use vouchers (7%, 10%, 20%), uses one per order, and sees the final price before confirming. If the student is willing to walk to the shop, a capped pickup bonus raises the voucher (for example 7% to 15% for a 1 km route). A backend price floor ensures that no voucher or bonus can ever push the shop's payout below what it agreed to, and the student never sees that floor.
+Our starting hypothesis is that students will collect a meal on foot when the saving is visible in dong, and that shops will list surplus when the payout is certain. Both hypotheses are tested before any app is built: a survey of about 70 students and interviews with 10 to 20 shops near one campus cluster, followed by a manual pilot with 3 to 5 shops. Machine learning is a later phase, used only to tune the bonus once randomized pilot data exists.
+All discount percentages, the 5% base discount and the 8-point-per-km bonus are parameters we will tune with field data, not claims of proven effectiveness.
+Problem analysis
+Two groups near a campus have complementary problems: small food shops end the day with food they cannot sell at full price, and students on tight budgets want a cheap evening meal but face delivery fees and uncertain promotions.
+Shops. A shop that prepares food daily almost always has leftovers at closing time. Current options are to throw them away, give them away, discount informally, or list them on a delivery app that takes a commission and requires a rider. None gives the shop a predictable payout for surplus.
+Students. Students decide price-first and live within walking distance of many shops. Delivery apps already compete with frequent vouchers, so a surplus offer must beat them on visible savings, not only on sustainability.
+Existing alternatives. Too Good To Go already runs a self-collection model with a loyalty programme, so pickup or vouchers alone are not a new idea. BữaChốt's angle is narrower: a local, campus-cluster marketplace where the discount a student can reach and the payout a shop is guaranteed are set by the same pricing rules.
+Evidence from our own research
+The table below is filled from our survey (target n ≈ 70 students) and interviews (target 10 to 20 shops) once fieldwork is complete. No figure here has been collected yet.
+Question we are answering
+Result
+Source
+Students who buy dinner or late meals at least 3 times a week
+[ ]%
+Student survey
+Minimum discount that makes a student willing to collect (10 / 20 / 30 / 40%)
+[ ]
+Student survey
+Maximum walking distance students accept for that discount
+[ ] m
+Student survey
+Students who currently use delivery vouchers weekly
+[ ]%
+Student survey
+Shops with unsold food at closing, typical portions per day
+[ ]
+Shop interviews
+What shops do with surplus today
+[ ]
+Shop interviews
+Net share of the original price a shop accepts for surplus
+[ ]%
+Shop interviews
+How the research is run: students are recruited through several class, faculty and dormitory groups (not only friends) around one campus cluster; shops are interviewed in person within 1 to 2 km of that campus. We ask first about the last time a respondent did something (behaviour) and only then about intentions, and we report the sample size and its limits next to every result.
+Value proposition
+BữaChốt gives students a visible saving in dong, gives shops a guaranteed payout for food they would otherwise lose, and gives the platform a margin on every completed pickup.
+Stakeholder
+Pain today
+What BữaChốt offers
+Student
+Wants cheap evening meals; promotions are confusing; delivery adds fees
+Three daily vouchers (7%, 10%, 20%), one per order; final price shown before ordering; an optional pickup bonus with the dong amount saved shown up front
+Shop
+Surplus is wasted or sold ad hoc; commissions and riders cut margin
+Agreed minimum net payout per item; no rider needed; a QR-confirmed pickup and a clear settlement date
+Platform
+Needs a sustainable margin per order
+Difference between what the student pays and the shop's payout, minus per-order costs, protected by a cap the backend enforces
+What is different. Our proposal combines four things in one campus cluster: a daily set of three vouchers, a capped pickup bonus tied to route distance, a hidden per-shop price floor that protects the shop's payout, and a controlled pilot that measures whether the bonus actually raises completed pickups. The combination is the contribution; each piece alone exists elsewhere.
+Stakeholder map
+Students and partner shops decide whether the marketplace works, so we involve them at every pilot step; regulators and campus staff can stop it, so we check with them before launch. Placement is our current judgement and will be revised after the interviews.
+MVP concept
+The MVP is a mobile web app (PWA) plus a manual operations routine for 3 to 5 shops near one campus; it proves that students collect and shops list, before any machine learning is built.
+What a student does
+1. Opens the app after 18:00 and sees the shops' surplus items, each with its original price, the price after the 5% base discount, and the vouchers that still leave the shop's payout intact.
+2. Picks one item and one voucher; if the route to the shop is within the allowed range, the app shows the pickup bonus and the extra dong saved.
+3. Pays, then receives a one-time QR code and a pickup window.
+4. Shows the QR at the counter; the shop scans it to confirm the pickup and the quantity.
+What the backend does
+• Holds the shop's net-payout floor privately; the student-facing API returns only prices, eligible vouchers, bonus and final amount.
+• Caps every voucher so the shop's payout and the platform's minimum margin are never breached, and refuses to list items that cannot be priced inside the cap.
+• Locks the quoted price for a short period, reserves stock with a timeout, and restores the voucher if the shop cancels or runs out.
+• Records each order's voucher, bonus, distance band, pickup result and refund so that the later experiment can be analysed.
+Left out of the MVP on purpose: delivery, in-app ML, continuous GPS tracking and any CO2 claim. The route distance is computed once at quote time through a maps service, not tracked during the trip.
+Pickup bonus rule (a tunable hypothesis). The voucher is raised by 8 percentage points per km of route distance up to a cap, then clipped by the shop's price floor and a platform policy cap, so the discount the student sees is always the one actually applied.
+Revenue model and unit economics
+The platform earns the difference between what the student pays and what the shop is paid, minus per-order costs; the shop's payout is a fixed share of the original price agreed in advance.
+Notation: P is the original price, b = 5% the base discount, v the voucher, F the shop's agreed net payout, C the variable cost per order and m the minimum contribution we require per order. The student pays:
+T = P(1-b)(1-v)
+The largest voucher that still protects the shop and the platform is:
+v_{max} = 1 - \frac{F + C + m}{P(1-b)}
+Worked example (illustrative assumptions, not measured results): P = 100,000 VND, F = 65,000 VND (65% of P), C = 3,000 VND, m = 2,000 VND. Then v_max = 26.3%. The value of F is the number our shop interviews must replace with real data.
+Voucher
+Student pays (VND)
+Shop receives (VND)
+Margin before costs (VND)
+Contribution after costs (VND)
+7%
+88,350
+65,000
+23,350
+20,350
+10%
+85,500
+65,000
+20,500
+17,500
+15% (7% + 1 km bonus)
+80,750
+65,000
+15,750
+12,750
+20%
+76,000
+65,000
+11,000
+8,000
+28% (20% + 8 points)
+68,400
+65,000
+3,400
+400
+36% (20% + 16 points)
+60,800
+65,000
+-4,200
+-7,200
+The last two rows exceed the cap: the system would clip the bonus at 26.3% so the shop is still paid in full and the contribution stays at or above m. Vouchers never stack, because stacking all three on top of the 5% base discount would give a 36.4% total discount, beyond any shop's agreed payout.
+Contract choice. In the model above the shop receives a fixed payout per item. A second option is for the shop to receive the sale price minus a commission; with a 10% commission and the same 65,000 floor the safe voucher cap falls to about 24.0%. We will choose one settlement model with each shop before the pilot and show it in writing.
+Revenue streams after the pilot. Per-order margin first. Later options (only if the pilot supports them): a small listing fee for shops that want more exposure, and campus-partner sponsorship for food-waste or student-budget campaigns.
+Go-to-market and validation plan
+We launch in one campus cluster, prove that students collect and shops list in a manual pilot, and only then build the app and the learning layer; each stage has a gate that must be passed to continue.
+1. Research (now to 27 October 2026). Student survey (about 70) and shop interviews (10 to 20) near the chosen campus. Gate: at least some shops accept a net payout level that leaves a positive margin at a discount students say they want. If not, we change the payout or discount before building anything.
+2. Manual pilot (3 to 5 shops). Shops post surplus in a shared sheet or chat group, we price with the formulas above, take payment by simple transfer and confirm pickup with codes. Gate: repeat weekly surplus, pickup rate and no-show rate acceptable to shops.
+3. App MVP. Build the PWA, voucher set, price floor, stock reservation and QR pickup described in the MVP section. Gate: orders and settlements run without manual correction.
+4. Randomized bonus test. Keep the three vouchers for everyone; randomly assign the extra distance bonus (with a control group) and record every eligible exposure, purchase, no-show and refund. Gate: the bonus raises completed pickups enough to cover its cost.
+5. Learning layer. Only after step 4: start with simple pickup-rate tables and logistic regression, then uplift models or contextual bandits to choose the bonus level within the price floor and budget.
+Channels. Class and dormitory groups, student clubs, posters at partner shops, and a link or support channel on Zalo where appropriate. First shops are recruited through direct visits, with the net-payout rule explained on one page.
+What we measure. Orders per shop per evening, share of surplus rescued, voucher mix (do students move to 7% and 10% after using 20%?), pickup, no-show and refund rates, shop payout and platform contribution per order, and weekly repeat users.
+Risk identification
+The biggest risk is that the saving is too small to make students collect their food; the survey and the manual pilot are designed to test that first.
+Risk
+Why it matters
+Mitigation
+Early signal
+Discount too shallow
+At 12 to 24% off the original price, students may prefer delivery-app vouchers
+Test several discount depths in the survey; adjust the shop payout or the base discount; show dong saved
+Low pickup intent at 20% in the survey
+Shops refuse the payout level
+If shops want a higher payout, margin or discount depth shrinks
+Interview shops for their acceptable net payout; choose fixed payout or commission per shop
+Payout asked above the model's v_max
+Food safety and trust
+A bad meal damages shops and the platform
+Pickup windows, shop-owned food-safety practice, clear labelling and refund route
+Complaints in the pilot
+Fraud and gaming
+Fake locations or long detours to earn a bonus
+Distance fixed at quote time, capped bonus, QR confirmation, no continuous tracking
+Unusual distance patterns
+Students buy more than they need
+Voucher expiry can push over-buying
+Limit per order and per night; measure repeat voucher use
+Food discarded after pickup
+Voucher design: nearly everyone picks 20%
+7% and 10% vouchers become unused
+Track the voucher mix; adjust validity or eligible items
+Over 80% of orders at 20%
+Regulation and tax
+Surplus food sales, e-commerce, promotion and payment rules in Vietnam
+Check applicable rules and shop licences before launch; start with a small, supervised pilot
+Advice from campus or legal mentors
+Privacy
+Location and student data are sensitive
+Collect only what is needed, retain it briefly, separate location data from analytics
+Consent and data-minimisation review
+Impact and purpose
+BữaChốt aims at three measurable results: money saved by students, income recovered by shops, and meals rescued from the bin.
+• Students: a saving of roughly 12% to 24% of the original price per order under the example rules (up to about 26% with the bonus), shown in dong before they decide.
+• Shops: a predictable payout for food that would otherwise be lost, with no rider or commission surprise.
+• Food waste: the pilot measures portions rescued per shop per evening and whether they replace waste or simply replace full-price sales.
+What we do not claim. We do not claim that pickup reduces emissions: if students make a special trip, the net environmental effect can be neutral or negative, so we will measure trip type rather than assume a CO2 saving. We also do not claim that the discount levels or the 8-point bonus are optimal; they are starting values to be tuned with pilot data.
+Success criteria for the pilot. Repeat weekly surplus from at least 3 shops, a pickup rate shops accept, a positive contribution per completed order, and evidence from the randomized test that the bonus raises completed pickups.

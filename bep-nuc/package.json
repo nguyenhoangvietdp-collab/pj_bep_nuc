@@ -1,0 +1,30 @@
+{
+  "name": "bep-nuc",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 3200",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1 --port 3200",
+    "type-check": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "db:staff": "node --env-file-if-exists=.env.local --import tsx scripts/staff.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.89.0",
+    "@electric-sql/pglite": "^0.5.8",
+    "next": "^15.5.9",
+    "postgres": "^3.4.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.2"
+  }
+}
