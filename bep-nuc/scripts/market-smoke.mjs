@@ -39,6 +39,7 @@ assert.equal((await request("/api/auth")).user, null);
 await request("/api/pilot", undefined, 401);
 for (const path of [
   "/",
+  "/meals",
   "/shops/shop1",
   "/meals/meal",
   "/checkout",

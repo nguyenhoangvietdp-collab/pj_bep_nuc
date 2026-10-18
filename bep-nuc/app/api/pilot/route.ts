@@ -20,6 +20,7 @@ export async function GET() {
       {
         ...data,
         demo: demo(),
+        supportEmail: process.env.SUPPORT_EMAIL || null,
         bank: demo()
           ? { name: "TIỀN GIẢ", account: "KHÔNG CHUYỂN TIỀN", holder: "DEMO" }
           : {

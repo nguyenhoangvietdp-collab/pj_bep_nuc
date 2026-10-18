@@ -7,12 +7,12 @@ export async function GET() {
     const id = await identity();
     const user = await transaction((s) => s.users.find((u) => u.id === id));
     return NextResponse.json(
-      { user },
+      { user, supportEmail: process.env.SUPPORT_EMAIL || null },
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch {
     return NextResponse.json(
-      { user: null },
+      { user: null, supportEmail: process.env.SUPPORT_EMAIL || null },
       { headers: { "Cache-Control": "no-store" } },
     );
   }

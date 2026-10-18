@@ -1,9 +1,15 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import LoadingScreen from "./loading-screen";
 import { useRouter } from "next/navigation";
 import {
   estimate,
+  percent,
+  browseUrl,
+  displayPrice,
+  supportLink,
+  voucherHint,
   filterFood,
   foodCategories,
   money,
@@ -17,7 +23,9 @@ type Catalog = {
   shops: PublicShop[];
   listings: Food[];
 };
-type Draft = { listingId: string; qty: number };
+type Filters = { category: string; budget: number; shop: string; stock: boolean; receiving: boolean };
+const defaultFilters: Filters = { category: "", budget: 0, shop: "", stock: true, receiving: false };
+type Draft = { listingId: string; qty: number; voucherId?: string };
 const states: Record<string, string> = {
   available: "Chưa dùng",
   reserved: "Đang giữ",
@@ -50,6 +58,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     [location, setLocation] = useState(false),
     [tick, setTick] = useState(Date.now()),
     [query, setQuery] = useState(""),
+    [budget, setBudget] = useState(0),
+    [filtersReady, setFiltersReady] = useState(false),
     [category, setCategory] = useState(""),
     [shopFilter, setShopFilter] = useState(""),
     [stockOnly, setStockOnly] = useState(true),
@@ -58,39 +68,63 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     [email, setEmail] = useState(""),
     [otp, setOtp] = useState(""),
     [sent, setSent] = useState(false),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    [loadError, setLoadError] = useState(""),
+    [syncedAt, setSyncedAt] = useState(0),
+    [browseHref, setBrowseHref] = useState("/meals"),
+    [retryAt, setRetryAt] = useState(0),
+    [supportEmail, setSupportEmail] = useState<string>(),
+    [mobileFilters, setMobileFilters] = useState<Filters>(defaultFilters);
   const fetched = useRef(Date.now()),
     dialog = useRef<HTMLDialogElement>(null),
     opener = useRef<HTMLElement | null>(null),
-    seen = useRef(new Set<string>());
-  async function load(initial = false) {
+    seen = useRef(new Set<string>()),
+    summary = useRef<HTMLElement>(null),
+    mutation = useRef(false),
+    loadVersion = useRef(0),
+    actionError = useRef<HTMLDivElement>(null),
+    filterDialog = useRef<HTMLDialogElement>(null),
+    filterOpener = useRef<HTMLButtonElement>(null);
+  async function load(_initial = false) {
+    const version = ++loadVersion.current;
     try {
       const [c, a] = await Promise.all([
-        fetch("/api/catalogue", { cache: "no-store" }),
-        fetch("/api/auth", { cache: "no-store" }),
+        fetch("/api/catalogue", { cache: "no-store", signal: AbortSignal.timeout(12000) }),
+        fetch("/api/auth", { cache: "no-store", signal: AbortSignal.timeout(12000) }),
       ]);
-      if (!c.ok) throw new Error("Chưa tải được món. Vui lòng thử lại.");
-      setCatalog(await c.json());
-      fetched.current = Date.now();
-      const auth = await a.json();
-      setUser(auth.user);
+      if (!c.ok || !a.ok) throw new Error("Chưa tải được trạng thái mới. Dữ liệu đang hiển thị có thể đã cũ.");
+      const nextCatalog = await c.json(), received = Date.now(), auth = await a.json();
+      let nextProfile;
       if (auth.user?.approved) {
-        const p = await fetch("/api/pilot", { cache: "no-store" });
-        if (!p.ok)
-          throw new Error("Chưa tải được đơn và voucher. Vui lòng thử lại.");
-        setProfile(await p.json());
-      } else setProfile(undefined);
+        const p = await fetch("/api/pilot", { cache: "no-store", signal: AbortSignal.timeout(12000) });
+        if (!p.ok) throw new Error("Chưa tải được đơn và voucher. Thử kiểm tra lại trước khi đặt.");
+        nextProfile = await p.json();
+      }
+      if (version !== loadVersion.current) return;
+      setCatalog(nextCatalog); fetched.current = received;
+      setUser(auth.user); setSupportEmail(auth.supportEmail); setProfile(nextProfile); setSyncedAt(Date.now()); setLoadError("");
+      try {
+        const mode = auth.user?.approved && auth.user.role === "student" ? "student" : "guest";
+        if (mode === "student" && sessionStorage.getItem("bc-price-mode") === "guest")
+          setNotice("Giá và kết quả đã cập nhật theo voucher của bạn. Chưa gồm thưởng vị trí.");
+        sessionStorage.setItem("bc-price-mode", mode);
+      } catch {}
+      return nextProfile;
     } catch (e) {
-      setError((e as Error).message);
+      if (version === loadVersion.current) setLoadError((e as Error).name === "TimeoutError" ? "Kết nối chậm. Trạng thái có thể đã cũ; hãy kiểm tra lại." : (e as Error).message);
     } finally {
-      if (initial) setLoading(false);
+      if (version === loadVersion.current) setLoading(false);
     }
   }
   useEffect(() => {
     load(true);
     const poll = setInterval(() => load(), 15000);
+    const refresh = () => { if (document.visibilityState === "visible") load(); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
     const t = setInterval(() => setTick(Date.now()), 1000);
     try {
+      setBrowseHref(browseUrl(sessionStorage.getItem("bc-browse")));
       const raw = sessionStorage.getItem("bc-draft");
       if (raw) {
         const d = JSON.parse(raw);
@@ -100,36 +134,42 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           d.qty >= 1 &&
           d.qty <= 3
         )
-          setDraft(d);
+          { setDraft(d); if (typeof d.voucherId === "string") setVoucher(d.voucherId); }
       }
     } catch {}
     const p = new URLSearchParams(window.location.search);
     setQuery(p.get("q") || "");
+    const limit = Number(p.get("budget"));
+    setBudget(Number.isSafeInteger(limit) && limit > 0 ? limit : 0);
     setCategory(p.get("category") || "");
     setShopFilter(p.get("shop") || "");
     setStockOnly(p.get("stock") !== "all");
     setReceiving(p.get("receiving") === "1");
-    setSort(p.get("sort") || "end");
+    setSort(p.get("sort") === "price" ? "price" : "end");
+    setFiltersReady(true);
     return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      loadVersion.current++;
       clearInterval(poll);
       clearInterval(t);
     };
   }, []);
   useEffect(() => {
-    if (view !== "browse" && view !== "shop") return;
+    if (!filtersReady || (view !== "browse" && view !== "shop")) return;
     const p = new URLSearchParams();
     if (query) p.set("q", query);
+    if (budget) p.set("budget", String(budget));
     if (category) p.set("category", category);
     if (shopFilter) p.set("shop", shopFilter);
     if (!stockOnly) p.set("stock", "all");
     if (receiving) p.set("receiving", "1");
     if (sort !== "end") p.set("sort", sort);
-    window.history.replaceState(
-      null,
-      "",
-      window.location.pathname + (p.size ? "?" + p.toString() : ""),
-    );
-  }, [query, category, shopFilter, stockOnly, receiving, sort, view]);
+    const url = browseUrl(window.location.pathname + (p.size ? "?" + p.toString() : ""));
+    window.history.replaceState(null, "", url);
+    setBrowseHref(url);
+    try { sessionStorage.setItem("bc-browse", url); } catch {}
+  }, [query, budget, filtersReady, category, shopFilter, stockOnly, receiving, sort, view]);
   useEffect(() => {
     if (!selected) return;
     setQty(1);
@@ -177,7 +217,15 @@ export default function Market({ view, id }: { view: string; id?: string }) {
   const now = catalog
     ? catalog.now + (catalog.demo ? 0 : tick - fetched.current)
     : tick;
+  const vouchers = user?.approved && user.role === "student" ? profile?.vouchers || [] : [];
   const held = profile?.heldQuotes?.[0];
+  const pendingOrder = profile?.orders?.find((o: any) => o.status === "awaiting_payment" && o.expires > now);
+  useEffect(() => {
+    if (held?.id && view === "checkout") {
+      summary.current?.scrollIntoView({ block: "center" });
+      summary.current?.focus({ preventScroll: true });
+    }
+  }, [held?.id, view]);
   const item =
     catalog?.listings.find(
       (l) =>
@@ -187,7 +235,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
   const shop = catalog?.shops.find(
     (s) => s.id === (view === "shop" ? id : item?.shopId),
   );
-  const activeVoucher = profile?.vouchers?.find((v: any) => v.id === voucher);
+  const activeVoucher = profile?.vouchers?.find((v: any) => v.id === voucher && item && displayPrice(item, [v], now).rate === v.rate);
   const count = held?.qty || draft?.qty || 1;
   const amounts =
     held ||
@@ -196,26 +244,50 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     ? Math.max(0, Math.ceil((held.expires - now) / 1000))
     : 0;
   async function act(action: string, args: any) {
-    if (busy) return;
-    setBusy(true);
-    setError("");
+    if (mutation.current) return;
+    mutation.current = true; setBusy(true); setError("");
+    const signature = JSON.stringify([user?.id, action, args]);
+    let key = crypto.randomUUID(), definitive = false;
     try {
+      try {
+        const stored = JSON.parse(sessionStorage.getItem("bc-action") || "null");
+        if (stored?.signature === signature && typeof stored.key === "string") key = stored.key;
+        sessionStorage.setItem("bc-action", JSON.stringify({ signature, key }));
+      } catch {}
+      const current = await load();
+      if (!current) throw new Error("Chưa tải được trạng thái mới.");
+      if (action === "order") {
+        const existing = current.orders?.find((o: any) => o.quoteId === args.quoteId);
+        if (existing) { definitive = true; return existing; }
+      }
+      if (action === "quote") {
+        const existing = current.heldQuotes?.find((q: any) => q.listingId === args.listingId && q.voucherId === args.voucherId && q.qty === args.qty);
+        if (existing) { definitive = true; return { ok: true }; }
+        if (current.heldQuotes?.length) { definitive = true; throw new Error("Bạn đang giữ một bữa khác. Kiểm tra hoặc bỏ giữ trước khi đặt lại."); }
+      }
       const r = await fetch("/api/pilot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action,
-          args: { ...args, key: crypto.randomUUID() },
-        }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, args: { ...args, key } }), signal: AbortSignal.timeout(12000),
       });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error);
-      await load();
-      return d;
+      const d = await r.json(); definitive = true;
+      if (!r.ok) throw new Error(d.error || "Thao tác chưa hoàn tất. Vui lòng kiểm tra lại.");
+      await load(); return d;
     } catch (e) {
-      setError((e as Error).message);
+      if (!definitive) {
+        const state = await load();
+        if (action === "order") {
+          const existing = state?.orders?.find((o: any) => o.quoteId === args.quoteId);
+          if (existing) { definitive = true; return existing; }
+        }
+        if (action === "quote" && state?.heldQuotes?.some((q: any) => q.listingId === args.listingId && q.voucherId === args.voucherId && q.qty === args.qty)) {
+          definitive = true; return { ok: true };
+        }
+      }
+      setError(definitive ? (e as Error).message : "Chưa xác định thao tác đã hoàn tất do mất kết nối. Kiểm tra trạng thái trước khi thử lại; không chuyển thêm tiền.");
+      requestAnimationFrame(() => actionError.current?.focus());
     } finally {
-      setBusy(false);
+      if (definitive) try { sessionStorage.removeItem("bc-action"); } catch {}
+      mutation.current = false; setBusy(false);
     }
   }
   function openFood(l: Food) {
@@ -230,7 +302,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     router.push("/checkout");
   }
   async function quote() {
-    if (!item || !activeVoucher) return;
+    if (!item || !activeVoucher || mutation.current) return;
+    mutation.current = true;
     let coords;
     setBusy(true);
     setError("");
@@ -246,7 +319,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
       } catch {
         setNotice("Chưa lấy được vị trí. Báo giá dùng voucher gốc.");
       }
-    setBusy(false);
+    mutation.current = false;
     await act("quote", {
       listingId: item.id,
       voucherId: activeVoucher.id,
@@ -254,18 +327,19 @@ export default function Market({ view, id }: { view: string; id?: string }) {
       location: coords,
     });
   }
-  async function login(role?: string) {
+  async function login(role?: string, resend = false) {
+    if (busy || (resend && Date.now() < retryAt)) return;
     setBusy(true);
     setError("");
     try {
       const r = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, email, token: otp || undefined }),
+        body: JSON.stringify({ role, email, token: resend ? undefined : otp || undefined }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error);
-      if (role || otp) {
+      if (role || (otp && !resend)) {
         await load();
         router.push(
           role === "guest"
@@ -278,6 +352,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
         );
       } else {
         setSent(true);
+        setRetryAt(Date.now() + 60000);
         setNotice("Kiểm tra email để lấy mã xác thực.");
       }
     } catch (e) {
@@ -295,23 +370,39 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           ? `/orders/${id}`
           : "/checkout",
     );
+  const currentFilters: Filters = { category, budget, shop: shopFilter, stock: stockOnly, receiving };
+  function applyFilters(next: Filters) {
+    setCategory(next.category); setBudget(next.budget); setShopFilter(next.shop);
+    setStockOnly(next.stock); setReceiving(next.receiving);
+  }
+  function filterFields(values: Filters, change: (next: Filters) => void, prefix: string) {
+    return <>
+      <fieldset className="facet-group"><legend>Loại món</legend>
+        {["", ...foodCategories].map(value => <label key={value} className="facet-option"><input type="radio" name={`${prefix}-category`} checked={values.category === value} onChange={() => change({ ...values, category: value })} /><span>{value || "Tất cả món"}</span></label>)}
+      </fieldset>
+      <fieldset className="facet-group"><legend>Giá mỗi suất</legend>
+        <p className="facet-hint">Theo giá đang hiển thị, chưa gồm thưởng vị trí.</p>
+        {[0, 30000, 40000, 50000].map(value => <label key={value} className="facet-option"><input type="radio" name={`${prefix}-budget`} checked={values.budget === value} onChange={() => change({ ...values, budget: value })} /><span>{value ? `Không quá ${money(value)}` : "Không giới hạn"}</span></label>)}
+        <label className="custom-budget">Ngân sách khác (đ)<input type="number" min="0" step="1" inputMode="numeric" placeholder="Ví dụ: 35000" value={values.budget || ""} onChange={e => { const n = Number(e.target.value); if(Number.isSafeInteger(n) && n >= 0) change({ ...values, budget: n }); }} /></label>
+      </fieldset>
+      <fieldset className="facet-group"><legend>Giờ nhận & tình trạng</legend>
+        <label className="facet-option"><input type="checkbox" checked={values.receiving} onChange={e => change({ ...values, receiving: e.target.checked })} /><span>Đang trong giờ nhận</span></label>
+        <label className="facet-option"><input type="checkbox" checked={values.stock} onChange={e => change({ ...values, stock: e.target.checked })} /><span>Chỉ món còn suất</span></label>
+      </fieldset>
+      {view === "browse" && <fieldset className="facet-group"><legend>Quán</legend><label>Chọn quán<select value={values.shop} onChange={e => change({ ...values, shop: e.target.value })}><option value="">Tất cả quán</option>{catalog?.shops.map(shop => <option key={shop.id} value={shop.id}>{shop.name}</option>)}</select></label></fieldset>}
+    </>;
+  }
   function reset() {
     setQuery("");
+    setBudget(0);
     setCategory("");
     setShopFilter("");
     setStockOnly(true);
     setReceiving(false);
     setSort("end");
   }
-  const extraFilters = [
-    view === "browse" && shopFilter
-      ? catalog?.shops.find((s) => s.id === shopFilter)?.name || "Quán đã chọn"
-      : "",
-    sort !== "end" ? "Giá tăng dần" : "",
-    receiving ? "Đang trong giờ nhận" : "",
-  ].filter(Boolean);
-  const extraFilterCount = extraFilters.length + Number(!stockOnly);
-  const hasFilters = !!query || !!category || extraFilterCount > 0;
+  const filterCount = Number(!!budget) + Number(!!category) + Number(!!shopFilter) + Number(receiving) + Number(!stockOnly);
+  const hasFilters = !!query || filterCount > 0 || sort !== "end";
   const shown = catalog
     ? filterFood(
         catalog.listings,
@@ -323,50 +414,46 @@ export default function Market({ view, id }: { view: string; id?: string }) {
         receiving,
         sort,
         now,
+        budget,
+        vouchers,
       )
     : [];
   function foodDetails(l: Food, n: number, change: (n: number) => void) {
     const s = catalog?.shops.find((s) => s.id === l.shopId);
+    const displayed = displayPrice(l, vouchers, now);
+    const total = displayPrice(l, vouchers, now, n);
     return (
-      <>
-        <FoodImage l={l} />
-        <h2>{l.name}</h2>
-        <Link href={`/shops/${l.shopId}`}>{s?.name}</Link>
-        <p>{s?.address}</p>
-        <p>
-          <b>{money(Math.ceil(l.price * 0.95))}</b> · Giá chưa áp voucher
-          <br />
-          <span className="fine">Giá menu {money(l.price)}</span>
-        </p>
-        <p>
-          Nhận {time(l.start)}–{time(l.end)} · Còn {l.stock} suất
-        </p>
-        <div className="food-safety">
-          <b>Bảo quản & cách dùng</b>
-          <p>{l.storage || "Hỏi quán trước khi đặt."}</p>
-          <b>Thông tin dị ứng</b>
-          <p>{l.allergens || "Chưa có thông tin. Hỏi quán trước khi đặt."}</p>
+      <div className="meal-detail">
+        <div className="meal-detail-visual">
+          <FoodImage l={l} />
+          <details className="food-safety"><summary>Bảo quản & cách dùng</summary><p>{l.storage || "Hỏi quán trước khi đặt."}</p></details>
         </div>
-        <Quantity
-          n={n}
-          max={Math.min(3, l.stock)}
-          disabled={false}
-          change={change}
-        />
-        <p className="fine">
-          Mỗi đơn một loại món, tối đa 3 suất. Tự đến quán nhận bữa.
-        </p>
-        <button
-          disabled={l.stock < n || now >= l.end}
-          onClick={() => saveDraft(l, n)}
-        >
-          Tiếp tục kiểm tra đơn
-        </button>
-      </>
+        <div className="meal-detail-info">
+          <div className="meal-heading">
+            <h2>{l.name}</h2>
+            <Link href={`/shops/${l.shopId}`}>{s?.name}</Link>
+          </div>
+          <section className="meal-collection" aria-label="Nơi và giờ nhận">
+            <h3>Nhận tại quán</h3>
+            <p className="meal-address">{s?.address || "Chưa có địa chỉ nhận"}</p>
+            <p className="meal-pickup"><b>{time(l.start)}–{time(l.end)}</b> · Còn {l.stock} suất</p>
+            <p className="meal-allergens"><b>Dị ứng:</b> {l.allergens || "Chưa có thông tin. Hỏi quán trước khi đặt."}</p>
+          </section>
+          <section className="meal-purchase" aria-label="Chọn số suất và kiểm tra giá">
+            <div className="meal-price"><strong>{money(displayed.total)} <small>/ suất</small></strong><span>Giá menu {money(l.price)}</span></div>
+            <p className="fine">{displayed.rate ? `Ước tính với voucher ${percent(displayed.rate)} · chưa gồm thưởng vị trí` : "Chưa áp voucher"}</p>
+            <Quantity n={n} max={Math.min(3, l.stock)} disabled={false} change={change} />
+            <p className="detail-total" aria-live="polite">Tổng {n} suất <strong>{money(total.total)}</strong></p>
+            <button disabled={l.stock < n || now >= l.end} onClick={() => saveDraft(l, n)}>Kiểm tra bữa đã chọn</button>
+            <p className="fine">Tối đa 3 suất · Tự nhận tại quán</p>
+          </section>
+        </div>
+      </div>
     );
   }
+
   return (
-    <main className="commerce" id="top">
+    <main className={`commerce commerce-${view}`} id="top">
       <a className="skip-link" href="#content">
         Đến nội dung chính
       </a>
@@ -374,24 +461,6 @@ export default function Market({ view, id }: { view: string; id?: string }) {
         <Link className="brand" href="/">
           Bếp Núc<span>NHẬN BỮA CUỐI NGÀY</span>
         </Link>
-        <Link className="market-area" href="/">
-          Hà Nội · Tự nhận tại quán
-        </Link>
-        <form
-          className="header-search"
-          onSubmit={(e) => {
-            e.preventDefault();
-            router.push("/?q=" + encodeURIComponent(query));
-          }}
-        >
-          <input
-            aria-label="Tìm món hoặc quán"
-            placeholder="Tìm món, quán, địa chỉ…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <button aria-label="Tìm kiếm">Tìm</button>
-        </form>
         <nav aria-label="Điều hướng mua bữa">
           <Link href="/orders">Đơn hàng</Link>
           <Link
@@ -403,7 +472,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                 : "/login"
             }
           >
-            {user ? (user.approved ? "Tài khoản" : "Chờ duyệt") : "Đăng nhập"}
+            {user ? (user.approved ? (user.role === "student" ? "Bữa đang chọn" : "Nội bộ") : "Chờ duyệt") : "Đăng nhập"}
           </Link>
         </nav>
       </header>
@@ -413,7 +482,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
         </aside>
       )}
       <div className="market-content" id="content">
-        {error && (
+        {error && view !== "checkout" && (
           <div role="alert" className="error">
             {error}{" "}
             <button
@@ -427,15 +496,14 @@ export default function Market({ view, id }: { view: string; id?: string }) {
             </button>
           </div>
         )}
+        {loadError && <div role="alert" className="error">{loadError} <button className="secondary" onClick={() => load()}>Kiểm tra lại</button></div>}
         {notice && (
           <p role="status" className="market-notice">
             {notice}
           </p>
         )}
         {loading ? (
-          <section className="market-empty" role="status">
-            Đang tải món và trạng thái tài khoản…
-          </section>
+          <LoadingScreen label={view === "orders" || view === "order" ? "Đang tải trạng thái đơn…" : view === "login" ? "Đang tải tài khoản…" : "Đang tìm bữa cho bạn…"} />
         ) : !catalog ? (
           <section className="market-empty">
             Chưa kết nối được catalogue.
@@ -447,18 +515,16 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                 {view === "browse" ? (
                   <section className="market-banner">
                     <div>
-                      <p className="eyebrow">BỮA CUỐI NGÀY · TỰ NHẬN</p>
-                      <h1>Tối nay, ăn gì?</h1>
-                      <p>Chọn bữa cuối ngày tại Hà Nội. Tự đến quán nhận.</p>
+
+                      <h1>Bữa cuối ngày, tiện đường nhận.</h1>
                       <p className="market-eligibility">
-                        Xem món ngay. Đặt bữa dành cho sinh viên được mời và đã
-                        được duyệt.
+                        Tự nhận tại quán · Xem món ngay, đặt bữa dành cho sinh viên được mời và đã duyệt.
                       </p>
                     </div>
                   </section>
                 ) : shop ? (
                   <section className="shop-intro">
-                    <Link href="/">Tất cả món</Link>
+                    <Link href="/meals">Tất cả món</Link>
                     <h1>{shop.name}</h1>
                     <p>{shop.address}</p>
                     <p>
@@ -471,108 +537,47 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                     Quán không tồn tại hoặc chưa được công bố.
                   </section>
                 )}
-                {view === "browse" && (
-                  <section className="market-orientation" aria-label="Cách đặt bữa">
-                    <ol className="market-steps">
-                      <li>Chọn món</li>
-                      <li>Kiểm tra giá & thanh toán</li>
-                      <li>Nhận tại quán</li>
-                    </ol>
-                    <p>
-                      Chuyển khoản và chờ xác nhận. Nhận theo khung giờ của món.
-                    </p>
-                  </section>
-                )}
-                <section aria-label="Tìm và lọc món" className="market-filters">
-                  <div className="category-tabs">
-                    <button
-                      className={!category ? "selected" : "secondary"}
-                      aria-pressed={!category}
-                      onClick={() => setCategory("")}
-                    >
-                      Tất cả
-                    </button>
-                    {foodCategories.map((c) => (
-                      <button
-                        key={c}
-                        className={category === c ? "selected" : "secondary"}
-                        aria-pressed={category === c}
-                        onClick={() => setCategory(c)}
-                      >
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                  <details className="extra-filters">
-                    <summary>
-                      Bộ lọc{extraFilterCount > 0 ? ` (${extraFilterCount})` : ""}
-                      <span>Quán, giá & giờ nhận</span>
-                    </summary>
-                    <div className="filter-row">
-                      {view === "browse" && (
-                        <label>
-                          Quán
-                          <select
-                            value={shopFilter}
-                            onChange={(e) => setShopFilter(e.target.value)}
-                          >
-                            <option value="">Tất cả quán</option>
-                            {catalog.shops.map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.name}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      )}
-                      <label>
-                        Sắp xếp
-                        <select
-                          value={sort}
-                          onChange={(e) => setSort(e.target.value)}
-                        >
-                          <option value="end">Kết thúc nhận sớm nhất</option>
-                          <option value="price">Giá tăng dần</option>
-                        </select>
-                      </label>
-                      <label className="inline-check">
-                        <input
-                          type="checkbox"
-                          checked={stockOnly}
-                          onChange={(e) => setStockOnly(e.target.checked)}
-                        />
-                        Còn suất
-                      </label>
-                      <label className="inline-check">
-                        <input
-                          type="checkbox"
-                          checked={receiving}
-                          onChange={(e) => setReceiving(e.target.checked)}
-                        />
-                        Đang trong giờ nhận
-                      </label>
-                    </div>
-                  </details>
-                  <div className="filter-status">
-                    <p>
-                      {stockOnly ? "Chỉ hiện món còn suất" : "Hiện cả món hết suất"}
-                      {extraFilters.length > 0 && ` · ${extraFilters.join(" · ")}`}
-                    </p>
-                    {hasFilters && (
-                      <button className="secondary" onClick={reset}>
-                        Xóa bộ lọc
-                      </button>
-                    )}
-                  </div>
+                {pendingOrder && <aside className="resume-order"><p>Bạn có bữa đang chờ thanh toán. Nếu đã chuyển tiền, tiếp tục theo dõi đơn này.</p><Link className="button-link" href={`/orders/${pendingOrder.id}`}>Tiếp tục đơn đang chờ</Link></aside>}
+                <section className="catalogue-search" aria-label="Tìm món hoặc quán">
+        <form
+          className="header-search" role="search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const params = new URLSearchParams(window.location.search);
+            if (query) params.set("q", query); else params.delete("q");
+            router.push("/meals" + (params.size ? "?" + params.toString() : ""));
+          }}
+        >
+          <input
+            aria-label="Tìm món hoặc quán"
+            placeholder="Tìm món, quán, địa chỉ…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <button aria-label="Tìm kiếm">Tìm</button>
+        </form>
                 </section>
-                <div className="results-heading">
-                  <h2>
-                    {view === "shop"
-                      ? "Thực đơn cuối ngày"
-                      : "Món dành cho tối nay"}
-                  </h2>
-                  <span>{shown.length} món</span>
-                </div>
+                <div className="catalogue-layout">
+                  <aside className="catalogue-sidebar" aria-label="Bộ lọc món">
+                    <div className="facet-heading"><h2>Bộ lọc</h2><button className="text-button" onClick={() => applyFilters(defaultFilters)}>Xóa bộ lọc</button></div>
+                    {filterFields(currentFilters, applyFilters, "desktop")}
+                  </aside>
+                  <section className="catalogue-results" aria-label="Kết quả tìm món">
+                    <div className="catalogue-toolbar">
+                      <div><h2>{query ? `Kết quả cho “${query}”` : view === "shop" ? "Thực đơn cuối ngày" : "Bữa đang có"}</h2><p role="status" aria-live="polite">{shown.length} món{stockOnly ? " còn suất" : ""}</p></div>
+                      <button className="secondary mobile-filter-toggle" ref={filterOpener} onClick={() => { setMobileFilters(currentFilters); filterDialog.current?.showModal(); }}>Bộ lọc{filterCount > 0 ? ` (${filterCount})` : ""}</button>
+                      <label className="catalogue-sort">Sắp xếp<select value={sort} onChange={e => setSort(e.target.value)}><option value="end">Giờ nhận kết thúc sớm</option><option value="price">Giá thấp đến cao</option></select></label>
+                    </div>
+                  <div className="filter-chips" role="group" aria-label="Bộ lọc đang áp dụng">
+                    {query && <button className="secondary" onClick={() => setQuery("")}>Từ khóa: {query} ×</button>}
+                    {!!budget && <button className="secondary" onClick={() => setBudget(0)}>Đến {money(budget)} / suất ×</button>}
+                    {category && <button className="secondary" onClick={() => setCategory("")}>{category} ×</button>}
+                    {shopFilter && view === "browse" && <button className="secondary" onClick={() => setShopFilter("")}>{catalog.shops.find(s => s.id === shopFilter)?.name || "Quán đã chọn"} ×</button>}
+                    {receiving && <button className="secondary" onClick={() => setReceiving(false)}>Đang nhận ×</button>}
+                    {!stockOnly && <button className="secondary" onClick={() => setStockOnly(true)}>Hiện cả hết suất ×</button>}
+                    {sort === "price" && <button className="secondary" onClick={() => setSort("end")}>Giá tăng dần ×</button>}
+                  </div>
+                  {hasFilters && <button className="text-button clear-result-filters" onClick={reset}>Xóa tất cả điều kiện</button>}
                 {!shown.length && (
                   <section className="market-empty">
                     <h3>
@@ -580,12 +585,14 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                         ? "Chưa tìm thấy món phù hợp"
                         : "Bếp chưa có lô cuối ngày"}
                     </h3>
-                    <p>Thử từ khóa khác hoặc quay lại khi quán đăng món.</p>
-                    <button onClick={reset}>Xóa bộ lọc</button>
+                    <p>Không có món đáp ứng đủ điều kiện hiện tại. Bạn có thể bỏ một bộ lọc hoặc quay lại khi quán đăng món.</p>
+                    {!!budget && <button className="secondary" onClick={() => setBudget(0)}>Bỏ giới hạn ngân sách</button>}
+                    {receiving && <button className="secondary" onClick={() => setReceiving(false)}>Xem cả khung nhận sắp tới</button>}
+                    {hasFilters && <button className="secondary" onClick={reset}>Xóa bộ lọc</button>}
                   </section>
                 )}
                 <section className="food-grid" aria-label="Danh sách món">
-                  {shown.map((l) => (
+                  {shown.map((l) => { const displayed = displayPrice(l, vouchers, now); return (
                     <article
                       className="food-card"
                       data-food-id={l.id}
@@ -599,45 +606,29 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                         <FoodImage l={l} />
                       </button>
                       <div className="food-card-body">
-                        <h3>
-                          <button
-                            className="plain-title"
-                            onClick={() => openFood(l)}
-                          >
-                            {l.name}
-                          </button>
-                        </h3>
-                        <Link href={`/shops/${l.shopId}`}>
-                          {catalog.shops.find((s) => s.id === l.shopId)?.name}
-                        </Link>
-                        <p className="food-menu-price">
-                          Giá menu <s>{money(l.price)}</s>
-                        </p>
-                        <strong className="food-price">
-                          {money(Math.ceil(l.price * 0.95))}
-                        </strong>
-                        <span className="fine">
-                          {" "}
-                          Giá chưa áp voucher
-                        </span>
-                        <p className="pickup-line">
-                          Nhận {time(l.start)}–{time(l.end)}
-                        </p>
-                        <div className="food-card-bottom">
-                          <span>
-                            {l.stock ? `${l.stock} suất còn` : "Hết suất"}
-                          </span>
-                          <button
-                            disabled={!l.stock || now >= l.end}
-                            onClick={() => openFood(l)}
-                          >
-                            Chọn món
-                          </button>
+                        <div className="food-card-description">
+                          <h3><button className="plain-title" onClick={() => openFood(l)}>{l.name}</button></h3>
+                          <Link className="shop-meta" href={`/shops/${l.shopId}`}>{catalog.shops.find(s => s.id === l.shopId)?.name}</Link>
+                          <p className="food-address">{catalog.shops.find(s => s.id === l.shopId)?.address || "Chưa có địa chỉ nhận"}</p>
+                          <p className="pickup-line"><b>Nhận {time(l.start)}–{time(l.end)}</b></p>
+                          <span className="stock-label">{l.stock ? `Còn ${l.stock} suất` : "Hết suất"}</span>
+                        </div>
+                        <div className="food-card-purchase">
+                          <div className="food-price-row"><strong className="food-price">{money(displayed.total)}</strong><span className="food-menu-price">Giá menu <s>{money(l.price)}</s></span></div>
+                          <p className="price-condition">{displayed.rate ? `Với voucher ${percent(displayed.rate)} · Chưa gồm thưởng vị trí` : "Chưa áp voucher"}</p>
+                          <button disabled={!l.stock || now >= l.end} onClick={() => openFood(l)}>Chọn bữa này</button>
                         </div>
                       </div>
                     </article>
-                  ))}
+                  ); })}
                 </section>
+                  </section>
+                </div>
+                <dialog className="filter-drawer" ref={filterDialog} aria-labelledby="filter-title" onCancel={() => filterOpener.current?.focus()}>
+                  <header><h2 id="filter-title">Lọc món theo nhu cầu</h2><button className="secondary" onClick={() => { filterDialog.current?.close(); filterOpener.current?.focus(); }}>Đóng</button></header>
+                  <div className="drawer-fields">{filterFields(mobileFilters, setMobileFilters, "mobile")}</div>
+                  <footer><button className="secondary" onClick={() => setMobileFilters(defaultFilters)}>Xóa bộ lọc</button><button onClick={() => { applyFilters(mobileFilters); filterDialog.current?.close(); filterOpener.current?.focus(); }}>Xem {catalog ? filterFood(catalog.listings, catalog.shops, query, mobileFilters.category, view === "shop" ? id || "" : mobileFilters.shop, mobileFilters.stock, mobileFilters.receiving, sort, now, mobileFilters.budget, vouchers).length : 0} món</button></footer>
+                </dialog>
                 {view === "browse" && (
                   <section className="shop-list">
                     <h2>Khám phá các quán</h2>
@@ -663,7 +654,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                 const l = catalog.listings.find((l) => l.id === id);
                 return (
                   <section className="standalone-meal">
-                    <Link href="/">Quay lại tìm món</Link>
+                    <Link href={browseHref}>Quay lại tìm món</Link>
                     {l ? (
                       foodDetails(l, qty, setQty)
                     ) : (
@@ -674,8 +665,9 @@ export default function Market({ view, id }: { view: string; id?: string }) {
               })()}
             {view === "checkout" && (
               <>
-                <Link href="/">Tiếp tục tìm món</Link>
-                <h1>Kiểm tra đơn của bạn</h1>
+                <Link href={browseHref}>Tiếp tục tìm món</Link>
+                <h1>Kiểm tra bữa của bạn</h1>
+                <p className="checkout-stage" role="status">Bước {held ? "2/3 · Đã giữ suất, kiểm tra giá xác nhận" : "1/3 · Kiểm tra bữa và chọn voucher"}</p>
                 {!item ? (
                   <section className="market-empty">
                     <h2>
@@ -688,7 +680,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                         ? "Chọn món khác. Giá và tồn luôn kiểm tra lại trước khi đặt."
                         : "Chọn một món để xem giá và khung nhận."}
                     </p>
-                    <Link className="button-link" href="/">
+                    <Link className="button-link" href="/meals">
                       Tìm món ngay
                     </Link>
                   </section>
@@ -716,15 +708,15 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                         max={Math.min(3, item.stock)}
                         disabled={!!held || busy}
                         change={(n) => {
-                          const d = { listingId: item.id, qty: n };
+                          const d = { listingId: item.id, qty: n, voucherId: activeVoucher?.id };
                           setDraft(d);
                           sessionStorage.setItem("bc-draft", JSON.stringify(d));
                         }}
                       />
                       <details className="food-safety">
                         <summary>Bảo quản & thông tin dị ứng</summary>
-                        <p>{item.storage}</p>
-                        <p>{item.allergens}</p>
+                        <p>{item.storage || "Chưa có hướng dẫn bảo quản. Hỏi quán trước khi đặt."}</p>
+                        <p>{item.allergens || "Chưa có thông tin dị ứng. Hỏi quán trước khi đặt."}</p>
                       </details>
                       {!user ? (
                         <section className="checkout-gate">
@@ -747,6 +739,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                           <button onClick={() => load()}>
                             Kiểm tra trạng thái duyệt
                           </button>
+                          <p><Link href={browseHref}>Quay lại xem món</Link></p>
+                          {supportLink(supportEmail, "") && <a href={supportLink(supportEmail, "")!}>Liên hệ về tài khoản</a>}
                         </section>
                       ) : user.role !== "student" ? (
                         <p>
@@ -756,64 +750,35 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                       ) : (
                         <>
                           <h2>Chọn một voucher</h2>
-                          <div className="checkout-vouchers">
+                          <fieldset className="checkout-vouchers"><legend>Chọn một voucher cho đơn này</legend>
                             {[0.07, 0.1, 0.2].map((rate) => {
                               const v = profile?.vouchers?.find(
                                 (v: any) => v.rate === rate,
                               );
                               const eligible = item.eligible.includes(rate);
-                              const unavailable =
-                                !v ||
-                                v.state !== "available" ||
-                                !eligible ||
-                                !!held;
+                              const best = displayPrice(item, vouchers, now).rate;
+                              const preview = estimate(item.price * count, rate);
+                              const unavailable = !v || displayPrice(item, [v], now).rate !== rate || !!held;
                               return (
-                                <button
-                                  key={rate}
-                                  className={
-                                    v &&
-                                    (voucher === v.id ||
-                                      held?.voucherId === v.id)
-                                      ? "selected"
-                                      : "secondary"
-                                  }
-                                  disabled={unavailable || busy}
-                                  aria-pressed={
-                                    !!v &&
-                                    (voucher === v.id ||
-                                      held?.voucherId === v.id)
-                                  }
-                                  onClick={() => setVoucher(v.id)}
-                                >
-                                  <b>{rate * 100}%</b>
-                                  <span>
-                                    {!eligible
-                                      ? "Món không áp dụng"
-                                      : v
-                                        ? states[v.state]
-                                        : "Có từ 18:00"}
+                                <label key={rate} className={`voucher-option ${v && (voucher === v.id || held?.voucherId === v.id) ? "selected" : "secondary"}`}>
+                                  <input type="radio" name="voucher" value={v?.id || String(rate)} disabled={unavailable || busy}
+                                    checked={!!v && (voucher === v.id || held?.voucherId === v.id)}
+                                    onChange={() => {
+                                      if (!v) return;
+                                      setVoucher(v.id);
+                                      const next = { listingId: item.id, qty: count, voucherId: v.id }; setDraft(next);
+                                      try { sessionStorage.setItem("bc-draft", JSON.stringify(next)); } catch {}
+                                    }} />
+                                  <b>{percent(rate)}</b>
+                                  <span className="voucher-copy">
+                                    {!unavailable && <><strong>Còn {money(preview.total)}</strong><small>Giảm thêm {money(preview.voucherDiscount)}{rate === best ? " · Gợi ý tiết kiệm nhất" : ""}</small></>}
+                                    <small>{!eligible ? "Món không áp dụng" : v ? states[v.state] : "Chưa có voucher"}</small>
                                   </span>
-                                </button>
+                                </label>
                               );
                             })}
-                          </div>
-                          <p className="fine">
-                            Giảm nền 5% trước, sau đó áp dụng voucher. Không
-                            cộng dồn ba voucher.
-                          </p>
-                          <label className="inline-check">
-                            <input
-                              type="checkbox"
-                              checked={location}
-                              disabled={!!held || busy}
-                              onChange={(e) => setLocation(e.target.checked)}
-                            />
-                            Lấy vị trí một lần để tính thưởng tự nhận
-                          </label>
-                          <p className="fine">
-                            Tuyến đi bộ là ước lượng. Không theo dõi GPS; thiếu
-                            vị trí vẫn dùng voucher gốc.
-                          </p>
+                          </fieldset>
+                          <p className="fine">Bạn tự chọn một voucher. Có thể giữ voucher lớn cho bữa sau.</p>
                         </>
                       )}
                       {held && (
@@ -855,14 +820,17 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                         </section>
                       )}
                     </section>
-                    <aside className="checkout-summary">
+                    <aside className="checkout-summary" ref={summary} tabIndex={-1}>
                       <h2>Tóm tắt thanh toán</h2>
-                      {amounts && <PriceLines a={amounts} />}
+                      {amounts && <details className="price-help"><summary>Chi tiết giảm giá</summary><PriceLines a={amounts} hideTotal /></details>}
                       <p className="price-type">
                         {held
                           ? "Giá xác nhận từ Bếp Núc"
                           : "Ước tính · chưa gồm thưởng tự nhận"}
                       </p>
+                      <div className="checkout-action">
+                        {amounts && <div className="action-total"><span>{held ? "Tổng thanh toán" : activeVoucher ? "Tổng ước tính đã chọn voucher" : "Giá trước voucher"}</span><strong>{money(amounts.total)}</strong></div>}
+                        {held && <p>{seconds ? `Giữ suất còn ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}` : "Đã hết hạn. Kiểm tra lại giá trước khi thanh toán."}</p>}
                       {user?.approved &&
                         user.role === "student" &&
                         (held ? (
@@ -880,7 +848,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                           >
                             {busy
                               ? "Đang xử lý…"
-                              : "Tạo đơn & xem chuyển khoản"}
+                              : "Tiếp tục thanh toán"}
                           </button>
                         ) : (
                           <button
@@ -895,9 +863,29 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                           >
                             {busy
                               ? "Đang xác nhận…"
-                              : "Giữ hàng & xác nhận giá"}
+                              : "Giữ suất với giá này"}
                           </button>
                         ))}
+                        {!held && user?.approved && user.role === "student" && !activeVoucher && <p>{voucherHint(item, vouchers, now)}</p>}
+                      </div>
+                      {!held && !activeVoucher && displayPrice(item, vouchers, now).rate > 0 && <p className="price-suggestion">Nếu chọn voucher {percent(displayPrice(item, vouchers, now).rate)}: <strong>{money(displayPrice(item, vouchers, now, count).total)}</strong>. Bạn chưa chọn voucher.</p>}
+                      {error && <div role="alert" className="error" ref={actionError} tabIndex={-1}>{error}<button className="secondary" disabled={busy} onClick={() => load()}>Kiểm tra trạng thái</button></div>}
+                      {!held && user?.approved && user.role === "student" && <details className="optional-benefit"><summary>Thưởng vị trí & cách tính giá (tùy chọn)</summary>                          <details className="price-help"><summary>Cách tính giảm giá</summary><p>Giảm nền 5% trước, sau đó áp dụng một voucher. Không cộng dồn ba voucher. Giá ước tính chưa gồm thưởng vị trí; giá xác nhận được kiểm tra khi giữ suất.</p></details>
+                          <label className="inline-check">
+                            <input
+                              type="checkbox"
+                              checked={location}
+                              disabled={!!held || busy}
+                              onChange={(e) => setLocation(e.target.checked)}
+                            />
+                            Lấy vị trí một lần để tính thưởng tự nhận
+                          </label>
+                          <p className="fine">
+                            Tuyến đi bộ là ước lượng. Không theo dõi GPS; thiếu
+                            vị trí vẫn dùng voucher gốc.
+                          </p>
+</details>}
+                      {!held && !displayPrice(item, vouchers, now).rate && <Link href={browseHref}>Quay lại tìm món khác</Link>}
                       <p className="fine">
                         Chỉ giữ tồn sau khi báo giá thành công. Thời hạn tối đa
                         10 phút.
@@ -909,7 +897,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
             )}
             {(view === "orders" || view === "order") && (
               <>
-                <Link href="/">Tìm thêm món</Link>
+                <Link href="/meals">Tìm thêm món</Link>
+                <p className="sync-status" role="status">{syncedAt ? `Cập nhật lúc ${new Date(syncedAt).toLocaleTimeString("vi-VN")}` : "Chưa có cập nhật"} · Xác nhận tiền thủ công <button className="secondary" onClick={() => load()}>Kiểm tra lại</button></p>
                 <h1>
                   {view === "orders"
                     ? "Đơn hàng của bạn"
@@ -948,7 +937,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                             ? "Không tìm thấy đơn của bạn"
                             : "Chưa có đơn hàng"}
                         </h2>
-                        <Link href="/">Chọn món cho tối nay</Link>
+                        <Link href="/meals">Chọn món cho tối nay</Link>
                       </section>
                     )}
                   </div>
@@ -968,7 +957,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                     Lựa chọn món và số suất được giữ trên trình duyệt này. Giá
                     và tồn sẽ kiểm tra lại.
                   </p>
-                  <Link href="/">Tiếp tục xem món</Link>
+                  <Link href={browseHref}>Tiếp tục xem món</Link>
                 </div>
                 <form
                   onSubmit={(e) => {
@@ -1018,6 +1007,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                           required
                           autoComplete="email"
                           value={email}
+                          readOnly={sent}
                           onChange={(e) => setEmail(e.target.value)}
                         />
                       </label>
@@ -1033,6 +1023,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                           />
                         </label>
                       )}
+                      {sent && <div className="otp-recovery"><button className="secondary" type="button" disabled={busy || tick < retryAt} onClick={() => login(undefined, true)}>{tick < retryAt ? `Gửi lại sau ${Math.ceil((retryAt - tick) / 1000)}s` : "Gửi lại mã"}</button><button className="secondary" type="button" disabled={busy} onClick={() => { setSent(false); setOtp(""); setError(""); setNotice(""); }}>Đổi email</button></div>}
                       <button disabled={busy}>
                         {busy
                           ? "Đang xử lý…"
@@ -1164,7 +1155,7 @@ function Quantity({
     </div>
   );
 }
-function PriceLines({ a }: { a: any }) {
+function PriceLines({ a, hideTotal = false }: { a: any; hideTotal?: boolean }) {
   return (
     <>
       <dl className="price-lines">
@@ -1184,10 +1175,10 @@ function PriceLines({ a }: { a: any }) {
           <dt>Thưởng tự nhận</dt>
           <dd>−{money(a.bonusDiscount)}</dd>
         </div>
-        <div className="total-line">
+        {!hideTotal && <div className="total-line">
           <dt>Tổng thanh toán</dt>
           <dd>{money(a.total)}</dd>
-        </div>
+        </div>}
       </dl>
       <p className="saved-line">Tiết kiệm {money(a.saved)}</p>
     </>
@@ -1231,8 +1222,9 @@ function CustomerOrder({
       ) : (
         <>
           <code>{o.id}</code>
-          <ol className="order-progress">
-            <li className="active">Chờ xác nhận tiền</li>
+          {o.status === "paid" && o.code && <section className="pickup-code"><h3>Mã nhận của bạn</h3><code>{o.code}</code><button className="secondary" onClick={() => copy(o.code)}>Sao chép mã nhận</button><p role="status">{copied}</p><p>Đưa mã này cho quán trong giờ nhận bên dưới.</p></section>}
+          {["awaiting_payment", "paid", "picked_up"].includes(o.status) && <ol className="order-progress" aria-label="Tiến trình đơn hàng">
+            <li className="active" aria-current={o.status === "awaiting_payment" ? "step" : undefined}>Thanh toán & chờ xác nhận</li>
             <li
               className={
                 ["paid", "picked_up"].includes(o.status) ? "active" : ""
@@ -1243,7 +1235,7 @@ function CustomerOrder({
             <li className={o.status === "picked_up" ? "active" : ""}>
               Đã nhận bữa
             </li>
-          </ol>
+          </ol>}
           <section className="pickup-address">
             <h3>Nhận tại {s?.name}</h3>
             <p>{s?.address}</p>
@@ -1293,22 +1285,16 @@ function CustomerOrder({
                 đã bán.
               </p>
               <p role="status">{copied}</p>
+              <p role="status">Chờ Bếp Núc kiểm tra tiền chuyển. Quay lại trang này để xem mã nhận sau khi được xác nhận. Không chuyển thêm nếu bạn đã chuyển đúng tiền.</p>
             </section>
           )}
-          {o.status === "paid" && o.code && (
-            <section className="pickup-code">
-              <h3>Mã nhận dùng một lần</h3>
-              <code>{o.code}</code>
-              <p>Chỉ đưa mã cho quán. Đến trong khung nhận.</p>
-            </section>
-          )}
+
           {o.status === "picked_up" && (
             <p>Bữa đã được giao. Mã nhận không còn dùng được.</p>
           )}
           {o.status === "expired" && (
             <p>
-              Đơn hết hạn giữ. Nếu đã chuyển tiền, liên hệ đội vận hành pilot để
-              kiểm tra và xử lý hoàn tiền.
+              Đơn hết hạn giữ. Không chuyển thêm tiền. Nếu đã chuyển, dùng kênh hỗ trợ của đội pilot để kiểm tra và xử lý hoàn tiền; suất không được tự giữ lại.
             </p>
           )}
           {["cancelled", "no_show"].includes(o.status) && (
@@ -1319,6 +1305,7 @@ function CustomerOrder({
               Tiền đã thu được hoàn trong pilot.
             </p>
           )}
+          {supportLink(data.supportEmail, o.id) && <a className="button-link secondary" href={supportLink(data.supportEmail, o.id)!}>Liên hệ hỗ trợ đơn này</a>}
           {o.refund?.map((r: any, i: number) => (
             <p key={i} className="market-notice">
               {r.done ? "Đã hoàn" : "Đang chờ hoàn"} {money(r.amount)} ·{" "}

@@ -68,3 +68,10 @@ Tên Bếp Canh trong tài liệu nghiên cứu chỉ hướng dự báo vận h
 Không sao chép `.env.local`, database, cache, build hoặc `node_modules` từ Roomora. Cấu hình thật phải thiết lập riêng. Cookie `bc_demo`, nháp `bc-draft`, bảng `bc_state` và mã chuyển khoản `BC` giữ nguyên để tương thích; đây là định danh kỹ thuật, không phải tên thương hiệu.
 
 Tài liệu nghiệm thu kế thừa mô tả kiểm tra trước khi tách thư mục; không coi là kiểm tra lại tại vị trí mới. Xem `docs/folder-migration.md` cho kết quả tại đây.
+## Chọn bữa nhanh
+
+Đọc [nghiệm thu hành trình](docs/customer-journey-validation.md) và [biểu mẫu quan sát](docs/customer-journey-observations.csv). Ngân sách mỗi suất và sắp xếp dùng giá hiển thị theo voucher khả dụng của sinh viên; giá xác nhận vẫn do backend tính. Cấu hình `SUPPORT_EMAIL` bằng hộp thư thật được theo dõi trước pilot để hiện liên hệ gắn mã đơn.
+
+## Trang chính và loading
+
+`/` là trang giới thiệu trước khi chọn bữa; `/meals` là catalogue. Link lọc cũ `/?budget=...` tự chuyển sang `/meals?budget=...`; nháp và URL quán vẫn dùng được. Loading hiển thị theo trạng thái tải thật, không có thời gian chờ tối thiểu. Từ chối mạng/hết timeout vẫn đưa về thông báo lỗi và nút kiểm tra lại.

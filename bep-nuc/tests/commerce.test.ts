@@ -9,7 +9,7 @@ import {
   price,
   localImage,
 } from "../lib/domain";
-import { estimate, filterFood, normalize } from "../lib/commerce";
+import { percent, browseUrl, voucherHint, displayPrice, supportLink, estimate, filterFood, normalize } from "../lib/commerce";
 const now = Date.parse("2026-10-07T18:30:00+07:00");
 function setup() {
   const s = demoState(now);
@@ -135,4 +135,84 @@ test("only local curated food images are accepted", () => {
     "/food-images/food.svg?x=1",
   ])
     assert.throws(() => localImage(path));
+});
+
+test("display price, budget and sorting use only available eligible vouchers tonight", () => {
+  const s = setup(), c = catalogue(s, now), l = c.listings[0];
+  const vouchers = s.vouchers;
+  const a = { ...l, id: "a", price: 50000, eligible: [0.2] };
+  const b = { ...l, id: "b", price: 42000, eligible: [0.07] };
+  assert.equal(displayPrice(a, [], now).total, 47500);
+  assert.equal(displayPrice(a, vouchers, now).total, 38000);
+  const filtered = filterFood([a, b], c.shops, "", "", "", true, false, "price", now, 39000, vouchers);
+  assert.deepEqual(filtered.map(x => x.id), ["b", "a"]);
+  assert.equal(filterFood([a], c.shops, "", "", "", true, false, "price", now, 39000).length, 0);
+  assert.equal(displayPrice(a, vouchers.map(v => ({ ...v, state: "reserved" })), now).rate, 0);
+  assert.equal(displayPrice(a, vouchers, now + 86400000).rate, 0);
+  assert.equal(displayPrice(a, vouchers, Date.parse("2026-10-07T23:59:00+07:00")).rate, 0);
+  assert.equal(displayPrice(a, vouchers, Date.parse("2026-10-07T17:59:00+07:00")).rate, 0);
+  assert.equal(filterFood([{ ...a, end: now }], c.shops, "", "", "", false, false, "end", now).length, 0);
+  for (const price of [30000, 50000, 100000, 50001]) {
+    const displayed = displayPrice({ ...a, price }, vouchers, now);
+    assert.equal(displayed.total, estimate(price, 0.2).total);
+  }
+  assert.equal(vouchers.find(v => v.rate === 0.2)?.state, "available");
+});
+test("support link requires a real-shaped mailbox and encodes order reference", () => {
+  assert.equal(supportLink(undefined, "123"), null);
+  assert.equal(supportLink("javascript:alert(1)", "123"), null);
+  assert.equal(supportLink("a@b.com\r\nBcc:x@y.com", "123"), null);
+  assert.ok(supportLink("help@example.com", "order &1")?.endsWith(encodeURIComponent("Hỗ trợ đơn Bếp Núc order &1")));
+});
+
+test("meal quantity estimate is rounded from full total and never consumes a voucher", () => {
+  const s = setup(), food = { ...catalogue(s, now).listings[0], price: 50001, eligible: [0.2] };
+  const before = JSON.stringify(s.vouchers);
+  for (const qty of [1, 2, 3]) {
+    assert.equal(displayPrice(food, s.vouchers, now, qty).total, estimate(50001 * qty, 0.2).total);
+    assert.equal(displayPrice(food, [], now, qty).total, estimate(50001 * qty).total);
+  }
+  assert.equal(JSON.stringify(s.vouchers), before);
+  const a = displayPrice(food, s.vouchers, now).total;
+  assert.equal(filterFood([food], s.shops, "", "", "", true, false, "price", now, a, s.vouchers).length, 1);
+  assert.equal(filterFood([food], s.shops, "", "", "", true, false, "price", now, a - 1, s.vouchers).length, 0);
+});
+
+test("voucher guidance distinguishes time, eligibility, used and reserved", () => {
+  const s = setup(), food = { ...catalogue(s, now).listings[0], eligible: [0.2] };
+  assert.match(voucherHint(food, s.vouchers, now), /Chọn một/);
+  assert.match(voucherHint(food, [], Date.parse("2026-10-07T17:59:00+07:00")), /mở từ/);
+  assert.match(voucherHint(food, s.vouchers, Date.parse("2026-10-07T23:59:00+07:00")), /hết hạn/);
+  assert.match(voucherHint({ ...food, eligible: [] }, s.vouchers, now), /chưa áp dụng/);
+  assert.match(voucherHint(food, s.vouchers.map(v => ({ ...v, state: "used" })), now), /đã dùng/);
+  assert.match(voucherHint(food, s.vouchers.map(v => ({ ...v, state: "reserved" })), now), /đang giữ/);
+});
+
+test("percent labels are stable and return navigation stays inside catalogue", () => {
+  assert.equal(percent(0.07), "7%"); assert.equal(percent(0.1), "10%"); assert.equal(percent(0.2), "20%");
+  assert.equal(browseUrl("/?budget=30000&category=C%C6%A1m"), "/meals?budget=30000&category=C%C6%A1m");
+  assert.equal(browseUrl("/meals?budget=40000"), "/meals?budget=40000");
+  assert.equal(browseUrl("/"), "/meals");
+  assert.equal(browseUrl("/shops/shop1?q=bun&evil=1"), "/shops/shop1?q=bun");
+  for (const url of ["//evil.com", "https://evil.com", "/checkout", "/shops/../internal", "/\\evil.com", null]) assert.equal(browseUrl(url), "/meals");
+});
+
+test("lost quote and order responses can be replayed without reserving or ordering twice", () => {
+  const s = setup(), u = s.users[0], l = s.listings[0], v = s.vouchers.find(v => v.rate === 0.2)!;
+  const stock = l.stock;
+  const args = { listingId: l.id, qty: 1, voucherId: v.id, key: "lost-response-quote" };
+  const q: any = act(s, u, "quote", args, now);
+  assert.deepEqual(act(s, u, "quote", args, now), q);
+  assert.equal(l.stock, stock - 1);
+  const o: any = act(s, u, "order", { quoteId: q.id, key: "lost-response-order" }, now);
+  assert.deepEqual(act(s, u, "order", { quoteId: q.id, key: "lost-response-order" }, now), o);
+  assert.equal(s.orders.length, 1);
+  assert.equal((view(s, u, now).orders[0] as any).quoteId, q.id);
+  assert.equal(l.stock, stock - 1);
+});
+
+test("old catalogue links canonicalize to meals without losing supported filters", () => {
+  assert.equal(browseUrl("/?q=com&budget=30000&stock=all&receiving=1&sort=price"), "/meals?q=com&budget=30000&stock=all&receiving=1&sort=price");
+  assert.equal(browseUrl("/meals?q=bun&evil=1"), "/meals?q=bun");
+  assert.equal(browseUrl("/meals/../internal"), "/meals");
 });
