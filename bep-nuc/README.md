@@ -79,3 +79,9 @@ Tài liệu nghiệm thu kế thừa mô tả kiểm tra trước khi tách thư
 ## Demo GitHub Pages
 
 `npm run build:pages` tạo bản demo công khai tại `pages-site/out`, không có backend hoặc giao dịch thật. Xem [cách xuất bản và giới hạn](docs/github-pages.md).
+
+## MVP ngân sách hosting 0đ
+
+Đọc [hướng dẫn tạo tài khoản và triển khai](docs/zero-budget-setup.md). `npm run build:mvp` tạo frontend Cloudflare tại `mvp-site/out`; API nằm trong `supabase/functions/bep-nuc`, migration trong `supabase/migrations`. Google login và giao dịch chỉ hoạt động sau khi kết nối project thật. Không seed hồ sơ giả định vào production.
+
+`npm run build:pages` hiện chỉ xuất trang giới thiệu GitHub Pages, thay bản đặt hàng giả trước đây. Đặt repository variable `MVP_APP_URL` sau khi có URL Cloudflare đã kiểm tra. Code demo cũ vẫn giữ làm tham chiếu, không được nhập trong entrypoint public mới.

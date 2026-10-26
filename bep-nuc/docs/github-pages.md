@@ -1,3 +1,5 @@
+> **Cập nhật 27/10/2026:** Tài liệu bên dưới ghi lại bản demo cũ. Entry point GitHub Pages hiện chuyển thành trang giới thiệu, không còn đặt hàng giả. Triển khai MVP theo [hướng dẫn 0đ](zero-budget-setup.md); `build:mvp` dành cho Cloudflare, `build:pages` dành cho giới thiệu.
+
 # GitHub Pages — bản demo công khai
 
 GitHub Pages chỉ phục vụ HTML/CSS/JS. Không triển khai API Next.js, cookie đăng nhập, PostgreSQL, xác nhận thanh toán hoặc pilot thật lên Pages.

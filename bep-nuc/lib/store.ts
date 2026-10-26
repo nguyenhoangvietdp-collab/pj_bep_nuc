@@ -30,7 +30,7 @@ export async function transaction<T>(
       return sql
         .begin(async (tx) => {
           await tx`SELECT pg_advisory_xact_lock(32002026)`;
-          await tx.unsafe(schema);
+          if (demo()) await tx.unsafe(schema);
           const rows =
             await tx`SELECT data FROM bc_state WHERE id=1 FOR UPDATE`;
           const s: State =

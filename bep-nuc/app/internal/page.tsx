@@ -1,7 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { SiteHeader, ProductHero, HowItWorks } from "../components/brand";
 import { SiteFooter } from "../components/site-frame";
+import Link, { useAppRouter } from "../components/navigation";
+import { apiFetch, googleLogin } from "../../lib/mvp-client";
+import { isCloudMvp } from "../../lib/app-navigation";
 const labels: Record<string, string> = {
   available: "Chưa dùng",
   reserved: "Đang giữ",
@@ -42,6 +45,8 @@ const time = (n: number) =>
     minute: "2-digit",
   });
 export default function Page() {
+  const router=useAppRouter();
+  const mutation=useRef(false);
   const [data, setData] = useState<any>(),
     [error, setError] = useState(""),
     [quote, setQuote] = useState<any>(),
@@ -50,7 +55,7 @@ export default function Page() {
     [token, setToken] = useState("");
   async function load() {
     try {
-      const r = await fetch("/api/pilot", { cache: "no-store" });
+      const r = await apiFetch("/api/pilot", { cache: "no-store" });
       const d = await r.json();
       if (r.ok) setData(d);
       else setError(d.error);
@@ -60,36 +65,47 @@ export default function Page() {
   }
   useEffect(() => {
     load();
-    const t = setInterval(load, 30000);
+    const t = setInterval(() => { if(document.visibilityState === "visible") load(); }, 30000);
     return () => clearInterval(t);
   }, []);
   useEffect(() => {
-    if (data?.user.role === "student") window.location.replace("/");
+    if (data?.user.role === "student") router.push("/meals");
   }, [data?.user.role]);
   async function action(action: string, args: any) {
+    if(mutation.current)return;
+    mutation.current=true;
     setBusy(true);
     setError("");
+    let pendingKey="";
     try {
-      const r = await fetch("/api/pilot", {
+      const signature=JSON.stringify([data?.user.id,action,args]);
+      let pending:any;
+      try{pending=JSON.parse(sessionStorage.getItem("bc-staff-action") || "null");}catch{}
+      pendingKey=pending?.signature===signature&&typeof pending.key==="string"?pending.key:crypto.randomUUID();
+      try{sessionStorage.setItem("bc-staff-action",JSON.stringify({signature,key:pendingKey}));}catch{}
+      const r = await apiFetch("/api/pilot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action,
-          args: { ...args, key: crypto.randomUUID() },
+          args: { ...args, key: pendingKey },
         }),
       });
       const d = await r.json();
+      if(r.ok || (r.status>=400&&r.status<500))try{sessionStorage.removeItem("bc-staff-action");}catch{}
       if (!r.ok) throw new Error(d.error);
       await load();
       return d;
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      mutation.current=false;
       setBusy(false);
     }
   }
   async function login(role?: string) {
-    const r = await fetch("/api/auth", {
+    if(isCloudMvp){try{await googleLogin("/internal");}catch(e){setError((e as Error).message);}return;}
+    const r = await apiFetch("/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ role, email, token: token || undefined }),
@@ -131,7 +147,7 @@ export default function Page() {
     return (
       <div className="site-frame internal-frame" id="top">
         <SiteHeader />
-        <main className="site-shell" id="content">
+        <main className="site-shell" id="content" tabIndex={-1}>
         <section className="login-layout">
           <div>
             <p className="eyebrow">BẾP NÚC · HÀ NỘI</p>
@@ -153,6 +169,7 @@ export default function Page() {
           >
             <h2>Vào Bếp Núc</h2>
             <p role="status">{error || "Đang kiểm tra phiên đăng nhập…"}</p>
+            {isCloudMvp ? <><p>Đăng nhập Google để truy cập khu vực quán hoặc vận hành.</p><button type="submit">Tiếp tục với Google</button><p><Link href="/meals">Quay lại chọn bữa</Link></p></> : <>
             <label htmlFor="login-email">Email của bạn</label>
             <input
               id="login-email"
@@ -176,7 +193,7 @@ export default function Page() {
             />
             <button type="submit">
               {token ? "Xác thực & vào Bếp Núc" : "Gửi mã xác thực"}
-            </button>
+            </button></>}
           </form>
         </section>
         </main>
@@ -187,7 +204,7 @@ export default function Page() {
   return (
     <div className="site-frame internal-frame" id="top">
       <SiteHeader role={role} name={data.user.name} />
-      <main className="site-shell" id="content">
+      <main className="site-shell" id="content" tabIndex={-1}>
       {data.demo && (
         <aside className="demo">
           <span>MÔ PHỎNG · Không chuyển tiền thật</span>
@@ -492,14 +509,14 @@ export default function Page() {
                 : "Chưa được mở pilot thật"}
             </p>
             <p>
-              Ngân sách: hạ tầng/maps 400.000đ · tuyển thử 500.000đ · khảo sát
-              600.000đ · dự phòng 500.000đ.
+              {isCloudMvp ? "Hạ tầng dùng gói Free, ngân sách dịch vụ 0đ. Kiểm tra hạn mức trước mỗi ca." : "Ngân sách: hạ tầng/maps 400.000đ · tuyển thử 500.000đ · khảo sát 600.000đ · dự phòng 500.000đ."}
             </p>
             <button
               onClick={async () => {
-                const exported = await fetch("/api/export").then((r) =>
-                  r.json(),
-                );
+                try{
+                const response=await apiFetch("/api/export");
+                const exported=await response.json();
+                if(!response.ok){setError(exported.error || "Chưa xuất được đối soát");return;}
                 const blob = new Blob([JSON.stringify(exported, null, 2)], {
                   type: "application/json",
                 });
@@ -509,6 +526,7 @@ export default function Page() {
                 a.download = "bep-nuc-export.json";
                 a.click();
                 URL.revokeObjectURL(url);
+                }catch{setError("Chưa xuất được đối soát. Vui lòng kiểm tra kết nối và thử lại.");}
               }}
             >
               Xuất dữ liệu vận hành

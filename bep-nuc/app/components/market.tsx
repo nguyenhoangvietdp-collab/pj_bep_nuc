@@ -1,9 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "./navigation";
 import LoadingScreen from "./loading-screen";
 import { SiteHeader, SiteFooter } from "./site-frame";
-import { useRouter } from "next/navigation";
+import { useAppRouter as useRouter } from "./navigation";
+import { apiFetch, googleLogin } from "../../lib/mvp-client";
+import { isCloudMvp, readAppLocation, replaceAppUrl } from "../../lib/app-navigation";
 import {
   estimate,
   percent,
@@ -21,6 +23,7 @@ import {
 type Catalog = {
   now: number;
   demo: boolean;
+  pilotOpen?: boolean;
   shops: PublicShop[];
   listings: Food[];
 };
@@ -83,6 +86,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     summary = useRef<HTMLElement>(null),
     mutation = useRef(false),
     loadVersion = useRef(0),
+    profileSnapshot = useRef<any>(undefined),
     actionError = useRef<HTMLDivElement>(null),
     filterDialog = useRef<HTMLDialogElement>(null),
     filterOpener = useRef<HTMLButtonElement>(null);
@@ -90,20 +94,20 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     const version = ++loadVersion.current;
     try {
       const [c, a] = await Promise.all([
-        fetch("/api/catalogue", { cache: "no-store", signal: AbortSignal.timeout(12000) }),
-        fetch("/api/auth", { cache: "no-store", signal: AbortSignal.timeout(12000) }),
+        apiFetch("/api/catalogue", { cache: "no-store", signal: AbortSignal.timeout(12000) }),
+        apiFetch("/api/auth", { cache: "no-store", signal: AbortSignal.timeout(12000) }),
       ]);
       if (!c.ok || !a.ok) throw new Error("Chưa tải được trạng thái mới. Dữ liệu đang hiển thị có thể đã cũ.");
       const nextCatalog = await c.json(), received = Date.now(), auth = await a.json();
       let nextProfile;
       if (auth.user?.approved) {
-        const p = await fetch("/api/pilot", { cache: "no-store", signal: AbortSignal.timeout(12000) });
+        const p = await apiFetch("/api/pilot", { cache: "no-store", signal: AbortSignal.timeout(12000) });
         if (!p.ok) throw new Error("Chưa tải được đơn và voucher. Thử kiểm tra lại trước khi đặt.");
         nextProfile = await p.json();
       }
       if (version !== loadVersion.current) return;
       setCatalog(nextCatalog); fetched.current = received;
-      setUser(auth.user); setSupportEmail(auth.supportEmail); setProfile(nextProfile); setSyncedAt(Date.now()); setLoadError("");
+      setUser(auth.user); setSupportEmail(auth.supportEmail); setProfile(nextProfile); profileSnapshot.current=nextProfile; setSyncedAt(Date.now()); setLoadError("");
       try {
         const mode = auth.user?.approved && auth.user.role === "student" ? "student" : "guest";
         if (mode === "student" && sessionStorage.getItem("bc-price-mode") === "guest")
@@ -119,7 +123,19 @@ export default function Market({ view, id }: { view: string; id?: string }) {
   }
   useEffect(() => {
     load(true);
-    const poll = setInterval(() => load(), 15000);
+    const poll = setInterval(async () => {
+      if(document.visibilityState!=="visible")return;
+      if(!isCloudMvp){load();return;}
+      const current=profileSnapshot.current;
+      if(!["orders","order","checkout"].includes(view) || !(current?.heldQuotes?.length || current?.orders?.some((o:any)=>["awaiting_payment","paid"].includes(o.status))))return;
+      const version=++loadVersion.current;
+      try{
+        const response=await apiFetch("/api/pilot");
+        if(!response.ok)throw new Error("Chưa kiểm tra được trạng thái đơn. Vui lòng thử lại.");
+        const next=await response.json();
+        if(version===loadVersion.current){setProfile(next);profileSnapshot.current=next;setLoadError("");}
+      }catch(e){if(version===loadVersion.current)setLoadError((e as Error).message);}
+    },30000);
     const refresh = () => { if (document.visibilityState === "visible") load(); };
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);
@@ -138,7 +154,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           { setDraft(d); if (typeof d.voucherId === "string") setVoucher(d.voucherId); }
       }
     } catch {}
-    const p = new URLSearchParams(window.location.search);
+    const p = new URLSearchParams(readAppLocation().search);
     setQuery(p.get("q") || "");
     const limit = Number(p.get("budget"));
     setBudget(Number.isSafeInteger(limit) && limit > 0 ? limit : 0);
@@ -166,8 +182,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     if (!stockOnly) p.set("stock", "all");
     if (receiving) p.set("receiving", "1");
     if (sort !== "end") p.set("sort", sort);
-    const url = browseUrl(window.location.pathname + (p.size ? "?" + p.toString() : ""));
-    window.history.replaceState(null, "", url);
+    const url = browseUrl(readAppLocation().pathname + (p.size ? "?" + p.toString() : ""));
+    replaceAppUrl(url);
     setBrowseHref(url);
     try { sessionStorage.setItem("bc-browse", url); } catch {}
   }, [query, budget, filtersReady, category, shopFilter, stockOnly, receiving, sort, view]);
@@ -189,7 +205,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           const key = profile.user.id + ":" + listingId;
           if (e.isIntersecting && !seen.current.has(key)) {
             seen.current.add(key);
-            fetch("/api/pilot", {
+            apiFetch("/api/pilot", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -266,7 +282,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
         if (existing) { definitive = true; return { ok: true }; }
         if (current.heldQuotes?.length) { definitive = true; throw new Error("Bạn đang giữ một bữa khác. Kiểm tra hoặc bỏ giữ trước khi đặt lại."); }
       }
-      const r = await fetch("/api/pilot", {
+      const r = await apiFetch("/api/pilot", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, args: { ...args, key } }), signal: AbortSignal.timeout(12000),
       });
@@ -333,7 +349,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     setBusy(true);
     setError("");
     try {
-      const r = await fetch("/api/auth", {
+      if(isCloudMvp) { await googleLogin(safeReturn(new URLSearchParams(readAppLocation().search).get("returnTo"))); return; }
+      const r = await apiFetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role, email, token: resend ? undefined : otp || undefined }),
@@ -348,7 +365,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
             : role && role !== "student"
               ? "/internal"
               : safeReturn(
-                  new URLSearchParams(window.location.search).get("returnTo"),
+                  new URLSearchParams(readAppLocation().search).get("returnTo"),
                 ),
         );
       } else {
@@ -456,7 +473,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
   return (
     <div className={`site-frame commerce commerce-${view}`} id="top">
       <SiteHeader role={user?.role} name={user?.name} approved={user?.approved} />
-      <main id="content">
+      <main id="content" tabIndex={-1}>
       {catalog?.demo && (
         <aside className="market-demo">
           DEMO · Dữ liệu và tiền giả <Link href="/login">Đổi vai trò thử</Link>
@@ -478,6 +495,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           </div>
         )}
         {loadError && <div role="alert" className="error">{loadError} <button className="secondary" onClick={() => load()}>Kiểm tra lại</button></div>}
+        {isCloudMvp && catalog?.pilotOpen === false && <p className="market-notice" role="status">Chưa mở nhận đơn mới. Bạn vẫn có thể theo dõi các đơn đang có.</p>}
+        {isCloudMvp && <p className="fine">Giá hiện tại không có thưởng theo khoảng cách.</p>}
         {notice && (
           <p role="status" className="market-notice">
             {notice}
@@ -524,7 +543,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           className="header-search" role="search"
           onSubmit={(e) => {
             e.preventDefault();
-            const params = new URLSearchParams(window.location.search);
+            const params = new URLSearchParams(readAppLocation().search);
             if (query) params.set("q", query); else params.delete("q");
             router.push("/meals" + (params.size ? "?" + params.toString() : ""));
           }}
@@ -564,7 +583,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                     <h3>
                       {catalog.listings.length
                         ? "Chưa tìm thấy món phù hợp"
-                        : "Bếp chưa có lô cuối ngày"}
+                        : "Chưa mở nhận đơn"}
                     </h3>
                     <p>Không có món đáp ứng đủ điều kiện hiện tại. Bạn có thể bỏ một bộ lọc hoặc quay lại khi quán đăng món.</p>
                     {!!budget && <button className="secondary" onClick={() => setBudget(0)}>Bỏ giới hạn ngân sách</button>}
@@ -835,6 +854,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                           <button
                             disabled={
                               busy ||
+                              (isCloudMvp && catalog.pilotOpen === false) ||
                               !activeVoucher ||
                               activeVoucher.state !== "available" ||
                               item.stock < count ||
@@ -851,7 +871,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                       </div>
                       {!held && !activeVoucher && displayPrice(item, vouchers, now).rate > 0 && <p className="price-suggestion">Nếu chọn voucher {percent(displayPrice(item, vouchers, now).rate)}: <strong>{money(displayPrice(item, vouchers, now, count).total)}</strong>. Bạn chưa chọn voucher.</p>}
                       {error && <div role="alert" className="error" ref={actionError} tabIndex={-1}>{error}<button className="secondary" disabled={busy} onClick={() => load()}>Kiểm tra trạng thái</button></div>}
-                      {!held && user?.approved && user.role === "student" && <details className="optional-benefit"><summary>Thưởng vị trí & cách tính giá (tùy chọn)</summary>                          <details className="price-help"><summary>Cách tính giảm giá</summary><p>Giảm nền 5% trước, sau đó áp dụng một voucher. Không cộng dồn ba voucher. Giá ước tính chưa gồm thưởng vị trí; giá xác nhận được kiểm tra khi giữ suất.</p></details>
+                      {!isCloudMvp && !held && user?.approved && user.role === "student" && <details className="optional-benefit"><summary>Thưởng vị trí & cách tính giá (tùy chọn)</summary>                          <details className="price-help"><summary>Cách tính giảm giá</summary><p>Giảm nền 5% trước, sau đó áp dụng một voucher. Không cộng dồn ba voucher. Giá ước tính chưa gồm thưởng vị trí; giá xác nhận được kiểm tra khi giữ suất.</p></details>
                           <label className="inline-check">
                             <input
                               type="checkbox"
@@ -946,8 +966,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                     login();
                   }}
                 >
-                  <h2>Đăng nhập bằng email</h2>
-                  {catalog.demo ? (
+                  <h2>{isCloudMvp ? "Đăng nhập bằng Google" : "Đăng nhập bằng email"}</h2>
+                  {isCloudMvp ? (user ? <><p>{user.approved ? "Bạn đã đăng nhập." : "Tài khoản của bạn đang chờ vận hành duyệt."}</p><Link className="button-link" href={user.role === "student" ? "/meals" : "/internal"}>Tiếp tục</Link></> : <><p>Sử dụng tài khoản Google. Quyền đặt bữa cần được vận hành duyệt.</p><button disabled={busy}>{busy ? "Đang mở Google…" : "Tiếp tục với Google"}</button></>) : catalog.demo ? (
                     <>
                       <p>DEMO: dùng vai trò thử, không gửi email thật.</p>
                       <button
@@ -1225,7 +1245,8 @@ function CustomerOrder({
                 : "Xem khung nhận đã công bố"}
             </b>
           </section>
-          {o.status === "awaiting_payment" && (
+          {o.status === "awaiting_payment" && !data.bank && <p role="alert">Chưa có thông tin chuyển khoản được xác nhận. Không chuyển tiền; vui lòng liên hệ hỗ trợ.</p>}
+          {o.status === "awaiting_payment" && data.bank && (
             <section className="bank-instructions">
               <h3>Chuyển khoản {money(o.total)}</h3>
               <p>

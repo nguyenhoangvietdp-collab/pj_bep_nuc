@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { transaction, clock, closeStore } from "../lib/store";
 import { act, issue } from "../lib/domain";
+// Never let the local fixture test use a database URL inherited from an operator shell.
+process.env.DATABASE_URL = "";
 test("PostgreSQL transactions serialize last-stock race and rollback failed mutation", async () => {
   process.env.APP_MODE = "demo";
   process.env.DEMO_NOW = "2026-10-05T18:30:00+07:00";

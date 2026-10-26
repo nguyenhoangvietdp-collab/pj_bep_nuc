@@ -1,0 +1,2 @@
+export const metadata={title:"Bếp Núc · Bữa cuối ngày",description:"Chọn bữa hợp ngân sách, tự nhận tại quán."};
+export default function Layout({children}:{children:React.ReactNode}){return <html lang="vi"><head><link rel="stylesheet" href={process.env.PAGES_STYLE_HREF || "/theme.css"}/><link rel="preload" href="/fonts/inter/InterVariable.woff2" as="font" type="font/woff2" crossOrigin="anonymous"/></head><body>{children}</body></html>;}

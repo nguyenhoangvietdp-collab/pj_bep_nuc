@@ -1,6 +1,8 @@
 "use client";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from "./navigation";
+import { useAppPathname as usePathname } from "./navigation";
+import { isCloudMvp } from "../../lib/app-navigation";
+import { logoutMvp } from "../../lib/mvp-client";
 import type { ReactNode } from "react";
 import { supportLink } from "../../lib/commerce";
 
@@ -21,13 +23,14 @@ export function SiteHeader({ role, name, approved }: HeaderProps) {
         { href: role && role !== "student" ? "/internal" : "/login", label: role && role !== "student" ? "Nội bộ" : "Tài khoản" },
       ];
   return <>
-    <a className="skip-link" href="#content">Đến nội dung chính</a>
+    <Link className="skip-link" href="#content">Đến nội dung chính</Link>
     <header className="frame-header"><div className="frame-header-inner">
       <Link className="frame-brand" href="/" aria-label="Bếp Núc — trang chủ">Bếp Núc</Link>
       <nav aria-label="Điều hướng chính">{links.map(link => {
         const active = !link.href.startsWith("#") && (path === link.href || path.startsWith(link.href + "/") || link.href === "/meals" && (path.startsWith("/shops/") || path === "/checkout"));
         return <Link key={link.href} href={link.href} aria-current={active ? "page" : undefined}>{link.label}</Link>;
       })}</nav>
+      {isCloudMvp && role && <button className="secondary" onClick={() => logoutMvp().catch(() => window.location.hash="/login")}>Đăng xuất</button>}
       {name && <span className="frame-account">{name}<small>{role === "merchant" ? "Cửa hàng" : role === "ops" ? "Vận hành" : approved === false ? "Chờ duyệt" : "Sinh viên"}</small></span>}
     </div></header>
   </>;

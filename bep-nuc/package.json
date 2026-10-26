@@ -9,7 +9,9 @@
     "type-check": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "db:staff": "node --env-file-if-exists=.env.local --import tsx scripts/staff.ts",
-    "build:pages": "node scripts/build-pages.mjs"
+    "build:pages": "node scripts/build-pages.mjs",
+    "build:mvp": "node scripts/build-pages.mjs mvp",
+    "check:static": "node scripts/check-static.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

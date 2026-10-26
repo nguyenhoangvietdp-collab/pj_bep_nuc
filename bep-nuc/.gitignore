@@ -12,3 +12,13 @@ node_modules/
 pages-site/public/
 pages-site/out/
 pages-site/next-env.d.ts
+
+# Production static build and local Supabase secrets
+mvp-site/public/
+mvp-site/out/
+mvp-site/next-env.d.ts
+supabase/.temp/
+supabase/functions/.env
+.env.mvp.local
+
+.env.*.local

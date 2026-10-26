@@ -1,4 +1,4 @@
-name: Publish Bep Nuc demo to GitHub Pages
+name: Publish Bep Nuc introduction to GitHub Pages
 on:
   push:
     branches: [main]
@@ -28,6 +28,7 @@ jobs:
         working-directory: bep-nuc
         env:
           PAGES_BASE_PATH: /${{ github.event.repository.name }}
+          NEXT_PUBLIC_MVP_URL: ${{ vars.MVP_APP_URL }}
       - uses: actions/upload-pages-artifact@v4
         with:
           path: bep-nuc/pages-site/out
@@ -41,6 +42,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy demo
+      - name: Deploy introduction
         id: deployment
         uses: actions/deploy-pages@v4

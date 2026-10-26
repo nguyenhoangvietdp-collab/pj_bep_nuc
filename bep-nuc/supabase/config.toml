@@ -1,0 +1,4 @@
+project_id = "bep-nuc"
+[functions.bep-nuc]
+# Public catalogue/health are anonymous; protected routes verify the bearer token themselves.
+verify_jwt = false

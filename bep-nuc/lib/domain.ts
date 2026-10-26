@@ -368,6 +368,10 @@ export function view(s: State, u: User, now: number) {
       : {}),
   };
 }
+export type RuntimePolicy = { production: boolean; pilotEnabled: boolean; bankReady: boolean };
+export function policyFromEnv(env: Record<string, string | undefined>): RuntimePolicy {
+  return { production: env.APP_MODE === "production", pilotEnabled: env.REAL_PILOT_ENABLED === "true", bankReady: !!(env.BANK_NAME && env.BANK_ACCOUNT && env.BANK_HOLDER) };
+}
 export function act(
   s: State,
   u: User,
@@ -375,6 +379,7 @@ export function act(
   a: Record<string, any>,
   now: number,
   distance: number | null = null,
+  policy: RuntimePolicy = policyFromEnv(typeof process === "undefined" ? {} : process.env),
 ): unknown {
   requireThat(u.approved, "Tài khoản chưa được duyệt");
   const key = `${u.id}:${action}:${a.key}`;
@@ -396,12 +401,7 @@ export function act(
       "Chỉ đặt từ 18:00 đến trước 23:59",
     );
     requireThat(
-      process.env.APP_MODE !== "production" ||
-        (process.env.REAL_PILOT_ENABLED === "true" &&
-          readiness(s).ready &&
-          process.env.BANK_NAME &&
-          process.env.BANK_ACCOUNT &&
-          process.env.BANK_HOLDER),
+      !policy.production || (policy.pilotEnabled && readiness(s).ready && policy.bankReady),
       "Pilot thật chưa đủ điều kiện mở",
     );
     const l = s.listings.find((l) => l.id === a.listingId);

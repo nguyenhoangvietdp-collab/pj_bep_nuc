@@ -1,0 +1,37 @@
+name: Validate zero-budget MVP
+on:
+  push:
+    branches: [main]
+    paths: ["bep-nuc/**", ".github/workflows/mvp-checks.yml"]
+  pull_request:
+    paths: ["bep-nuc/**", ".github/workflows/mvp-checks.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bep-nuc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: bep-nuc/package-lock.json
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+      - run: npm ci
+      - run: npm test
+      - run: npm run type-check
+      - run: deno check --config supabase/functions/bep-nuc/deno.json supabase/functions/bep-nuc/index.ts
+      - run: npm run build:mvp
+      - run: npm run check:static
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bep-nuc-mvp-static
+          path: bep-nuc/mvp-site/out
+          retention-days: 7
