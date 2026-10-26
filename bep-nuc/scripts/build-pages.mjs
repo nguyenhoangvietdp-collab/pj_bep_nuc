@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -11,8 +12,9 @@ for (const name of ["fonts", "food-images"]) await cp(path.join(root, "public", 
 let css = "";
 for (const file of ["app/style.css", "app/commerce.css", "app/frame.css", "pages-site/demo.css"]) css += await readFile(path.join(root, file), "utf8") + "\n";
 css = css.replaceAll('url("/fonts/', `url("${base}/fonts/`);
-await writeFile(path.join(publicDir, "theme.css"), css);
+const stylesheet = `theme-${createHash("sha256").update(css).digest("hex").slice(0, 12)}.css`;
+await writeFile(path.join(publicDir, stylesheet), css);
 await writeFile(path.join(publicDir, ".nojekyll"), "");
-const result = spawnSync(process.execPath, [path.join(root, "node_modules/next/dist/bin/next"), "build", "pages-site"], { cwd: root, stdio: "inherit", env: { ...process.env, PAGES_BASE_PATH: base } });
+const result = spawnSync(process.execPath, [path.join(root, "node_modules/next/dist/bin/next"), "build", "pages-site"], { cwd: root, stdio: "inherit", env: { ...process.env, PAGES_BASE_PATH: base, PAGES_STYLE_HREF: `${base}/${stylesheet}` } });
 if (result.error) throw result.error;
 process.exitCode = result.status ?? 1;
