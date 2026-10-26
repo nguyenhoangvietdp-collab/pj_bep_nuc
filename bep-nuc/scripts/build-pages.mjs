@@ -1,0 +1,18 @@
+import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+const root = fileURLToPath(new URL("../", import.meta.url));
+const base = process.env.PAGES_BASE_PATH ?? "/pj_bep_nuc";
+if (base && !/^\/[A-Za-z0-9_-]+$/.test(base)) throw new Error("PAGES_BASE_PATH must be empty or /repository-name");
+const publicDir = path.join(root, "pages-site/public");
+await mkdir(publicDir, { recursive: true });
+for (const name of ["fonts", "food-images"]) await cp(path.join(root, "public", name), path.join(publicDir, name), { recursive: true });
+let css = "";
+for (const file of ["app/style.css", "app/commerce.css", "app/frame.css", "pages-site/demo.css"]) css += await readFile(path.join(root, file), "utf8") + "\n";
+css = css.replaceAll('url("/fonts/', `url("${base}/fonts/`);
+await writeFile(path.join(publicDir, "theme.css"), css);
+await writeFile(path.join(publicDir, ".nojekyll"), "");
+const result = spawnSync(process.execPath, [path.join(root, "node_modules/next/dist/bin/next"), "build", "pages-site"], { cwd: root, stdio: "inherit", env: { ...process.env, PAGES_BASE_PATH: base } });
+if (result.error) throw result.error;
+process.exitCode = result.status ?? 1;

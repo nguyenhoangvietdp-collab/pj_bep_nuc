@@ -1,5 +1,6 @@
 import "./style.css";
 import "./commerce.css";
+import "./frame.css";
 export const metadata = {
   title: "Bếp Núc · Pilot Hà Nội",
   description: "Chốt bữa cuối ngày, nhận tại quán.",
@@ -7,6 +8,7 @@ export const metadata = {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
+      <head><link rel="preload" href="/fonts/inter/InterVariable.woff2" as="font" type="font/woff2" crossOrigin="anonymous" /></head>
       <body>{children}</body>
     </html>
   );

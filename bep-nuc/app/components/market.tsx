@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import LoadingScreen from "./loading-screen";
+import { SiteHeader, SiteFooter } from "./site-frame";
 import { useRouter } from "next/navigation";
 import {
   estimate,
@@ -453,35 +454,15 @@ export default function Market({ view, id }: { view: string; id?: string }) {
   }
 
   return (
-    <main className={`commerce commerce-${view}`} id="top">
-      <a className="skip-link" href="#content">
-        Đến nội dung chính
-      </a>
-      <header className="market-header">
-        <Link className="brand" href="/">
-          Bếp Núc<span>NHẬN BỮA CUỐI NGÀY</span>
-        </Link>
-        <nav aria-label="Điều hướng mua bữa">
-          <Link href="/orders">Đơn hàng</Link>
-          <Link
-            href={
-              user
-                ? user.role === "student"
-                  ? "/checkout"
-                  : "/internal"
-                : "/login"
-            }
-          >
-            {user ? (user.approved ? (user.role === "student" ? "Bữa đang chọn" : "Nội bộ") : "Chờ duyệt") : "Đăng nhập"}
-          </Link>
-        </nav>
-      </header>
+    <div className={`site-frame commerce commerce-${view}`} id="top">
+      <SiteHeader role={user?.role} name={user?.name} approved={user?.approved} />
+      <main id="content">
       {catalog?.demo && (
         <aside className="market-demo">
           DEMO · Dữ liệu và tiền giả <Link href="/login">Đổi vai trò thử</Link>
         </aside>
       )}
-      <div className="market-content" id="content">
+      <div className="market-content">
         {error && view !== "checkout" && (
           <div role="alert" className="error">
             {error}{" "}
@@ -1039,9 +1020,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           </>
         )}
       </div>
-      <footer className="market-footer">
-        <b>Bếp Núc</b>
-        <p>Chọn món rõ ràng. Thanh toán được xác nhận. Nhận đúng khung giờ.</p>
+      </main>
+      <SiteFooter supportEmail={supportEmail}>
         <details id="ordering-help">
           <summary>Cách đặt và nhận bữa</summary>
           <ol>
@@ -1073,7 +1053,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           Chưa có tuyến đi bộ được xác minh an toàn. Kiểm tra đường thực tế
           trước khi di chuyển.
         </p>
-      </footer>
+      </SiteFooter>
       {selected && (
         <dialog
           ref={dialog}
@@ -1097,7 +1077,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           </Link>
         </dialog>
       )}
-    </main>
+    </div>
   );
 }
 function FoodImage({ l }: { l: Food }) {

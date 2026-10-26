@@ -8,7 +8,8 @@
     "start": "next start --hostname 127.0.0.1 --port 3200",
     "type-check": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "db:staff": "node --env-file-if-exists=.env.local --import tsx scripts/staff.ts"
+    "db:staff": "node --env-file-if-exists=.env.local --import tsx scripts/staff.ts",
+    "build:pages": "node scripts/build-pages.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

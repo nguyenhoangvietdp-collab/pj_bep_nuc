@@ -1,11 +1,19 @@
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/inter/InterVariable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
 :root {
-  --ink: #143b2b;
-  --green: #216342;
-  --lime: #b8f580;
+  --ink: #0c2b15;
+  --green: #0c2b15;
+  --lime: #f7f8f7;
   --paper: #ffffff;
-  --line: #dce4dd;
+  --line: #dce2dd;
   --muted: #52675a;
-  --serif: Georgia, "Times New Roman", serif;
+  --font-sans: "Inter", Arial, sans-serif;
+  --surface-secondary: #f7f8f7;
 }
 * {
   box-sizing: border-box;
@@ -18,7 +26,7 @@ body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.55;
 }
@@ -44,8 +52,8 @@ summary {
   outline-offset: 4px;
 }
 .site-shell {
-  max-width: 1480px;
-  padding: 26px 40px 0;
+  max-width: 1280px;
+  padding: 24px 24px 48px;
   margin: auto;
 }
 .skip-link {
@@ -59,66 +67,6 @@ summary {
 .skip-link:focus {
   top: 12px;
 }
-.site-header {
-  position: sticky;
-  top: 18px;
-  z-index: 10;
-  min-height: 84px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 28px;
-  padding: 16px 24px;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(20, 59, 43, 0.12);
-  border-radius: 18px;
-  box-shadow: 0 3px 12px #143b2b08;
-}
-.brand {
-  font-size: 30px;
-  font-weight: 800;
-  letter-spacing: -1.5px;
-  text-decoration: none;
-  line-height: 1;
-  flex-shrink: 0;
-}
-.brand span {
-  display: block;
-  font-size: 11px;
-  letter-spacing: 2px;
-  font-weight: 600;
-  margin-top: 9px;
-}
-.desktop-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 26px;
-}
-.desktop-nav a {
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-  padding: 8px 0;
-  border-bottom: 1px solid transparent;
-}
-.desktop-nav a:hover {
-  border-color: var(--green);
-}
-.header-account {
-  text-align: right;
-  font-size: 14px;
-  max-width: 220px;
-  overflow-wrap: anywhere;
-}
-.header-account small {
-  display: block;
-  font-size: 12px;
-  color: var(--muted);
-}
-.mobile-menu {
-  display: none;
-}
 h1,
 h2,
 h3,
@@ -127,9 +75,9 @@ p {
 }
 h1,
 h2 {
-  font-family: var(--serif);
-  font-weight: 400;
-  letter-spacing: -1.5px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -.025em;
   line-height: 1.12;
 }
 h1 {
@@ -150,7 +98,7 @@ p {
   margin-bottom: 18px;
 }
 .eyebrow {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 1.7px;
   line-height: 1.6;
@@ -231,14 +179,14 @@ label {
   border: 1px solid #e2d8b1;
   background: #fbf8ec;
   color: #53491e;
-  font-size: 13px;
+  font-size: 14px;
 }
 .role-switch {
   display: flex;
   gap: 4px;
 }
 .role-switch button {
-  font-size: 12px;
+  font-size: 14px;
   min-height: 34px;
   padding: 6px 12px;
   margin: 0;
@@ -261,13 +209,7 @@ label {
   padding: 68px 52px 28px;
   margin: 24px -12px 0;
   overflow: hidden;
-  background: linear-gradient(
-    116deg,
-    #edf7d0 4%,
-    #e2f9c3 32%,
-    #9fe6c0 68%,
-    #d3f4bc 100%
-  );
+  background: #ffffff;
   border-radius: 4px;
 }
 .hero::before {
@@ -318,12 +260,12 @@ label {
 }
 .hero-note > span:first-child {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 1.5px;
 }
 .hero-note strong {
-  font-family: var(--serif);
+  font-family: var(--font-sans);
   font-size: 58px;
   font-weight: 400;
   display: block;
@@ -332,7 +274,7 @@ label {
 .hero-note p {
   margin: 16px 0 0;
   color: #345842;
-  font-size: 13px;
+  font-size: 14px;
 }
 .hero-foot {
   grid-column: 1/-1;
@@ -341,7 +283,7 @@ label {
   border-top: 1px solid #34644b33;
   padding-top: 19px;
   margin-top: 32px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .wallet-section {
   display: grid;
@@ -375,28 +317,28 @@ label {
   align-items: flex-start;
   padding: 18px 22px;
   color: var(--muted);
-  background: #f6f7f4;
+  background: #f7f8f7;
 }
 .voucher-ticket + .voucher-ticket {
   border-left: 1px solid var(--line);
 }
 .voucher-ticket.is-available {
-  background: #eef8e6;
+  background: #ffffff;
   color: var(--ink);
 }
 .voucher-ticket strong {
-  font-family: var(--serif);
+  font-family: var(--font-sans);
   font-weight: 400;
   font-size: 42px;
   line-height: 1.2;
 }
 .voucher-ticket strong span {
-  font-family: Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 20px;
   padding-left: 2px;
 }
 .voucher-ticket > span {
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 8px;
 }
 .section-heading {
@@ -462,7 +404,7 @@ label {
 }
 .panel .grid strong {
   display: block;
-  font-family: var(--serif);
+  font-family: var(--font-sans);
   font-size: 30px;
   font-weight: 400;
   margin-top: 10px;
@@ -479,14 +421,14 @@ label {
   justify-content: space-between;
   min-height: 108px;
   padding: 22px 26px;
-  background: linear-gradient(120deg, #e5f4d8, #c4e8bb);
+  background: #ffffff;
 }
 .meal-masthead .eyebrow {
   margin: 0;
-  font-size: 11px;
+  font-size: 14px;
 }
 .meal-number {
-  font-family: var(--serif);
+  font-family: var(--font-sans);
   font-size: 54px;
   line-height: 1;
   color: #416446;
@@ -502,10 +444,10 @@ label {
   justify-content: space-between;
   gap: 12px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 .meal h3 {
-  font-family: var(--serif);
+  font-family: var(--font-sans);
   font-weight: 400;
   font-size: 29px;
   margin: 18px 0 10px;
@@ -516,7 +458,7 @@ label {
 }
 .shop-name span {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   margin-top: 4px;
 }
@@ -527,14 +469,14 @@ label {
   gap: 16px;
   padding: 16px 0;
   border-top: 1px solid var(--line);
-  font-size: 13px;
+  font-size: 14px;
 }
 .menu-price strong {
   font-size: 20px;
   font-weight: 500;
 }
 .meal-details {
-  font-size: 13px;
+  font-size: 14px;
   padding: 12px 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
@@ -560,7 +502,7 @@ label {
   display: flex;
   align-items: flex-start;
   gap: 4px;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
   margin: 18px 0;
 }
@@ -571,12 +513,12 @@ label {
 .price-preview {
   padding: 14px 16px;
   margin-top: 14px;
-  background: #eff7e8;
+  background: #f7f8f7;
   border-left: 2px solid var(--green);
 }
 .price-preview > span {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
 }
 .price-preview strong {
   display: block;
@@ -587,16 +529,16 @@ label {
 .price-preview small {
   display: block;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 .quote-panel {
   margin-top: 24px;
-  background: #f0f8e9;
+  background: #ffffff;
   border-color: #97b993;
   border-left: 4px solid var(--green);
 }
 .price {
-  font-family: var(--serif);
+  font-family: var(--font-sans);
   font-size: 42px;
   font-weight: 400;
 }
@@ -604,13 +546,13 @@ label {
   border-top: 3px solid var(--green);
 }
 .order-id {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
 }
 .order-status {
   display: inline-block;
-  font-size: 13px;
-  background: #eef3ec;
+  font-size: 14px;
+  background: #f7f8f7;
   padding: 4px 8px;
   font-weight: 500;
   margin-top: 8px;
@@ -629,7 +571,7 @@ label {
   display: block;
   padding: 18px;
   font-size: 20px;
-  background: #f0f7e8;
+  background: #f7f8f7;
   letter-spacing: 1px;
   overflow-wrap: anywhere;
 }
@@ -643,10 +585,10 @@ label {
 .empty-state {
   padding: 30px;
   border: 1px dashed #a5b6a9;
-  background: #f7f9f5;
+  background: #f7f8f7;
 }
 .empty-state h3 {
-  font-family: var(--serif);
+  font-family: var(--font-sans);
   font-size: 26px;
 }
 .empty-state p {
@@ -691,11 +633,11 @@ label {
   padding-top: 18px;
 }
 .how-steps li > span {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
 }
 .how-steps h3 {
-  font-family: var(--serif);
+  font-family: var(--font-sans);
   font-size: 24px;
   font-weight: 400;
 }
@@ -703,34 +645,6 @@ label {
   font-size: 14px;
   color: var(--muted);
   margin: 0;
-}
-.site-footer {
-  background: var(--ink);
-  color: #f5fbea;
-  display: grid;
-  grid-template-columns: 1fr 1.4fr;
-  gap: 52px;
-  padding: 42px;
-  margin: 0 -40px;
-}
-.footer-brand {
-  font-size: 36px;
-  letter-spacing: -1.5px;
-  font-weight: 700;
-}
-.footer-brand span {
-  display: block;
-  font-size: 13px;
-  font-weight: 400;
-  letter-spacing: 0;
-  margin-top: 12px;
-}
-.site-footer p {
-  color: #d1dfd3;
-  font-size: 13px;
-}
-.site-footer a {
-  font-size: 13px;
 }
 .login-layout {
   display: grid;
@@ -744,7 +658,7 @@ label {
   font-size: clamp(38px, 4.6vw, 64px);
 }
 .login-panel {
-  background: #eff8e9;
+  background: #ffffff;
 }
 .login-panel form {
   display: block;
@@ -763,12 +677,6 @@ label {
   .site-shell {
     padding: 20px 24px 0;
   }
-  .desktop-nav {
-    gap: 18px;
-  }
-  .header-account {
-    display: none;
-  }
   .hero {
     padding: 48px 32px 24px;
     grid-template-columns: minmax(0, 1fr) 190px;
@@ -779,9 +687,6 @@ label {
   .how-section {
     grid-template-columns: 1fr;
   }
-  .site-footer {
-    margin: 0 -24px;
-  }
 }
 @media (max-width: 700px) {
   html {
@@ -790,50 +695,8 @@ label {
   .site-shell {
     padding: 12px 16px 0;
   }
-  .site-header {
-    top: 10px;
-    min-height: 72px;
-    padding: 14px 18px;
-    border-radius: 12px;
-    gap: 14px;
-  }
-  .brand {
-    font-size: 26px;
-  }
-  .brand span {
-    font-size: 10px;
-  }
-  .desktop-nav {
-    display: none;
-  }
-  .mobile-menu {
-    display: block;
-  }
-  .mobile-menu summary {
-    cursor: pointer;
-    padding: 10px 0 10px 10px;
-    font-size: 14px;
-  }
-  .mobile-menu nav {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: calc(100% + 8px);
-    background: white;
-    padding: 14px 22px;
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    box-shadow: 0 12px 24px #143b2b15;
-    display: grid;
-    gap: 4px;
-  }
-  .mobile-menu nav a {
-    padding: 12px 0;
-    text-decoration: none;
-    font-size: 14px;
-  }
   .demo {
-    font-size: 12px;
+    font-size: 14px;
     gap: 10px;
     margin-top: 14px;
   }
@@ -877,22 +740,22 @@ label {
   }
   .hero-note > span:not(:first-child) {
     grid-column: 2;
-    font-size: 12px;
+    font-size: 14px;
   }
   .hero-note p {
     grid-column: 1/-1;
-    font-size: 12px;
+    font-size: 14px;
     margin-top: 8px;
   }
   .hero-foot {
     gap: 12px;
     flex-wrap: wrap;
-    font-size: 12px;
+    font-size: 14px;
     padding-top: 14px;
     margin-top: 0;
   }
   .eyebrow {
-    font-size: 11px;
+    font-size: 14px;
     letter-spacing: 1.2px;
   }
   .wallet-section {
@@ -947,12 +810,6 @@ label {
   }
   .how-steps h3 {
     margin: 8px 0;
-  }
-  .site-footer {
-    margin: 0 -16px;
-    padding: 32px 24px;
-    grid-template-columns: 1fr;
-    gap: 26px;
   }
   .login-layout {
     grid-template-columns: 1fr;

@@ -1,0 +1,62 @@
+/* Shared page chrome and typography for customers and pilot staff. */
+body { background: #fff; font-family: var(--font-sans); line-height: 1.5; font-variant-numeric: tabular-nums; }
+code, kbd { font-family: var(--font-sans); }
+button, input, select, textarea, summary { font: inherit; }
+.site-frame { display: flex; flex-direction: column; min-height: 100dvh; background: #fff; }
+.site-frame > main { flex: 1; min-width: 0; width: 100%; }
+.site-frame h1 { font-size: 40px; font-weight: 700; line-height: 1.2; letter-spacing: -.025em; }
+.site-frame h2 { font-size: 24px; font-weight: 600; line-height: 1.2; letter-spacing: -.015em; }
+.site-frame h3 { font-weight: 600; }
+.site-frame p { text-wrap: pretty; }
+.site-frame button, .site-frame .button-link { min-height: 44px; font-size: 16px; font-weight: 600; }
+.site-frame input, .site-frame select, .site-frame textarea { font-size: 16px; min-height: 44px; max-width: 100%; }
+.site-frame .price, .site-frame .food-price, .site-frame .detail-total strong { font-size: 28px; font-weight: 700; }
+.site-frame .price, .site-frame .food-price, .site-frame .detail-total, .site-frame .pickup-code, .site-frame .pickup, .site-frame .order-id, .site-frame td, .site-frame output { font-variant-numeric: tabular-nums; }
+.frame-header, .frame-footer { background: #fff; color: var(--ink); flex-shrink: 0; }
+.frame-header { border-bottom: 1px solid var(--line); }
+.frame-header-inner, .frame-footer-inner { width: 100%; max-width: 1280px; margin-inline: auto; padding-inline: 24px; }
+.frame-header-inner { min-height: 72px; padding-block: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 32px; }
+.frame-brand { font-family: var(--font-sans); font-size: 28px; font-weight: 700; line-height: 1.2; letter-spacing: -.04em; text-decoration: none; color: var(--ink); }
+.frame-header nav { display: flex; flex-wrap: wrap; gap: 4px 24px; margin-left: auto; }
+.frame-header nav a, .frame-footer nav a { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; text-decoration: none; border-bottom: 2px solid transparent; }
+.frame-header nav a[aria-current="page"] { color: var(--ink); font-weight: 700; border-bottom-color: var(--ink); }
+.frame-header nav a:hover, .frame-footer nav a:hover { text-decoration: underline; }
+.frame-account { font-size: 14px; overflow-wrap: anywhere; max-width: 220px; }
+.frame-account small { display: block; font-size: 14px; color: var(--muted); }
+.frame-footer { margin-top: 32px; border-top: 1px solid var(--line); }
+.frame-footer-inner { padding-block: 24px 32px; }
+.frame-footer-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; }
+.frame-footer nav { display: flex; flex-wrap: wrap; gap: 4px 24px; }
+.frame-footer p { font-size: 14px; color: var(--muted); max-width: 65ch; margin: 12px 0; }
+.frame-footer-help { padding-top: 16px; margin-top: 16px; border-top: 1px solid var(--line); max-width: 760px; font-size: 14px; }
+.frame-footer-help details { border-bottom: 1px solid var(--line); }
+.frame-footer-help summary { min-height: 44px; padding-block: 12px; cursor: pointer; }
+.frame-footer-help li { margin-bottom: 8px; }
+.site-frame .home-content { max-width: 1280px; }
+.site-frame .home-intro { max-width: 65ch; }
+.site-frame .home-intro h1 { max-width: 24ch; }
+.site-frame .catalogue-sidebar { border: 1px solid var(--line); }
+.site-frame .food-card-purchase, .site-frame .meal-purchase, .site-frame .checkout-summary { background: #fff; border-color: var(--line); }
+.site-frame .meal-dialog { background: #fff; }
+.site-frame .market-demo, .site-frame .demo { background: var(--surface-secondary); color: var(--muted); }
+.internal-frame .site-shell { margin-inline: auto; }
+.internal-frame .hero { border-bottom: 1px solid var(--line); margin-inline: 0; padding: 24px 0; }
+.internal-frame .hero::before { display: none; }
+.internal-frame .hero-foot { border-top: 1px solid var(--line); }
+.internal-frame .hero-note, .internal-frame .quote-panel, .internal-frame .panel { background: #fff; }
+.internal-frame .panel, .internal-frame .order-grid, .internal-frame .stats-grid, .internal-frame .section-heading { min-width: 0; }
+.internal-frame .panel { overflow-wrap: anywhere; }
+.internal-frame .workspace-heading { padding-block: 24px; border-bottom: 1px solid var(--line); margin-bottom: 24px; }
+.internal-frame .login-layout { padding: 32px 0; min-height: auto; }
+.internal-frame .table-wrap { max-width: 100%; overflow-x: auto; }
+@media (max-width: 767px) {
+  .frame-header-inner, .frame-footer-inner { padding-inline: 16px; }
+  .frame-header-inner { min-height: 64px; gap: 4px 16px; }
+  .frame-brand { font-size: 24px; }
+  .frame-header nav { gap: 0 12px; }
+  .frame-account { flex-basis: 100%; max-width: none; }
+  .frame-account small { display: inline; margin-left: 8px; }
+  .site-frame h1, .site-frame .home-intro h1, .site-frame .market-banner h1 { font-size: 32px; }
+  .site-frame .market-content, .site-frame .home-content, .internal-frame .site-shell { padding-inline: 16px; }
+  .frame-footer { margin-top: 24px; }
+}

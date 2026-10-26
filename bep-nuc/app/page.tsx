@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SiteHeader, SiteFooter } from "./components/site-frame";
 import { redirect } from "next/navigation";
 import { browseUrl } from "../lib/commerce";
 
@@ -11,12 +12,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   }
   if (params.size) redirect(browseUrl("/?" + params.toString()));
   return (
-    <main className="commerce home-page">
-      <a className="skip-link" href="#home-content">Đến nội dung chính</a>
-      <header className="market-header">
-        <Link className="brand" href="/" aria-label="Bếp Núc — trang chủ">Bếp Núc</Link>
-        <nav aria-label="Điều hướng chính"><a href="#how-to-pickup">Cách nhận bữa</a><Link href="/orders">Đơn hàng</Link><Link href="/login">Tài khoản</Link></nav>
-      </header>
+    <div className="site-frame commerce home-page">
+      <SiteHeader />
+      <main id="content">
       <div className="home-content" id="home-content">
         <section className="home-hero">
           <div className="home-intro">
@@ -38,7 +36,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         </section>
         <details className="home-pilot-note"><summary>Voucher và lưu ý trước khi đặt</summary><p>Voucher phát từ 18:00, hết hạn 23:59 theo giờ Việt Nam. Giá cuối được kiểm tra khi giữ suất. Xem bảo quản, dị ứng và giờ nhận trước khi đặt.</p></details>
       </div>
-      <footer className="market-footer"><b>Bếp Núc</b><p>Bữa cuối ngày tại Hà Nội. Tự nhận tại quán, thanh toán được xác nhận thủ công.</p></footer>
-    </main>
+      </main>
+      <SiteFooter supportEmail={process.env.SUPPORT_EMAIL} />
+    </div>
   );
 }

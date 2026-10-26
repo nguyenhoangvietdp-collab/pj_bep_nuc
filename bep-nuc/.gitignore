@@ -7,3 +7,8 @@ node_modules/
 .npm-cache/
 
 .next-*/
+
+# Generated GitHub Pages artifacts
+pages-site/public/
+pages-site/out/
+pages-site/next-env.d.ts

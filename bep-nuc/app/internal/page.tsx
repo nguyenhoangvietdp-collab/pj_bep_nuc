@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { SiteHeader, ProductHero, HowItWorks } from "../components/brand";
+import { SiteFooter } from "../components/site-frame";
 const labels: Record<string, string> = {
   available: "Chưa dùng",
   reserved: "Đang giữ",
@@ -128,9 +129,10 @@ export default function Page() {
   }
   if (!data)
     return (
-      <main className="site-shell" id="top">
+      <div className="site-frame internal-frame" id="top">
         <SiteHeader />
-        <section className="login-layout" id="content">
+        <main className="site-shell" id="content">
+        <section className="login-layout">
           <div>
             <p className="eyebrow">BẾP NÚC · HÀ NỘI</p>
             <h1>
@@ -177,12 +179,15 @@ export default function Page() {
             </button>
           </form>
         </section>
-      </main>
+        </main>
+        <SiteFooter />
+      </div>
     );
   const role = data.user.role;
   return (
-    <main className="site-shell" id="top">
+    <div className="site-frame internal-frame" id="top">
       <SiteHeader role={role} name={data.user.name} />
+      <main className="site-shell" id="content">
       {data.demo && (
         <aside className="demo">
           <span>MÔ PHỎNG · Không chuyển tiền thật</span>
@@ -567,20 +572,12 @@ export default function Page() {
       )}
       {role === "ops" && <OperationsForms data={data} submit={action} />}
       <HowItWorks />
-      <footer className="site-footer">
-        <div className="footer-brand">
-          Bếp Núc<span>Mỗi bữa ăn, thêm một lựa chọn.</span>
-        </div>
-        <div>
-          <p>
-            Vị trí chỉ lấy một lần nếu bạn chọn. Tuyến đi bộ Google có thể thiếu
-            lối đi an toàn; kiểm tra thực tế trước khi di chuyển. Không theo dõi
-            GPS liên tục.
-          </p>
-          <a href="#top">Về đầu trang</a>
-        </div>
-      </footer>
-    </main>
+      </main>
+      <SiteFooter supportEmail={data.supportEmail}>
+        <p>Vị trí chỉ lấy một lần nếu bạn chọn. Kiểm tra đường thực tế trước khi di chuyển. Không theo dõi GPS liên tục.</p>
+        <a href="#top">Về đầu trang</a>
+      </SiteFooter>
+    </div>
   );
 }
 function Meal({ l, vouchers, busy, quote, shop, index, now }: any) {

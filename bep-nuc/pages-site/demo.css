@@ -1,0 +1,24 @@
+.pages-demo-notice { padding: 12px max(16px, calc((100% - 1232px) / 2)); border-bottom: 1px solid var(--line); background: #f7f8f7; font-size: 14px; display: grid; gap: 4px; }
+.pages-demo .market-content { padding-top: 32px; padding-bottom: 32px; }
+.pages-demo .home-intro { padding-top: 16px; }
+.pages-demo .food-picture-button img { display: block; width: 100%; height: 220px; object-fit: cover; }
+.pages-demo .pages-food-name { font-size: 20px; margin: 0 0 8px; }
+.pages-demo .food-card-purchase { gap: 8px; }
+.pages-demo .pages-filters summary { font-size: 20px; font-weight: 600; min-height: 44px; cursor: pointer; }
+.pages-demo .pages-filters > div { display: grid; gap: 20px; padding-top: 16px; }
+.pages-demo .pages-filters label, .pages-demo .pages-checkout > label { display: grid; gap: 8px; }
+.pages-demo fieldset { margin: 24px 0; padding: 16px; border: 1px solid var(--line); min-width: 0; }
+.pages-demo .pages-checkout, .pages-demo .pages-orders { max-width: 800px; margin: auto; }
+.pages-demo .pages-voucher { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; font-size: 16px; cursor: pointer; }
+.pages-demo .pages-voucher input { width: 22px; min-height: 22px; margin-top: 2px; flex-shrink: 0; }
+.pages-demo .pages-total { font-size: 24px; }
+.pages-demo .pages-order { border: 1px solid var(--line); border-radius: 10px; padding: 24px; margin-bottom: 20px; overflow-wrap: anywhere; }
+.pages-demo .meal-dialog { position: fixed; }
+.pages-demo .meal-purchase select { width: 100%; }
+.pages-demo .pages-order strong { font-variant-numeric: tabular-nums; }
+@media(max-width:767px) {
+ .pages-demo .catalogue-sidebar { display: block; }
+ .pages-demo .catalogue-layout { display: grid; grid-template-columns: minmax(0,1fr); }
+ .pages-demo .food-picture-button img { height: 210px; }
+ .pages-demo .pages-order { padding: 16px; }
+}

@@ -75,3 +75,7 @@ Tài liệu nghiệm thu kế thừa mô tả kiểm tra trước khi tách thư
 ## Trang chính và loading
 
 `/` là trang giới thiệu trước khi chọn bữa; `/meals` là catalogue. Link lọc cũ `/?budget=...` tự chuyển sang `/meals?budget=...`; nháp và URL quán vẫn dùng được. Loading hiển thị theo trạng thái tải thật, không có thời gian chờ tối thiểu. Từ chối mạng/hết timeout vẫn đưa về thông báo lỗi và nút kiểm tra lại.
+
+## Demo GitHub Pages
+
+`npm run build:pages` tạo bản demo công khai tại `pages-site/out`, không có backend hoặc giao dịch thật. Xem [cách xuất bản và giới hạn](docs/github-pages.md).

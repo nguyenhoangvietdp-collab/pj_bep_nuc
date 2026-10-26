@@ -55,23 +55,10 @@
   letter-spacing: 1.5px;
   margin: 0;
 }
-.commerce .market-header {
-  top: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  border-bottom: 1px solid #d4d4d4;
-  padding: 18px max(24px, calc((100vw - 1240px) / 2));
-}
 .commerce .market-area {
   font-size: 14px;
   white-space: nowrap;
   text-decoration: none;
-}
-.commerce .market-header nav {
-  display: flex;
-  font-size: 14px;
 }
 .commerce .header-search {
   flex: 1;
@@ -88,12 +75,12 @@
   border-radius: 0 8px 8px 0;
 }
 .commerce .market-content {
-  max-width: 1240px;
+  max-width: 1280px;
   padding: 22px 24px 40px;
   margin: auto;
 }
 .commerce .market-demo {
-  background: #f2f2f2;
+  background: #f7f8f7;
   text-align: center;
   font-size: 14px;
   padding: 6px 12px;
@@ -188,7 +175,7 @@
   padding: 16px;
 }
 .commerce .food-card h3 {
-  font-family: Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 17px;
 }
 .commerce .plain-title {
@@ -243,7 +230,7 @@
   background: white;
 }
 .commerce .shop-card h3 {
-  font-family: Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 17px;
 }
 .commerce .shop-card p,
@@ -254,7 +241,7 @@
   margin-top: 30px;
   padding: 20px;
   border-left: 3px solid #0c2b15;
-  background: #eafbe3;
+  background: #ffffff;
   font-size: 14px;
 }
 .commerce .voucher-strip p {
@@ -262,7 +249,7 @@
 }
 .commerce .shop-intro {
   padding: 24px;
-  background: #eafbe3;
+  background: #ffffff;
   margin-bottom: 24px;
   border-radius: 12px;
 }
@@ -279,7 +266,7 @@
   margin: 22px 0;
 }
 .commerce .market-notice {
-  background: #eafbe3;
+  background: #ffffff;
   padding: 12px;
   border-radius: 8px;
 }
@@ -378,7 +365,7 @@
   border-radius: 8px;
 }
 .commerce .checkout-food h2 {
-  font-family: Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 20px;
 }
 .commerce .checkout-food p,
@@ -403,7 +390,7 @@
   top: 110px;
 }
 .commerce .checkout-summary h2 {
-  font-family: Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 18px;
 }
 .commerce .price-lines {
@@ -445,7 +432,7 @@
   margin-top: 24px;
   border: 1px solid #0c2b15;
   border-radius: 8px;
-  background: #eafbe3;
+  background: #ffffff;
   font-size: 14px;
 }
 .commerce .customer-orders {
@@ -466,12 +453,12 @@
   align-items: baseline;
 }
 .commerce .order-heading h2 {
-  font-family: Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 21px;
 }
 .commerce .order-heading > b {
   font-size: 14px;
-  background: #eafbe3;
+  background: #ffffff;
   padding: 6px 10px;
   border-radius: 6px;
 }
@@ -495,7 +482,7 @@
 .commerce .order-progress li.active {
   color: #0c2b15;
   border-color: #0c2b15;
-  background: #eafbe3;
+  background: #ffffff;
 }
 .commerce .pickup-address,
 .commerce .bank-instructions,
@@ -537,43 +524,13 @@
   display: grid;
   gap: 18px;
 }
-.commerce .market-footer {
-  max-width: 1240px;
-  margin: auto;
-  padding: 28px 24px 40px;
-  border-top: 1px solid #d4d4d4;
-  font-size: 14px;
-}
-.commerce .market-footer > b {
-  font-size: 24px;
-}
-.commerce .market-footer details {
-  max-width: 760px;
-  margin-top: 8px;
-}
-.commerce .market-footer summary {
-  cursor: pointer;
-  min-height: 44px;
-  padding: 12px 0;
-}
-.commerce .market-footer li {
-  margin-bottom: 8px;
-}
 @media (max-width: 1000px) {
-  .commerce .market-header {
-    gap: 14px;
-    padding: 14px 20px;
-    flex-wrap: wrap;
-  }
   .commerce .market-area {
     display: none;
   }
   .commerce .header-search {
     order: 3;
     flex-basis: 100%;
-  }
-  .commerce .market-header nav {
-    margin-left: auto;
   }
   .commerce .food-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -596,17 +553,6 @@
   }
 }
 @media (max-width: 700px) {
-  .commerce .market-header {
-    padding: 12px 16px;
-    gap: 10px;
-  }
-  .commerce .market-header .brand {
-    font-size: 24px;
-  }
-  .commerce .market-header nav {
-    gap: 14px;
-    font-size: 14px;
-  }
   .commerce .market-content {
     padding: 16px 16px 28px;
   }
@@ -733,21 +679,16 @@
 }
 
 /* Customer identity: scoped so merchant and operations keep their existing UI. */
-.commerce { --action: #0c2b15; --green: #0c2b15; --accent: #96f878; --ink: #0c2b15; --paper: #ffffff; --line: #d4d4d4; --muted: #4d5650; font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; font-size: 16px; line-height: 1.55; }
-.commerce h1, .commerce h2, .commerce h3, .commerce button, .commerce input, .commerce select { font-family: inherit; }
-.commerce h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 850; letter-spacing: -.035em; }
-.commerce button, .commerce .button-link { background: var(--action); color: white; border: 1px solid var(--action); font-size: 16px; font-weight: 650; min-height: 44px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.commerce { --action: #0c2b15; --green: #0c2b15; --accent: #96f878; --ink: #0c2b15; --paper: #ffffff; --line: #d4d4d4; --muted: #4d5650; font-family: var(--font-sans); font-size: 16px; line-height: 1.55; }
+.commerce h1, .commerce h2, .commerce h3, .commerce button, .commerce input, .commerce select { font-family: var(--font-sans); }
+.commerce h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -.035em; }
+.commerce button, .commerce .button-link { background: var(--action); color: white; border: 1px solid var(--action); font-size: 16px; font-weight: 600; min-height: 44px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .commerce .secondary { background: white; color: var(--ink); border-color: var(--line); }
 .commerce .selected { background: var(--ink); color: white; border-color: var(--ink); }
-.commerce button:disabled { background: #f2f2f2; border-color: #d4d4d4; color: #666666; opacity: 1; }
+.commerce button:disabled { background: #f7f8f7; border-color: #d4d4d4; color: #666666; opacity: 1; }
 .commerce button:not(:disabled):hover, .commerce .button-link:hover { filter: brightness(.94); }
 .commerce input, .commerce select { font-size: 16px; border: 1px solid #9caa9d; padding: 10px 12px; }
 .commerce :focus-visible { outline: 3px solid #0c2b15; outline-offset: 4px; }
-.commerce .market-header { position: relative; backdrop-filter: none; background: var(--paper); flex-wrap: wrap; }
-.commerce .market-header .brand { font: 900 32px/1.1 system-ui, sans-serif; letter-spacing: -.06em; color: var(--action); text-decoration: none; }
-.commerce .market-header .brand span { color: var(--ink); font-size: 14px; line-height: 1.6; letter-spacing: 0; font-weight: 600; }
-.commerce .market-header nav { margin-left: auto; flex-wrap: wrap; gap: 8px 16px; white-space: normal; }
-.commerce .market-header nav a { min-height: 44px; display: inline-flex; align-items: center; font-size: 14px; }
 .commerce .market-banner { background: none; margin-bottom: 0; }
 .commerce .market-banner .market-eligibility { margin-top: 8px; }
 .commerce .market-content > .header-search { margin: 0 0 16px; width: 100%; }
@@ -758,13 +699,13 @@
 .commerce .food-card { border-radius: 12px; box-shadow: none; display: flex; flex-direction: column; }
 .commerce .food-card-body { display: flex; flex-direction: column; flex: 1; }
 .commerce .food-card .food-card-body > a { font-size: 14px; }
-.commerce .food-price { color: var(--action); font-weight: 800; font-variant-numeric: tabular-nums; }
+.commerce .food-price { color: var(--action); font-weight: 700; font-variant-numeric: tabular-nums; }
 .commerce .food-card-bottom { margin-top: auto; }
 .commerce .food-card .plain-title { display: block; background: transparent; color: var(--ink); border: 0; font-size: 18px; text-align: left; min-height: 44px; }
 .commerce .food-picture-button { background: transparent; border: 0; padding: 0; display: block; }
-.commerce .food-image { background: #eafbe3; }
+.commerce .food-image { background: #ffffff; }
 .commerce .food-image .demo-image-label { font-size: 14px; }
-.commerce .resume-order { padding: 16px; background: #eafbe3; border-left: 4px solid var(--action); margin-bottom: 20px; }
+.commerce .resume-order { padding: 16px; background: #ffffff; border-left: 4px solid var(--action); margin-bottom: 20px; }
 .commerce .detail-total { border-top: 1px solid var(--line); padding-top: 16px; font-variant-numeric: tabular-nums; }
 .commerce .checkout-summary, .commerce .checkout-action { position: static; }
 .commerce .checkout-action { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
@@ -789,26 +730,20 @@
   .commerce .meal-dialog { padding: 16px; }
   .commerce .dialog-close { position: sticky; top: 0; z-index: 2; }
   .commerce .order-progress { flex-direction: column; }
-  .commerce .market-header { align-items: center; }
-  .commerce .market-header .brand { font-size: 28px; }
-  .commerce .market-header nav { gap: 6px 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .commerce *, .commerce *::before, .commerce *::after { scroll-behavior: auto; transition: none; } }
 
 /* BCG homepage colour reference; Bep Nuc retains its own identity and commerce layout. */
 .commerce button:hover:not(:disabled), .commerce .button-link:hover { background: #153e20; color: white; filter: none; }
-.commerce .secondary:hover:not(:disabled) { background: #eafbe3; color: #0c2b15; border-color: #0c2b15; }
+.commerce .secondary:hover:not(:disabled) { background: #ffffff; color: #0c2b15; border-color: #0c2b15; }
 .commerce .selected:hover:not(:disabled) { background: #153e20; color: white; }
-.commerce .pickup-code { background: #eafbe3; }
+.commerce .pickup-code { background: #ffffff; }
 
 /* Compact commerce flow: filters do not occupy the first screen. */
-.commerce .market-header { padding-block: 8px; }
-.commerce .market-header .brand { font-size: 26px; }
-.commerce .market-header .brand span { display: none; }
 .commerce .market-demo { padding-block: 4px; }
 .commerce .market-content { padding-top: 12px; }
 .commerce .market-banner { padding: 0 0 8px; }
-.commerce .market-banner h1 { font: 700 26px/1.2 Georgia, serif; margin: 0; letter-spacing: -.02em; }
+.commerce .market-banner h1 { font: 700 40px/1.2 var(--font-sans); margin: 0; letter-spacing: -.02em; }
 .commerce .market-banner .market-eligibility { margin: 4px 0 0; font-size: 14px; }
 .commerce .market-content > .header-search { margin-bottom: 8px; }
 .commerce .filter-chips:empty { display: none; }
@@ -824,9 +759,9 @@
 .commerce .voucher-option b { font-size: 22px; }
 .commerce .voucher-option .voucher-copy { display: grid; gap: 2px; }
 .commerce .voucher-option small { font-size: 14px; line-height: 1.4; }
-.commerce .voucher-option:has(input:disabled) { cursor: not-allowed; background: #f2f2f2; color: #666; }
+.commerce .voucher-option:has(input:disabled) { cursor: not-allowed; background: #f7f8f7; color: #666; }
 .commerce .voucher-option:has(input:focus-visible) { outline: 3px solid var(--ink); outline-offset: 3px; }
-.commerce .price-suggestion { background: #eafbe3; padding: 12px; border-radius: 6px; }
+.commerce .price-suggestion { background: #ffffff; padding: 12px; border-radius: 6px; }
 .commerce .checkout-main, .commerce .checkout-summary { padding: 16px; }
 .commerce .checkout-summary h2 { margin: 0 0 8px; }
 .commerce .checkout-summary > .price-help { margin: 0; }
@@ -838,8 +773,6 @@
 .commerce .otp-recovery { display: flex; flex-wrap: wrap; gap: 8px; }
 @media (max-width: 599px) {
   .commerce .market-content { padding: 10px 12px 24px; }
-  .commerce .market-header { padding: 8px 12px; }
-  .commerce .market-header nav a { font-size: 14px; }
   .commerce .market-banner h1 { font-size: 23px; }
   .commerce .market-banner .market-eligibility { line-height: 1.4; }
   .commerce .food-card .food-image { max-width: 112px; }
@@ -855,7 +788,7 @@
 .commerce .catalogue-layout { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 28px; align-items: start; margin-top: 20px; }
 .commerce .catalogue-sidebar { padding-right: 20px; border-right: 1px solid var(--line); position: sticky; top: 16px; max-height: calc(100dvh - 32px); overflow-y: auto; }
 .commerce .facet-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.commerce .facet-heading h2 { font-family: inherit; font-size: 20px; margin: 0; }
+.commerce .facet-heading h2 { font-family: var(--font-sans); font-size: 20px; margin: 0; }
 .commerce .text-button { background: none; border: 0; color: var(--ink); padding: 8px 0; font-size: 14px; min-height: 44px; text-decoration: underline; text-align: left; }
 .commerce .text-button:hover:not(:disabled) { color: var(--ink); background: none; text-decoration-thickness: 2px; }
 .commerce .facet-group { border: 0; border-bottom: 1px solid var(--line); padding: 18px 0; margin: 0; min-width: 0; }
@@ -868,7 +801,7 @@
 .commerce .custom-budget input { margin-top: 6px; }
 .commerce .catalogue-results { min-width: 0; }
 .commerce .catalogue-toolbar { display: flex; align-items: center; gap: 16px; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 0 0 12px; margin-bottom: 12px; }
-.commerce .catalogue-toolbar h2 { font-family: inherit; font-size: 22px; margin: 0; }
+.commerce .catalogue-toolbar h2 { font-family: var(--font-sans); font-size: 22px; margin: 0; }
 .commerce .catalogue-toolbar p { font-size: 14px; margin: 4px 0 0; color: var(--muted); }
 .commerce .catalogue-sort { display: flex; align-items: center; gap: 10px; font-size: 14px; flex-shrink: 0; }
 .commerce .catalogue-sort select { width: auto; max-width: 240px; margin: 0; font-size: 14px; }
@@ -881,7 +814,7 @@
 .commerce .filter-drawer::backdrop { background: #0c2b1580; }
 .commerce .filter-drawer header, .commerce .filter-drawer footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; background: white; }
 .commerce .filter-drawer header { border-bottom: 1px solid var(--line); }
-.commerce .filter-drawer h2 { font: 700 20px/1.3 system-ui, sans-serif; margin: 0; }
+.commerce .filter-drawer h2 { font: 700 20px/1.3 var(--font-sans); margin: 0; }
 .commerce .filter-drawer footer { border-top: 1px solid var(--line); padding-bottom: max(16px, env(safe-area-inset-bottom)); }
 .commerce .filter-drawer footer button { flex: 1; margin: 0; }
 .commerce .drawer-fields { padding: 0 20px; overflow-y: auto; overscroll-behavior: contain; }
@@ -895,45 +828,45 @@
   .commerce .catalogue-sort { grid-column: 1 / -1; display: flex; justify-content: space-between; }
   .commerce .catalogue-sort select { flex: 1; max-width: 240px; }
   .commerce .catalogue-results .food-grid { gap: 12px; }
-  .commerce .market-banner h1 { font-size: 22px; }
+  .commerce .market-banner h1 { font-size: 32px; }
 }
 
 @media (min-width: 600px) { .commerce .catalogue-results .food-image { max-height: 190px; } }
 
 /* Home introduces the pickup journey without requiring an account. */
-.commerce .home-content { max-width: 1240px; margin: auto; padding: 40px 24px 56px; }
+.commerce .home-content { max-width: 1280px; margin: auto; padding: 40px 24px 56px; }
 .commerce .home-hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 56px; align-items: center; padding: 24px 0 56px; }
 .commerce .home-kicker { font-size: 14px; letter-spacing: .08em; font-weight: 700; margin: 0 0 16px; }
-.commerce .home-intro h1 { font: 500 clamp(38px, 5vw, 66px)/1.1 Georgia, serif; letter-spacing: -.04em; margin: 0 0 24px; }
+.commerce .home-intro h1 { font: 700 40px/1.2 var(--font-sans); letter-spacing: -.04em; margin: 0 0 24px; }
 .commerce .home-lead { max-width: 42ch; font-size: 19px; line-height: 1.65; margin-bottom: 28px; }
 .commerce .home-primary { padding: 14px 24px; min-height: 52px; gap: 24px; }
 .commerce .home-primary span { font-size: 24px; }
 .commerce .home-eligibility { max-width: 46ch; font-size: 14px; color: var(--muted); margin-top: 16px; }
-.commerce .home-meal-visual { margin: 0; padding: 24px; background: #eafbe3; }
+.commerce .home-meal-visual { margin: 0; padding: 24px; background: #ffffff; }
 .commerce .home-meal-visual img { display: block; width: 100%; height: auto; }
 .commerce .home-meal-visual figcaption { font-size: 14px; margin-top: 8px; color: #4d5650; }
 .commerce .home-visual-note { display: grid; gap: 4px; padding-top: 20px; margin-top: 20px; border-top: 1px solid #b7d6ab; }
 .commerce .home-visual-note strong { font-size: 24px; }
 .commerce .home-visual-note span { font-size: 16px; }
 .commerce .home-process { padding: 40px 0; border-top: 1px solid var(--line); scroll-margin-top: 20px; }
-.commerce .home-section-heading h2 { font: 500 clamp(26px, 3vw, 36px)/1.25 Georgia, serif; }
+.commerce .home-section-heading h2 { font: 600 24px/1.2 var(--font-sans); }
 .commerce .home-process ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; padding: 0; margin: 28px 0 0; list-style: none; }
 .commerce .home-process li { border-top: 2px solid var(--ink); padding-top: 20px; }
 .commerce .home-step-number { font-size: 14px; font-variant-numeric: tabular-nums; color: var(--muted); }
 .commerce .home-process h3 { font-size: 20px; margin: 12px 0; }
 .commerce .home-process p { font-size: 16px; }
-.commerce .home-pilot-note { padding: 24px; background: #f2f2f2; max-width: 880px; }
+.commerce .home-pilot-note { padding: 24px; background: #f7f8f7; max-width: 880px; }
 .commerce .home-pilot-note strong { font-size: 20px; }
 .commerce .home-pilot-note p { margin-top: 8px; }
 .commerce.loading-screen { min-height: 55vh; padding: 48px 20px; text-align: center; background: white; }
-.commerce.loading-screen h2 { font: 700 24px/1.3 system-ui, sans-serif; margin: 20px 0 8px; }
+.commerce.loading-screen h2 { font: 700 24px/1.3 var(--font-sans); margin: 20px 0 8px; }
 .commerce.loading-screen p { color: var(--muted); font-size: 16px; }
 .commerce .loading-symbol { display: flex; justify-content: center; gap: 8px; }
 .commerce .loading-symbol span { display: block; width: 12px; height: 12px; background: #0c2b15; border-radius: 50%; animation: bc-loading 1.2s ease-in-out infinite; }
 .commerce .loading-symbol span:nth-child(2) { animation-delay: .15s; }
 .commerce .loading-symbol span:nth-child(3) { animation-delay: .3s; }
 .commerce .loading-skeleton { max-width: 480px; margin: 24px auto 0; display: grid; gap: 12px; }
-.commerce .loading-skeleton div { height: 20px; background: #f2f2f2; border-radius: 6px; }
+.commerce .loading-skeleton div { height: 20px; background: #f7f8f7; border-radius: 6px; }
 .commerce .loading-skeleton div:first-child { height: 120px; }
 .commerce .loading-skeleton div:last-child { width: 65%; }
 @keyframes bc-loading { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
@@ -953,7 +886,7 @@
 /* A single top-to-bottom reading path; secondary help stays on demand. */
 .commerce .home-content { max-width: 800px; padding: 24px 24px 32px; }
 .commerce .home-hero { display: block; padding: 8px 0 24px; }
-.commerce .home-intro h1 { font-size: clamp(30px, 4vw, 42px); max-width: 24ch; margin-bottom: 12px; }
+.commerce .home-intro h1 { font-size: 40px; max-width: 24ch; margin-bottom: 12px; }
 .commerce .home-kicker { margin-bottom: 8px; }
 .commerce .home-lead { font-size: 17px; max-width: 56ch; margin-bottom: 16px; }
 .commerce .home-eligibility { max-width: 64ch; margin-top: 10px; }
@@ -965,7 +898,7 @@
 .commerce .home-process h3 { font-size: 18px; margin: 0 0 4px; }
 .commerce .home-process li p { margin: 0; }
 .commerce .home-pilot-note { padding: 12px 16px; }
-.commerce .home-pilot-note summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 650; }
+.commerce .home-pilot-note summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
 .commerce .home-pilot-note summary::before { content: "+"; margin-right: 10px; }
 .commerce .home-pilot-note[open] summary::before { content: "−"; }
 .commerce .catalogue-results .food-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
@@ -974,7 +907,7 @@
 .commerce .catalogue-results .food-image { aspect-ratio: auto; max-height: none; max-width: none; }
 .commerce .catalogue-results .food-image img { width: 100%; height: 120px; object-fit: cover; }
 .commerce .catalogue-results .food-image:not(:has(img)) { min-height: 120px; padding: 10px; font-size: 14px; }
-.commerce .catalogue-results .food-image .demo-image-label { position: static; display: block; font-size: 14px; padding: 4px 6px; line-height: 1.3; background: #f2f2f2; }
+.commerce .catalogue-results .food-image .demo-image-label { position: static; display: block; font-size: 14px; padding: 4px 6px; line-height: 1.3; background: #f7f8f7; }
 .commerce .catalogue-results .food-card-body { padding: 10px 14px; }
 .commerce .catalogue-results .food-card h3 { margin: 0; }
 .commerce .catalogue-results .food-card .plain-title { min-height: 44px; }
@@ -983,7 +916,7 @@
 .commerce-checkout .market-content { max-width: 800px; }
 .commerce-checkout .checkout-layout { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; padding-bottom: 0; }
 .commerce-checkout .checkout-main, .commerce-checkout .checkout-summary { width: 100%; }
-.commerce .checkout-stage { font-size: 14px; padding: 8px 12px; background: #eafbe3; margin: 8px 0; }
+.commerce .checkout-stage { font-size: 14px; padding: 8px 12px; background: #ffffff; margin: 8px 0; }
 .commerce .meal-dialog > .food-image, .commerce .standalone-meal > .food-image { max-height: 170px; }
 .commerce .meal-dialog > .food-image img, .commerce .standalone-meal > .food-image img { max-height: 170px; object-fit: contain; }
 @media (max-width: 599px) {
@@ -994,7 +927,6 @@
   .commerce .catalogue-results .food-image img { height: 96px; }
   .commerce .catalogue-results .food-card-body { padding: 8px 10px; }
   .commerce .catalogue-toolbar { gap: 6px; }
-  .commerce .market-footer { padding: 16px; }
 }
 
 .commerce .food-price-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
@@ -1008,17 +940,17 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 .commerce .meal-dialog .dialog-close { position: static; margin: 0 0 12px auto; }
 .commerce .meal-detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 .commerce .meal-detail-visual, .commerce .meal-detail-info { min-width: 0; }
-.commerce .meal-detail-visual .food-image { aspect-ratio: 1; width: 100%; max-height: none; background: #f2f2f2; border-radius: 12px; }
+.commerce .meal-detail-visual .food-image { aspect-ratio: 1; width: 100%; max-height: none; background: #f7f8f7; border-radius: 12px; }
 .commerce .meal-detail-visual .food-image img { width: 100%; height: 100%; max-height: none; object-fit: cover; }
 .commerce .meal-detail-visual .demo-image-label { position: absolute; bottom: 10px; left: 10px; max-width: calc(100% - 20px); padding: 6px 10px; background: #ffffffed; font-size: 14px; }
-.commerce .meal-detail-info h2 { font: 700 28px/1.2 system-ui, sans-serif; margin: 0 0 8px; }
+.commerce .meal-detail-info h2 { font: 700 28px/1.2 var(--font-sans); margin: 0 0 8px; }
 .commerce .meal-detail-info > a { display: inline-block; padding: 6px 0; }
 .commerce .meal-detail-info .meal-address { margin: 2px 0 12px; font-size: 14px; }
 .commerce .meal-price { display: flex; flex-direction: column; gap: 2px; }
 .commerce .meal-price strong { font-size: 26px; font-variant-numeric: tabular-nums; }
 .commerce .meal-price small, .commerce .meal-price > span { font-size: 14px; color: var(--muted); }
 .commerce .meal-detail-info .fine { margin: 4px 0 12px; }
-.commerce .meal-pickup { padding: 10px 12px; background: #eafbe3; border-radius: 6px; font-size: 14px; }
+.commerce .meal-pickup { padding: 10px 12px; background: #ffffff; border-radius: 6px; font-size: 14px; }
 .commerce .meal-allergens { font-size: 14px; line-height: 1.45; }
 .commerce .meal-detail-visual .food-safety { margin: 12px 0 0; padding: 10px 12px; font-size: 14px; }
 .commerce .meal-detail-visual .food-safety summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
@@ -1048,37 +980,36 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 }
 
 /* Hierarchy: neutral discovery, clearly grouped collection details, one purchase focus. */
-.commerce-browse, .commerce-shop, .commerce-checkout { background: #f5f7f5; }
-.commerce .market-header { background: white; border-bottom: 1px solid #dbe2dc; }
+.commerce-browse, .commerce-shop, .commerce-checkout { background: #ffffff; }
 .commerce .market-banner { padding: 4px 0 12px; }
 .commerce .market-banner .market-eligibility { color: #4d5650; }
 .commerce .catalogue-search { background: white; border: 1px solid #dbe2dc; border-radius: 10px; padding: 12px; }
 .commerce .catalogue-search .header-search { margin: 0; }
 .commerce .catalogue-search .header-search input { border-width: 1px; border-color: #aab7ac; }
 .commerce .catalogue-layout { gap: 24px; margin-top: 24px; }
-.commerce .catalogue-sidebar { border-right: 0; padding: 16px; border-radius: 10px; background: #eaf0eb; }
+.commerce .catalogue-sidebar { border-right: 0; padding: 16px; border-radius: 10px; background: #ffffff; }
 .commerce .facet-heading h2 { font-size: 18px; }
 .commerce .facet-group { border-color: #cbd6cd; padding-block: 14px; }
 .commerce .facet-option { font-size: 14px; }
 .commerce .catalogue-toolbar { border-bottom: 1px solid #cbd6cd; padding-bottom: 16px; margin-bottom: 16px; }
-.commerce .catalogue-toolbar h2 { font-size: 24px; font-weight: 750; }
+.commerce .catalogue-toolbar h2 { font-size: 24px; font-weight: 700; }
 .commerce .catalogue-results .food-card { background: white; border: 1px solid #dbe2dc; box-shadow: none; border-radius: 12px; gap: 0; }
 .commerce .catalogue-results .food-card-body { display: grid; grid-template-columns: minmax(0, 1fr) 180px; padding: 0; gap: 0; }
 .commerce .food-card-description { padding: 16px 20px; min-width: 0; }
 .commerce .food-card-description h3 { margin: 0 0 4px; }
-.commerce .catalogue-results .food-card .plain-title { font-size: 19px; line-height: 1.3; font-weight: 750; }
+.commerce .catalogue-results .food-card .plain-title { font-size: 19px; line-height: 1.3; font-weight: 700; }
 .commerce .shop-meta { display: inline-block; color: #4d5650; font-size: 14px; text-decoration-thickness: 1px; margin-bottom: 4px; }
 .commerce .food-card-description .food-address { color: #4d5650; font-size: 14px; margin: 0 0 12px; }
 .commerce .food-card-description .pickup-line { font-size: 14px; margin: 8px 0 4px; }
 .commerce .stock-label { font-size: 14px; color: #4d5650; }
-.commerce .food-card-purchase { border-left: 1px solid #e0e8e1; background: #f0f7ed; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: stretch; }
+.commerce .food-card-purchase { border-left: 1px solid #e0e8e1; background: #ffffff; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: stretch; }
 .commerce .food-card-purchase .food-price-row { display: flex; flex-direction: column; gap: 2px; }
-.commerce .food-card-purchase .food-price { font-size: 26px; line-height: 1.25; font-weight: 800; color: #0c2b15; }
+.commerce .food-card-purchase .food-price { font-size: 26px; line-height: 1.25; font-weight: 700; color: #0c2b15; }
 .commerce .food-card-purchase .food-menu-price { font-size: 14px; font-weight: 400; }
 .commerce .price-condition { color: #4d5650; font-size: 14px; line-height: 1.45; margin: 8px 0 16px; }
 .commerce .food-card-purchase button { width: 100%; margin: 0; }
 .commerce .shop-list { border-top: 1px solid #dbe2dc; padding-top: 24px; margin-top: 32px; }
-.commerce .meal-dialog { background: #f5f7f5; padding: 20px; }
+.commerce .meal-dialog { background: #ffffff; padding: 20px; }
 .commerce .meal-detail { gap: 24px; }
 .commerce .meal-heading { margin-bottom: 16px; }
 .commerce .meal-heading h2 { font-size: 28px; margin-bottom: 8px; }
@@ -1088,14 +1019,14 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 .commerce .meal-collection .meal-address { margin: 0 0 6px; }
 .commerce .meal-collection .meal-pickup { background: none; padding: 0; margin: 0 0 8px; }
 .commerce .meal-collection .meal-allergens { margin: 0; border-top: 1px solid #e5ebe5; padding-top: 8px; }
-.commerce .meal-purchase { background: #e8f4e3; border: 1px solid #c5d8bd; border-radius: 10px; padding: 16px; margin-top: 16px; }
+.commerce .meal-purchase { background: #ffffff; border: 1px solid #c5d8bd; border-radius: 10px; padding: 16px; margin-top: 16px; }
 .commerce .meal-purchase .meal-price strong { font-size: 22px; }
 .commerce .meal-purchase .quantity-control { border-top: 1px solid #c5d8bd; padding-top: 12px; margin-top: 12px; }
 .commerce .meal-purchase .detail-total { align-items: center; margin: 14px 0; }
 .commerce .meal-purchase .detail-total strong { font-size: 28px; }
 .commerce .meal-detail-visual .food-safety { background: transparent; border: 1px solid #dbe2dc; }
 .commerce-checkout .checkout-main { background: white; border-color: #dbe2dc; }
-.commerce-checkout .checkout-summary { background: #e8f4e3; border: 1px solid #b8d0ae; }
+.commerce-checkout .checkout-summary { background: #ffffff; border: 1px solid #b8d0ae; }
 .commerce .home-process { color: #4d5650; }
 .commerce .home-process h2, .commerce .home-process h3 { color: #0c2b15; }
 @media (min-width: 768px) and (max-width: 1199px) {

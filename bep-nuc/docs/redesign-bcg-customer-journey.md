@@ -174,3 +174,14 @@ Người dùng tiếp tục phản hồi vùng bố cục chưa tách bạch, m�
 - Checkout tổng tiền/CTA có nền và đường viền riêng; phần thông tin bữa giữ nền trắng. Mobile đọc một cột, ảnh thẻ rộng đầy đủ và cao 210px. Không thêm chuyển động hoặc che điều kiện giá.
 
 22 kiểm thử và TypeScript đạt. Build riêng .next-focus. Chưa restart bản đang chạy, chưa có screenshot hay quan sát người dùng cho bản phân cấp mới; không khẳng định đã tăng tập trung hoặc ý định mua. Cần kiểm tra lại chính vị trí người dùng phản hồi, xác nhận họ tìm được món/giá/nút tiếp tục mà không cần chỉ dẫn.
+
+
+## 2026-10-18 — Nền trắng và khung trang dùng chung
+
+- Dùng chung SiteHeader/SiteFooter cho trang chủ, mua hàng, đăng nhập, loading và nội bộ. Header/footer nằm ngoài main; liên kết bỏ qua điều hướng trỏ đến main. Điều hướng nội bộ giữ mục theo vai trò.
+- Nền chính trắng, đường viền phân nhóm, footer trong luồng; header không sticky. Container tối đa 1.280px, lề 24px desktop/16px mobile; giữ cột hẹp của checkout/đăng nhập.
+- Inter WOFF2 tự lưu kèm giấy phép OFL, Arial dự phòng; bỏ font serif/system cạnh tranh. Đã kiểm tra cmap cho mẫu tiếng Việt, ký hiệu đồng và trục weight 100–900 bằng fontTools (giải nén Brotli bằng Node có sẵn, không thêm dependency).
+- Bỏ 53 quy tắc CSS của header/footer cũ; giữ ảnh món, bộ lọc, quy tắc giá và luồng giao dịch.
+- 22 kiểm thử nghiệp vụ, TypeScript và production build `.next-white` đã qua. Kiểm tra HTML build của meals, checkout, login, orders, internal và trang 404: mỗi trang có đúng một main#content, header và footer. Đây là kiểm tra markup ban đầu, không thay thế QA sau đăng nhập hoặc tương tác trình duyệt.
+- Kiểm tra trực quan ở 360/390/768/1366px, tải font thực tế/Arial fallback, zoom 200%, focus/Escape và ảnh đối chiếu CHƯA thực hiện: trình duyệt từ chối quyền truy cập localhost theo URL policy. Không đổi công cụ để vượt chặn. Không coi đây là nghiệm thu trực quan hoặc kết quả thử với sinh viên.
+- Không commit/push và không triển khai công khai trong đợt này.

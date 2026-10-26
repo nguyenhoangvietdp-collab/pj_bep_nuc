@@ -1,65 +1,9 @@
 "use client";
-export function SiteHeader({ role, name }: { role?: string; name?: string }) {
-  const primary =
-    role === "merchant"
-      ? { href: "#inventory", text: "Lô hàng" }
-      : role === "ops"
-        ? { href: "#operations", text: "Đối soát" }
-        : { href: "#catalogue", text: "Bữa hôm nay" };
-  return (
-    <>
-      <a className="skip-link" href="#content">
-        Đến nội dung chính
-      </a>
-      <header className="site-header">
-        <a href="/" className="brand" aria-label="Bếp Núc — trang chủ">
-          Bếp Núc<span>HÀ NỘI · PILOT</span>
-        </a>
-        {role && (
-          <nav className="desktop-nav" aria-label="Điều hướng chính">
-            <a href={primary.href}>{primary.text}</a>
-            {role === "student" && <a href="#vouchers">Voucher</a>}
-            <a href="#orders">Đơn hàng</a>
-            <a href="#how-it-works">Cách nhận bữa</a>
-          </nav>
-        )}
-        <div className="header-account">
-          {name || "Chốt bữa cuối ngày"}
-          <small>
-            {role === "merchant"
-              ? "Cửa hàng"
-              : role === "ops"
-                ? "Vận hành"
-                : role === "student"
-                  ? "Sinh viên"
-                  : "Bếp Núc"}
-          </small>
-        </div>
-        {role && (
-          <details
-            className="mobile-menu"
-            onClick={(event) => {
-              if ((event.target as HTMLElement).closest("a"))
-                event.currentTarget.open = false;
-            }}
-          >
-            <summary>Menu</summary>
-            <nav aria-label="Điều hướng điện thoại">
-              <a href={primary.href}>{primary.text}</a>
-              {role === "student" && <a href="#vouchers">Voucher</a>}
-              <a href="#orders">Đơn hàng</a>
-              <a href="#how-it-works">Cách nhận bữa</a>
-            </nav>
-          </details>
-        )}
-      </header>
-    </>
-  );
-}
+export { SiteHeader } from "./site-frame";
 export function ProductHero({ role }: { role: string }) {
   if (role !== "student")
     return (
-      <section className="workspace-heading" id="content">
+      <section className="workspace-heading">
         <p className="eyebrow">
           BẾP NÚC · {role === "merchant" ? "CỬA HÀNG" : "VẬN HÀNH"}
         </p>
@@ -76,7 +20,7 @@ export function ProductHero({ role }: { role: string }) {
       </section>
     );
   return (
-    <section className="hero" id="content">
+    <section className="hero">
       <div className="hero-copy">
         <p className="eyebrow">BẾP NÚC · BỮA CUỐI NGÀY TẠI HÀ NỘI</p>
         <h1>
