@@ -26,6 +26,7 @@ jobs:
           deno-version: v2.9.6
       - run: npm ci
       - run: npm test
+      - run: npm run build
       - run: npm run type-check
       - run: deno check --config supabase/functions/bep-nuc/deno.json supabase/functions/bep-nuc/index.ts
       - run: npm run build:mvp

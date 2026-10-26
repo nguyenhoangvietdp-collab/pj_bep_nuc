@@ -121,6 +121,7 @@ Supabase Free có thể tạm dừng sau thời gian ít hoạt động; kiểm 
 
 ```powershell
 npm test
+npm run build
 npm run type-check
 npx deno check --config supabase/functions/bep-nuc/deno.json supabase/functions/bep-nuc/index.ts
 npm run build:mvp
