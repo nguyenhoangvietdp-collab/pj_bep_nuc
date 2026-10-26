@@ -33,7 +33,7 @@ export default function Demo() {
     return () => { clearInterval(timer); window.removeEventListener("hashchange", readHash); };
   }, []);
   function save(next: DemoOrder[]) {
-    setOrders(next);
+    setOrders(next); setNow(Date.now());
     try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { setMessage("Thiết bị không lưu được đơn demo. Không đóng trang nếu muốn thử tiếp."); }
   }
   function go(next: Screen) {

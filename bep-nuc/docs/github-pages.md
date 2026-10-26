@@ -12,7 +12,7 @@ npm run build:pages
 
 Kết quả: `pages-site/out`. Mặc định đường dẫn `/pj_bep_nuc`; đổi `PAGES_BASE_PATH` thành `/ten-repo` hoặc chuỗi rỗng khi dùng domain gốc. Build staging `pages-site/public`, `.next`, `out` được bỏ qua trong Git. CSS, ảnh SVG minh họa và Inter kèm giấy phép được lấy từ ứng dụng chính. Không sao chép `.env`, database hoặc tài liệu riêng vào artifact.
 
-Workflow `.github/workflows/pages.yml` ở gốc repo build và xuất bản khi push main. Settings → Pages → Source: GitHub Actions. URL dự kiến: https://nguyenhoangvietdp-collab.github.io/pj_bep_nuc/ . Không đặt Supabase service key hay thông tin ngân hàng trong workflow.
+Workflow `.github/workflows/pages.yml` ở gốc repo build và xuất bản khi push main. Settings → Pages → Source: GitHub Actions. URL công khai: https://nguyenhoangvietdp-collab.github.io/pj_bep_nuc/ . Không đặt Supabase service key hay thông tin ngân hàng trong workflow.
 
 ## Trải nghiệm demo
 
@@ -27,3 +27,7 @@ Thời điểm catalogue cố định là 18:30 một tối minh họa; hạn gi
 `npm test` kiểm tra giá, stock/voucher, expiry, chống bấm lặp và khôi phục dữ liệu giả. Build phải có asset dưới basePath repo, không có API/env/database. Reload ở URL gốc và hash `#meals` / `#orders` không yêu cầu SPA fallback. Kiểm tra trực quan riêng khi trình duyệt cho phép; build thành công không chứng minh UX hoặc hiệu quả kinh doanh.
 
 Nguồn: https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages và https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages .
+
+## Kết quả xuất bản 26/10/2026
+
+GitHub Actions build/deploy thành công. Kiểm tra trực tiếp URL công khai: trang chủ tải được; lọc ngân sách 30.000đ còn bánh mì 22.800đ; chọn voucher 20%, tạo đơn giả, mô phỏng xác nhận tiền/nhận bữa và reload khôi phục đơn đã nhận. Đã reset lượt thử sau kiểm tra. 25 kiểm thử và TypeScript đã qua; artifact được kiểm tra basePath, font/giấy phép/ảnh và không chứa API/database/env. Chưa chạy thử với người dùng hoặc kiểm tra đầy đủ mọi viewport/thiết bị. Bản demo không thay cho kiểm chứng giao dịch thật.
