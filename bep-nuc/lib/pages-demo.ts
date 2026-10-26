@@ -3,16 +3,27 @@ import { estimate, type Food, type PublicShop } from "./commerce";
 export const demoTime = Date.parse("2026-10-26T18:30:00+07:00");
 export const rates = [0.07, 0.1, 0.2];
 export const shops: PublicShop[] = [
-  { id: "rice-shop", name: "Bếp chiều · DEMO", address: "Khu trường Hà Nội · địa chỉ minh họa" },
-  { id: "noodle-shop", name: "Bún nhà · DEMO", address: "Khu trường Hà Nội · địa chỉ minh họa" },
-  { id: "bread-shop", name: "Tiệm bánh chiều · DEMO", address: "Khu trường Hà Nội · địa chỉ minh họa" },
+  { id: "hai-ba-trung", name: "Điểm nhận Hai Bà Trưng · DEMO", address: "Hai Bà Trưng, Hà Nội · địa chỉ nhận chưa xác minh (demo)" },
+  { id: "hoan-kiem", name: "Điểm nhận Hoàn Kiếm · DEMO", address: "Hoàn Kiếm, Hà Nội · địa chỉ nhận chưa xác minh (demo)" },
+  { id: "dong-da", name: "Điểm nhận Đống Đa · DEMO", address: "Đống Đa, Hà Nội · địa chỉ nhận chưa xác minh (demo)" },
 ];
-const meal = (id: string, name: string, shopId: string, price: number, stock: number, category: string, image: string): Food => ({ id, name, shopId, price, stock, category, image, start: demoTime - 3600000, end: demoTime + 10800000, storage: "Dữ liệu minh họa. Dùng ngay sau khi nhận; chưa có món thật được bán trên website này.", allergens: "Thông tin dị ứng chỉ minh họa; món thật cần được quán xác nhận.", eligible: rates });
+// Names, areas and reference prices follow the team's Drive filenames; stock/times are simulated.
+const meal = (id: string, name: string, shopId: string, price: number, stock: number, category: string, image: string): Food => ({ id, name, shopId, price, stock, category, image, start: demoTime - 3600000, end: demoTime + 10800000, storage: "Chưa có thông tin bảo quản được quán xác nhận. Đây là lượt thử, không có món thật được bán trên website này.", allergens: "Chưa có thông tin dị ứng được xác minh. Không suy luận thành phần từ ảnh.", eligible: rates });
 export const meals = [
-  meal("rice", "Cơm rau & đậu phụ", "rice-shop", 40000, 8, "Cơm", "/food-images/demo-meal.svg"),
-  meal("noodle", "Bún bò cuối chiều", "noodle-shop", 45000, 7, "Bún/mì", "/food-images/demo-noodle.svg"),
-  meal("bread", "Bánh mì trứng", "bread-shop", 30000, 5, "Bánh", "/food-images/demo-bread.svg"),
-  meal("cake", "Bánh cuối ngày", "bread-shop", 35000, 0, "Bánh", "/food-images/demo-bread.svg"),
+  meal("chao-quay", "Cháo quẩy", "hai-ba-trung", 35000, 5, "Món khác", "/food-images/chao-quay-313e9637.jpg"),
+  meal("banh-khot", "Bánh khọt", "hoan-kiem", 40000, 5, "Bánh", "/food-images/banh-khot-de7bcaae.jpg"),
+  meal("bun-rieu", "Bún riêu", "dong-da", 45000, 5, "Bún/mì", "/food-images/bun-rieu-f52df09d.jpg"),
+  meal("hoanh-thanh", "Hoành thánh", "hoan-kiem", 55000, 5, "Món khác", "/food-images/hoanh-thanh-0fa62f04.jpg"),
+  meal("xoi-com", "Xôi cốm", "hai-ba-trung", 50000, 5, "Món khác", "/food-images/xoi-com-86467181.jpg"),
+  meal("bun-dau", "Bún đậu", "dong-da", 60000, 5, "Bún/mì", "/food-images/bun-dau-b2c9f96e.jpg"),
+  meal("banh-ran-duong", "Bánh rán đường", "hoan-kiem", 5000, 5, "Bánh", "/food-images/banh-ran-duong-fdce99b1.jpg"),
+  meal("banh-day", "Bánh dày", "dong-da", 35000, 5, "Bánh", "/food-images/banh-day-dfb1ac36.jpg"),
+  meal("nem-nuong", "Nem nướng", "hoan-kiem", 50000, 5, "Món khác", "/food-images/nem-nuong-1467740f.jpg"),
+  meal("banh-xeo", "Bánh xèo", "hoan-kiem", 40000, 5, "Bánh", "/food-images/banh-xeo-e624253c.jpg"),
+  meal("banh-bot-loc", "Bánh bột lọc", "hoan-kiem", 40000, 5, "Bánh", "/food-images/banh-bot-loc-5025307d.jpg"),
+  meal("nem-chua-ran", "Nem chua rán", "dong-da", 35000, 5, "Món khác", "/food-images/nem-chua-ran-4d9beabf.jpg"),
+  meal("nom-sua", "Nộm sứa", "hoan-kiem", 40000, 5, "Món khác", "/food-images/nom-sua-c5954ba2.jpg"),
+  meal("nem-tai", "Nem tai", "hoan-kiem", 40000, 5, "Món khác", "/food-images/nem-tai-3690c101.jpg"),
 ];
 export type DemoOrder = { id: string; foodId: string; qty: number; rate: number; created: number; status: "awaiting_payment" | "paid" | "delivered" };
 export function expired(order: DemoOrder, now: number) { return order.status === "awaiting_payment" && now >= order.created + 600000; }

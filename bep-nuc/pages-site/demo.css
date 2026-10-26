@@ -25,3 +25,7 @@
 
 .pages-demo .home-process li { display: block; }
 .pages-demo .home-process li h3 { margin-bottom: 8px; }
+
+/* Keep the supplied compositions visible, including portrait and landscape dishes. */
+.pages-demo .food-picture-button img { object-fit: contain; background: #fff; }
+.pages-demo .meal-detail-visual .food-image img { object-fit: contain; background: #fff; }
