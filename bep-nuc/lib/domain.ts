@@ -102,6 +102,7 @@ export type Settlement = {
   reference?: string;
 };
 export type State = {
+  geocodingUsage?: { day: string; count: number; lastAt?: number };
   users: User[];
   shops: Shop[];
   listings: Listing[];

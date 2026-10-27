@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import postgres from "postgres";
 import { createEdgeHandler } from "../../../lib/edge-api.ts";
 import { empty, expire, issue, type State } from "../../../lib/domain.ts";
+import { photonGeocode } from "../../../lib/geocoding.ts";
 const env = (name: string) => Deno.env.get(name);
 const url=env("SUPABASE_URL"), key=env("SUPABASE_ANON_KEY"), connection=env("MVP_DATABASE_URL"), origin=env("APP_ORIGIN");
 if (!url || !key || !connection || !origin || new URL(origin).origin!==origin || !origin.startsWith("https://")) throw new Error("Missing or invalid production configuration");
@@ -9,6 +10,7 @@ const auth=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:fal
 const sql=postgres(connection,{max:1,prepare:false,idle_timeout:1,connect_timeout:10});
 const bank={name:env("BANK_NAME") || "",account:env("BANK_ACCOUNT") || "",holder:env("BANK_HOLDER") || ""};
 Deno.serve(createEdgeHandler({
+ geocode:address => photonGeocode(address),
  config:{origin,policy:{production:true,pilotEnabled:env("REAL_PILOT_ENABLED")==="true",bankReady:!!(bank.name&&bank.account&&bank.holder)},bank,supportEmail:env("SUPPORT_EMAIL"),acceptingOrders:env("ACCEPTING_ORDERS")!=="false"},
  authenticate:async token=>{const {data,error}=await auth.auth.getUser(token);return error||!data.user?null:{id:data.user.id,email:data.user.email};},
  transaction:async fn=>{

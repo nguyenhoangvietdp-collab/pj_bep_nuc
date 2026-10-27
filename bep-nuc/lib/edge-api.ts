@@ -1,4 +1,5 @@
 import { act, catalogue, issue, readiness, view, type State, type RuntimePolicy } from "./domain.ts";
+import { GeocodingError, type AddressCandidate } from "./geocoding.ts";
 export type VerifiedIdentity = { id: string; email?: string };
 export type EdgeConfig = { origin: string; policy: RuntimePolicy; bank?: { name: string; account: string; holder: string }; supportEmail?: string; acceptingOrders: boolean };
 export type EdgeDependencies = {
@@ -6,6 +7,7 @@ export type EdgeDependencies = {
   authenticate: (token: string) => Promise<VerifiedIdentity | null>;
   transaction: <T>(fn: (state: State) => T) => Promise<T>;
   now?: () => number;
+  geocode?: (address: string) => Promise<AddressCandidate[]>;
 };
 class ClientError extends Error { constructor(message: string, public status = 400) { super(message); } }
 export function createEdgeHandler(deps: EdgeDependencies) {
@@ -29,6 +31,26 @@ export function createEdgeHandler(deps: EdgeDependencies) {
       const route = parts[parts.length-1];
       const now = deps.now?.() ?? Date.now();
       if (req.method === "GET" && route === "health") return response({ok:true});
+      if (route === "geocode") {
+        if (req.method !== "POST") return response({error:"Phương thức không hỗ trợ"},405);
+        if (origin !== deps.config.origin) return response({error:"Origin không hợp lệ"},403);
+        if (!deps.geocode) return response({error:"Tìm địa chỉ chưa sẵn sàng. Vui lòng thử lại sau."},503);
+        if (Number(req.headers.get("content-length") || 0) > 2048) return response({error:"Yêu cầu quá lớn"},413);
+        const text = await req.text();
+        if (new TextEncoder().encode(text).length > 2048) return response({error:"Yêu cầu quá lớn"},413);
+        let body: any; try { body = JSON.parse(text); } catch { return response({error:"JSON không hợp lệ"},400); }
+        const address = typeof body?.address === "string" ? body.address.trim() : "";
+        if (address.length < 6 || address.length > 250 || /[\x00-\x1f]/.test(address)) return response({error:"Nhập địa chỉ từ 6–250 ký tự, gồm số nhà, tên đường và khu vực."},400);
+        // Reserve a shared daily call before the external request; failures also consume a call.
+        await run(s => {
+          const today = new Date(now).toISOString().slice(0,10);
+          const usage = s.geocodingUsage?.day === today ? s.geocodingUsage : {day:today,count:0};
+          if (!Number.isSafeInteger(usage.count) || usage.count < 0 || usage.count >= 20) throw new ClientError("Đã hết lượt tìm địa chỉ hôm nay. Vui lòng quay lại sau.",429);
+          if (usage.lastAt !== undefined && now - usage.lastAt < 1100) throw new ClientError("Vui lòng chờ một chút rồi tìm lại địa chỉ.",429);
+          s.geocodingUsage = {day:today,count:usage.count + 1,lastAt:now};
+        });
+        return response({candidates:await deps.geocode(address),provider:"Photon / OpenStreetMap"});
+      }
       if (req.method === "GET" && route === "catalogue") return response(await run(s => ({ ...catalogue(s,now,true), demo:false, mapsEnabled:false, pilotOpen:deps.config.acceptingOrders && deps.config.policy.pilotEnabled && deps.config.policy.bankReady && readiness(s).ready })));
       if (!["auth","pilot","export"].includes(route)) return response({error:"Không tìm thấy API"},404);
       const token = req.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
@@ -70,6 +92,7 @@ export function createEdgeHandler(deps: EdgeDependencies) {
         return act(s,current,body.action,args,now,null,deps.config.policy);
       }));
     } catch (e) {
+      if (e instanceof GeocodingError) return response({error:e.message},e.status);
       if (e instanceof ClientError) return response({error:e.message},e.status);
       return response({error:"Dịch vụ tạm thời chưa sẵn sàng. Vui lòng kiểm tra lại hoặc liên hệ hỗ trợ."},503);
     }

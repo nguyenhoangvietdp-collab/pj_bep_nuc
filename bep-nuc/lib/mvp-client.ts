@@ -13,7 +13,7 @@ export function mvpAuth(){
 }
 export async function apiFetch(path:string,init:RequestInit={}) {
  if(!isCloudMvp)return fetch(path,init);
- if(!["/api/catalogue","/api/auth","/api/pilot","/api/export"].includes(path))throw new Error("API không hợp lệ");
+ if(!["/api/catalogue","/api/auth","/api/pilot","/api/export","/api/geocode"].includes(path))throw new Error("API không hợp lệ");
  const client=mvpAuth();const {data:{session}}=await client.auth.getSession();
  const headers=new Headers(init.headers);headers.set("apikey",key!);
  if(session)headers.set("Authorization","Bearer "+session.access_token);

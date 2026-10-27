@@ -1,17 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createEdgeHandler, type EdgeConfig } from "../lib/edge-api";
+import { createEdgeHandler, type EdgeConfig, type EdgeDependencies } from "../lib/edge-api";
 import { demoState, expire, issue, type State } from "../lib/domain";
 import { validatePublicConfig } from "../lib/public-config";
 import { safeAppPath } from "../lib/app-navigation";
 const now=Date.parse("2026-10-27T18:30:00+07:00");
-function setup(overrides:Partial<EdgeConfig>={}){
+function setup(overrides:Partial<EdgeConfig>={},geocode?:EdgeDependencies["geocode"],clock=()=>now){
  let state=demoState(now),queue=Promise.resolve();
  state.shops[0]={...state.shops[0],mock:false,signed:true,recurring:true};
  for(const id of ["two","three"]){state.shops.push({...state.shops[0],id});state.listings.push({...state.listings[0],id:"meal-"+id,shopId:id});}
  issue(state,state.users[0],now);
  const config:EdgeConfig={origin:"https://bep-nuc.pages.dev",policy:{production:true,pilotEnabled:true,bankReady:true},bank:{name:"Test bank",account:"TEST-ONLY",holder:"Test"},acceptingOrders:true,...overrides};
- const handler=createEdgeHandler({config,now:()=>now,authenticate:async token=>state.users.some(u=>u.id===token)?{id:token}:token==="new-user"?{id:"new-user",email:"new@example.test"}:null,transaction:fn=>{
+ const handler=createEdgeHandler({config,geocode,now:clock,authenticate:async token=>state.users.some(u=>u.id===token)?{id:token}:token==="new-user"?{id:"new-user",email:"new@example.test"}:null,transaction:fn=>{
   const result=queue.then(()=>{const next=structuredClone(state);expire(next,now);const result=fn(next);state=next;return result;});queue=result.then(()=>{},()=>{});return result;
  }});
  async function request(route:string,token?:string,body?:unknown,origin:string|undefined=config.origin){
@@ -70,4 +70,41 @@ test("Public config rejects privileged keys and navigation cannot leave the appl
  assert.equal(validatePublicConfig("https://project.supabase.co",jwt("anon")),true);
  for(const path of ["//evil.test","https://evil.test","/orders/../../evil","/\\evil.test","/internal\n","//["])assert.equal(safeAppPath(path),"/meals");
  assert.equal(safeAppPath("/orders/123"),"/orders/123");
+});
+
+test("address lookup has a durable shared daily cap and stores no address or coordinates", async () => {
+ let calls=0;
+ let tick=now; const f=setup({},async () => { calls++; return [{address:"Địa chỉ được chọn",lat:21.01,lng:105.82,approximate:true}]; },()=>tick);
+ const results=[]; for(let i=0;i<25;i++){tick+=1500;results.push(await f.request("geocode",undefined,{address:"Nhà riêng không lưu"}));}
+ assert.equal(results.filter(r=>r.status===200).length,20);
+ assert.equal(results.filter(r=>r.status===429).length,5);
+ assert.equal(calls,20);
+ assert.equal(f.getState().geocodingUsage?.count,20);
+ assert.ok(!JSON.stringify(f.getState()).includes("Nhà riêng không lưu"));
+ f.getState().geocodingUsage={day:"2026-10-26",count:20};
+ assert.equal((await f.request("geocode",undefined,{address:"Nhà riêng không lưu"})).status,200);
+ assert.equal(f.getState().geocodingUsage?.count,1);
+});
+
+test("address lookup refuses absent configuration, unwanted origins and malformed requests before billing",async()=>{
+ assert.equal((await setup().request("geocode",undefined,{address:"Địa chỉ nhà riêng"})).status,503);
+ let calls=0;
+ const f=setup({},async()=>{calls++; throw new Error("secret-upstream-error");});
+ assert.equal((await f.request("geocode",undefined,{address:"abc"})).status,400);
+ assert.equal((await f.request("geocode",undefined,{address:"Địa chỉ nhà riêng"},"https://evil.test")).status,403);
+ assert.equal((await f.handler(new Request("https://test/geocode",{method:"POST",body:JSON.stringify({address:"Địa chỉ nhà riêng"})}))).status,403);
+ assert.equal((await f.request("geocode",undefined,{address:"a".repeat(3000)})).status,413);
+ assert.equal(calls,0);
+ const failed=await f.request("geocode",undefined,{address:"Địa chỉ nhà riêng"});
+ assert.equal(failed.status,503);assert.ok(!JSON.stringify(failed.data).includes("secret-upstream-error"));
+ assert.equal(f.getState().geocodingUsage?.count,1);
+});
+
+test("simultaneous address lookups cannot bypass the shared cooldown", async()=>{
+ let calls=0;
+ const f=setup({},async()=>{calls++;return [{address:"Tây Sơn",lat:21.01,lng:105.82,approximate:true}];});
+ const responses=await Promise.all(Array.from({length:10},()=>f.request("geocode",undefined,{address:"Đường Tây Sơn Hà Nội"})));
+ assert.equal(responses.filter(r=>r.status===200).length,1);
+ assert.equal(responses.filter(r=>r.status===429).length,9);
+ assert.equal(calls,1);
 });
