@@ -5,6 +5,15 @@ import { demoState, expire, issue, type State } from "../lib/domain";
 import { validatePublicConfig } from "../lib/public-config";
 import { safeAppPath } from "../lib/app-navigation";
 const now=Date.parse("2026-10-27T18:30:00+07:00");
+test("absent or blank bootstrap configuration never grants operator access",async()=>{
+ for(const bootstrapOpsEmail of [undefined,""," "]){
+  const s=demoState(now);s.users=s.users.filter(u=>u.role!=="ops");
+  const handler=createEdgeHandler({config:{origin:"https://bep-nuc.pages.dev",policy:{production:true,pilotEnabled:false,bankReady:false},acceptingOrders:false,bootstrapOpsEmail},authenticate:async()=>({id:"verified-without-email",emailVerified:true}),transaction:async fn=>fn(s),now:()=>now});
+  const response=await handler(new Request("https://test/auth",{headers:{authorization:"Bearer test"}}));
+  assert.equal((await response.json()).user.role,"student");
+  assert.equal(s.audit.filter(a=>a.action==="bootstrap_ops").length,0);
+ }
+});
 test("initial operator bootstrap requires verified configured email and cannot override an existing operator",async()=>{
  const s=demoState(now); s.users=s.users.filter(u=>u.role!=="ops");
  const handler=createEdgeHandler({config:{origin:"https://bep-nuc.pages.dev",policy:{production:true,pilotEnabled:false,bankReady:false},acceptingOrders:false,bootstrapOpsEmail:"owner@example.test"},authenticate:async token=>({id:token,email:token==="other"?"other@example.test":"owner@example.test",emailVerified:token!=="unverified"}),transaction:async fn=>fn(s),now:()=>now});

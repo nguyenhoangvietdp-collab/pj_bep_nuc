@@ -59,7 +59,8 @@ export function createEdgeHandler(deps: EdgeDependencies) {
       const user = await run(s => {
         let u=s.users.find(u=>u.id===identity.id);
         if (!u) { u={id:identity.id,name:(identity.email || "Sinh viên").slice(0,120),role:"student",approved:false}; s.users.push(u); }
-        if (identity.emailVerified && identity.email?.toLowerCase() === deps.config.bootstrapOpsEmail?.trim().toLowerCase() && !s.users.some(x=>x.role === "ops")) {
+        const bootstrapEmail=deps.config.bootstrapOpsEmail?.trim().toLowerCase();
+        if (bootstrapEmail && identity.emailVerified && identity.email?.toLowerCase() === bootstrapEmail && !s.users.some(x=>x.role === "ops")) {
           u.role="ops"; u.approved=true;
           s.audit.push({id:crypto.randomUUID(),at:now,actor:u.id,action:"bootstrap_ops",detail:{userId:u.id}});
         }
