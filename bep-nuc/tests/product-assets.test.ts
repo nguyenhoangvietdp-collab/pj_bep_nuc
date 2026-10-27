@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { productAssets, filterMenuAssets } from "../lib/product-assets";
+import { productAssets, filterMenuAssets, menuDishId, menuDish } from "../lib/product-assets";
+import { safeAppPath } from "../lib/app-navigation";
 
 test("all Drive menu images match the source manifest without inventing sale data", () => {
   const rows = readFileSync(new URL("../docs/product-image-sources.csv", import.meta.url), "utf8").trim().split(/\r?\n/).slice(1).map(line => line.split(","));
@@ -31,4 +32,15 @@ test("reference menu search and budget use the stated reference price", () => {
   const sorted = filterMenuAssets("", "", 0, "price");
   assert.ok(sorted.every((p, i) => !i || sorted[i - 1].referencePrice <= p.referencePrice));
   assert.equal(productAssets[0].name, "Cháo quẩy");
+});
+
+test("offers links resolve the selected dish and reject unrelated or removed IDs", () => {
+  for (const p of productAssets) {
+    const id = menuDishId(p.image);
+    assert.equal(menuDish(id), p);
+    assert.equal(safeAppPath(`/offers?dish=${id}`), `/offers?dish=${id}`);
+  }
+  assert.equal(menuDish("missing"), undefined);
+  assert.equal(menuDish("../../private"), undefined);
+  assert.equal(safeAppPath("/offers/../../private"), "/meals");
 });

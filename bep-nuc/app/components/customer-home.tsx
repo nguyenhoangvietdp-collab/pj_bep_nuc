@@ -1,0 +1,12 @@
+"use client";
+import Link from "./navigation";
+import { SiteHeader, SiteFooter } from "./site-frame";
+import { productAssets } from "../../lib/product-assets";
+
+export default function CustomerHome({ configured = true, authError = "", authenticated = false, supportEmail }: { configured?: boolean; authError?: string; authenticated?: boolean; supportEmail?: string }) {
+  return <div className="site-frame commerce home-page"><SiteHeader role={authenticated ? "student" : undefined}/><main id="content" tabIndex={-1}><div className="market-content">
+    <section className="home-introduction"><div><p className="home-kicker">Hà Nội · Tự nhận tại quán</p><h1>Bữa cuối ngày,<br/>tiện đường nhận.</h1><p className="home-lead">Tìm bữa hợp túi tiền, xem rõ món và chọn ưu đãi tự nhận trước khi đặt.</p>{authError && <p className="error" role="alert">{authError}</p>}{configured ? <Link className="button-link" href="/meals">Xem thực đơn <span aria-hidden="true">↗</span></Link> : <p role="status">Đang chuẩn bị mở bán. Bếp Núc chưa hoàn tất kết nối dịch vụ đặt hàng.</p>}<p className="fine">Xem món không cần đăng nhập. Đặt bữa dành cho sinh viên đã được duyệt.</p></div><figure><img src={productAssets[0].image} alt={productAssets[0].name} width="600" height="450"/><figcaption>{productAssets[0].name} · Ảnh đội Bếp Núc cung cấp</figcaption></figure></section>
+    <section className="home-how"><header><h2>Chọn bữa, ghé nhận.</h2><p>Ba bước khi Bếp Núc mở nhận đơn.</p></header><ol><li><span>01</span><h3>Tìm bữa phù hợp</h3><p>Xem món, giá, nơi và giờ nhận. Mỗi đơn một loại món, từ 1–3 suất.</p></li><li><span>02</span><h3>Kiểm tra rồi thanh toán</h3><p>Chọn voucher, giữ suất và chuyển đúng số tiền được xác nhận trong đơn.</p></li><li><span>03</span><h3>Ghé quán nhận bữa</h3><p>Sau khi tiền được xác nhận, dùng mã nhận tại quán trong khung giờ đã chọn.</p></li></ol></section>
+    <section className="home-menu"><header><h2>Một chút gợi ý cho tối nay</h2><Link href="/meals">Xem thực đơn →</Link></header><div className="home-food-pictures">{productAssets.slice(1,4).map(p=><figure key={p.image}><Link href="/meals"><img src={p.image} alt={p.name} width="480" height="360" loading="lazy"/></Link><figcaption>{p.name}</figcaption></figure>)}</div><p className="fine">Ảnh giới thiệu không xác nhận món đang bán. Giá và điều kiện nhận được ghi rõ trong thực đơn.</p></section>
+  </div></main><SiteFooter supportEmail={supportEmail}/></div>;
+}

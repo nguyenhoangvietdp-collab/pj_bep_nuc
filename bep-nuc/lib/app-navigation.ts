@@ -3,7 +3,7 @@ export function safeAppPath(value: unknown) {
   if(typeof value!=="string" || !value.startsWith("/") || /[\\\x00-\x1f]/.test(value))return "/meals";
   try{
     const url=new URL(value,"https://local.invalid");
-    const allowed=/^\/(?:|meals(?:\/[A-Za-z0-9_-]+)?|shops\/[A-Za-z0-9_-]+|orders(?:\/[A-Za-z0-9_-]+)?|checkout|login|internal)$/;
+    const allowed=/^\/(?:|meals(?:\/[A-Za-z0-9_-]+)?|shops\/[A-Za-z0-9_-]+|orders(?:\/[A-Za-z0-9_-]+)?|offers|checkout|login|internal)$/;
     return url.origin==="https://local.invalid"&&allowed.test(url.pathname)?url.pathname+url.search:"/meals";
   }catch{return "/meals";}
 }

@@ -124,3 +124,5 @@ export function filterMenuAssets(query = "", category = "", budget = 0, sort = "
   );
   return sort === "price" ? items.sort((a, b) => a.referencePrice - b.referencePrice) : items;
 }
+export function menuDishId(image: string) { return image.split("/").pop()!.replace(/\.[^.]+$/, ""); }
+export function menuDish(id: string | null | undefined) { return productAssets.find(p => menuDishId(p.image) === id); }

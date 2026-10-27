@@ -6,7 +6,7 @@ import { SiteHeader, SiteFooter } from "./site-frame";
 import { useAppRouter as useRouter } from "./navigation";
 import { apiFetch, googleLogin } from "../../lib/mvp-client";
 import { isCloudMvp, readAppLocation, replaceAppUrl } from "../../lib/app-navigation";
-import { filterMenuAssets } from "../../lib/product-assets";
+import { filterMenuAssets, menuDishId } from "../../lib/product-assets";
 import PickupPreview from "./pickup-preview";
 import {
   estimate,
@@ -405,11 +405,11 @@ export default function Market({ view, id }: { view: string; id?: string }) {
         {[0, 30000, 40000, 50000].map(value => <label key={value} className="facet-option"><input type="radio" name={`${prefix}-budget`} checked={values.budget === value} onChange={() => change({ ...values, budget: value })} /><span>{value ? `Không quá ${money(value)}` : "Không giới hạn"}</span></label>)}
         <label className="custom-budget">Ngân sách khác (đ)<input type="number" min="0" step="1" inputMode="numeric" placeholder="Ví dụ: 35000" value={values.budget || ""} onChange={e => { const n = Number(e.target.value); if(Number.isSafeInteger(n) && n >= 0) change({ ...values, budget: n }); }} /></label>
       </fieldset>
-      <fieldset className="facet-group"><legend>Giờ nhận & tình trạng</legend>
+      {!!catalog?.listings.length && <fieldset className="facet-group"><legend>Giờ nhận & tình trạng</legend>
         <label className="facet-option"><input type="checkbox" checked={values.receiving} onChange={e => change({ ...values, receiving: e.target.checked })} /><span>Đang trong giờ nhận</span></label>
         <label className="facet-option"><input type="checkbox" checked={values.stock} onChange={e => change({ ...values, stock: e.target.checked })} /><span>Chỉ món còn suất</span></label>
-      </fieldset>
-      {view === "browse" && <fieldset className="facet-group"><legend>Quán</legend><label>Chọn quán<select value={values.shop} onChange={e => change({ ...values, shop: e.target.value })}><option value="">Tất cả quán</option>{catalog?.shops.map(shop => <option key={shop.id} value={shop.id}>{shop.name}</option>)}</select></label></fieldset>}
+      </fieldset>}
+      {view === "browse" && !!catalog?.shops.length && <fieldset className="facet-group"><legend>Quán</legend><label>Chọn quán<select value={values.shop} onChange={e => change({ ...values, shop: e.target.value })}><option value="">Tất cả quán</option>{catalog?.shops.map(shop => <option key={shop.id} value={shop.id}>{shop.name}</option>)}</select></label></fieldset>}
     </>;
   }
   function reset() {
@@ -442,6 +442,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     ? filterMenuAssets(query, category, budget, sort).filter(p => !catalog?.listings.some(l => l.image === p.image))
     : [];
   function foodDetails(l: Food, n: number, change: (n: number) => void) {
+    const Heading = view === "meal" ? "h1" : "h2";
     const s = catalog?.shops.find((s) => s.id === l.shopId);
     const displayed = displayPrice(l, vouchers, now);
     const total = displayPrice(l, vouchers, now, n);
@@ -453,7 +454,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
         </div>
         <div className="meal-detail-info">
           <div className="meal-heading">
-            <h2>{l.name}</h2>
+            <Heading>{l.name}</Heading>
             <Link href={`/shops/${l.shopId}`}>{s?.name}</Link>
           </div>
           <section className="meal-collection" aria-label="Nơi và giờ nhận">
@@ -500,8 +501,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           </div>
         )}
         {loadError && <div role="alert" className="error">{loadError} <button className="secondary" onClick={() => load()}>Kiểm tra lại</button></div>}
-        {isCloudMvp && catalog?.pilotOpen === false && <p className="market-notice" role="status">Chưa mở nhận đơn mới. Bạn vẫn có thể theo dõi các đơn đang có.</p>}
-        {isCloudMvp && <p className="fine">Giá hiện tại không có thưởng theo khoảng cách.</p>}
+        {isCloudMvp && catalog?.pilotOpen === false && view !== "offers" && <p className="market-notice" role="status">Đang chuẩn bị mở bán.</p>}
         {notice && (
           <p role="status" className="market-notice">
             {notice}
@@ -515,15 +515,16 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           </section>
         ) : (
           <>
+            {view === "offers" && <PickupPreview initialDishId={new URLSearchParams(readAppLocation().search).get("dish")} browseHref={browseHref}/>}
             {(view === "browse" || view === "shop") && (
               <>
                 {view === "browse" ? (
                   <section className="market-banner">
                     <div>
 
-                      <h1>Bữa cuối ngày, tiện đường nhận.</h1>
+                      <h1>Chọn bữa tối nay</h1>
                       <p className="market-eligibility">
-                        Tự nhận tại quán · Xem món ngay, đặt bữa dành cho sinh viên được mời và đã duyệt.
+                        Tự nhận tại quán · Dành cho sinh viên đã được duyệt.
                       </p>
                     </div>
                   </section>
@@ -555,7 +556,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
         >
           <input
             aria-label="Tìm món hoặc quán"
-            placeholder="Tìm món, quán, địa chỉ…"
+            placeholder="Tên món, quán hoặc khu vực"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -564,14 +565,14 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                 </section>
                 <div className="catalogue-layout">
                   <aside className="catalogue-sidebar" aria-label="Bộ lọc món">
-                    <div className="facet-heading"><h2>Bộ lọc</h2><button className="text-button" onClick={() => applyFilters(defaultFilters)}>Xóa bộ lọc</button></div>
+                    <div className="facet-heading"><h2>Lọc theo nhu cầu</h2></div>
                     {filterFields(currentFilters, applyFilters, "desktop")}
                   </aside>
                   <section className="catalogue-results" aria-label="Kết quả tìm món">
                     <div className="catalogue-toolbar">
-                      <div><h2>{query ? `Kết quả cho “${query}”` : view === "shop" ? "Thực đơn cuối ngày" : "Bữa đang có"}</h2><p role="status" aria-live="polite">{shown.length} món{stockOnly ? " còn suất" : ""}</p></div>
+                      <div><h2>{query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : catalog.listings.length ? "Món đang bán" : "Thực đơn"}</h2><p role="status" aria-live="polite">{catalog.listings.length ? `${shown.length} món${stockOnly ? " còn suất" : ""}` : `${upcoming.length} món · Giá tham khảo`}</p></div>
                       <button className="secondary mobile-filter-toggle" ref={filterOpener} onClick={() => { setMobileFilters(currentFilters); filterDialog.current?.showModal(); }}>Bộ lọc{filterCount > 0 ? ` (${filterCount})` : ""}</button>
-                      <label className="catalogue-sort">Sắp xếp<select value={sort} onChange={e => setSort(e.target.value)}><option value="end">Giờ nhận kết thúc sớm</option><option value="price">Giá thấp đến cao</option></select></label>
+                      <label className="catalogue-sort"><span>Sắp xếp</span><select value={sort} onChange={e => setSort(e.target.value)}><option value="end">{catalog.listings.length ? "Giờ nhận kết thúc sớm" : "Thứ tự thực đơn"}</option><option value="price">Giá thấp đến cao</option></select></label>
                     </div>
                   <div className="filter-chips" role="group" aria-label="Bộ lọc đang áp dụng">
                     {query && <button className="secondary" onClick={() => setQuery("")}>Từ khóa: {query} ×</button>}
@@ -583,7 +584,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                     {sort === "price" && <button className="secondary" onClick={() => setSort("end")}>Giá tăng dần ×</button>}
                   </div>
                   {hasFilters && <button className="text-button clear-result-filters" onClick={reset}>Xóa tất cả điều kiện</button>}
-                {!shown.length && (
+                {!shown.length && (catalog.listings.length > 0 || !upcoming.length) && (
                   <section className="market-empty">
                     <h3>
                       {catalog.listings.length
@@ -593,7 +594,6 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                     <p>Không có món đáp ứng đủ điều kiện hiện tại. Bạn có thể bỏ một bộ lọc hoặc quay lại khi quán đăng món.</p>
                     {!!budget && <button className="secondary" onClick={() => setBudget(0)}>Bỏ giới hạn ngân sách</button>}
                     {receiving && <button className="secondary" onClick={() => setReceiving(false)}>Xem cả khung nhận sắp tới</button>}
-                    {hasFilters && <button className="secondary" onClick={reset}>Xóa bộ lọc</button>}
                   </section>
                 )}
                 <section className="food-grid" aria-label="Danh sách món">
@@ -629,13 +629,12 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                 </section>
                 {!!upcoming.length && (
                   <section className="menu-preview" aria-labelledby="menu-preview-title">
-                    <PickupPreview/>
-                    <header><h2 id="menu-preview-title">Các món đang chuẩn bị · {upcoming.length} món</h2><p>Ảnh và giá tham khảo do đội Bếp Núc cung cấp. Chưa mở bán; quán, khẩu phần và giờ nhận đang chờ xác nhận. Chưa áp voucher.</p></header>
+                    <header>{!!catalog.listings.length && <h2 id="menu-preview-title">Thực đơn đang chuẩn bị · {upcoming.length} món</h2>}<p id={!catalog.listings.length ? "menu-preview-title" : undefined}>Giá tham khảo, chưa áp voucher.</p></header>
                     <ul className="menu-preview-grid">
                       {upcoming.map(p => (
                         <li key={p.image}>
                           <img src={p.image} alt={p.name} width="600" height="450" loading="lazy"/>
-                          <div className="menu-preview-info"><span className="menu-preview-status">Chưa mở bán</span><h3>{p.name}</h3><p>{p.area} · Khu vực dự kiến</p><p className="menu-preview-price">{money(p.referencePrice)} <span>giá tham khảo</span></p></div>
+                          <div className="menu-preview-info"><h3>{p.name}</h3><p>{p.area} · Khu vực dự kiến</p><p className="menu-preview-price">{money(p.referencePrice)} <span>giá tham khảo / suất</span></p><Link className="menu-offer-link" href={`/offers?dish=${menuDishId(p.image)}`}>Xem ưu đãi <span aria-hidden="true">↗</span></Link></div>
                         </li>
                       ))}
                     </ul>
@@ -643,12 +642,12 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                 )}
                   </section>
                 </div>
-                <dialog className="filter-drawer" ref={filterDialog} aria-labelledby="filter-title" onCancel={() => filterOpener.current?.focus()}>
+                <dialog className="filter-drawer" ref={filterDialog} aria-labelledby="filter-title" onClose={() => filterOpener.current?.focus()}>
                   <header><h2 id="filter-title">Lọc món theo nhu cầu</h2><button className="secondary" onClick={() => { filterDialog.current?.close(); filterOpener.current?.focus(); }}>Đóng</button></header>
                   <div className="drawer-fields">{filterFields(mobileFilters, setMobileFilters, "mobile")}</div>
-                  <footer><button className="secondary" onClick={() => setMobileFilters(defaultFilters)}>Xóa bộ lọc</button><button onClick={() => { applyFilters(mobileFilters); filterDialog.current?.close(); filterOpener.current?.focus(); }}>Xem {catalog ? filterFood(catalog.listings, catalog.shops, query, mobileFilters.category, view === "shop" ? id || "" : mobileFilters.shop, mobileFilters.stock, mobileFilters.receiving, sort, now, mobileFilters.budget, vouchers).length : 0} món</button></footer>
+                  <footer><button className="secondary" onClick={() => setMobileFilters(defaultFilters)}>Xóa bộ lọc</button><button onClick={() => { applyFilters(mobileFilters); filterDialog.current?.close(); filterOpener.current?.focus(); }}>Áp dụng bộ lọc</button></footer>
                 </dialog>
-                {view === "browse" && (
+                {view === "browse" && !!catalog.shops.length && (
                   <section className="shop-list">
                     <h2>Khám phá các quán</h2>
                     <div>
@@ -918,12 +917,12 @@ export default function Market({ view, id }: { view: string; id?: string }) {
             {(view === "orders" || view === "order") && (
               <>
                 <Link href="/meals">Tìm thêm món</Link>
-                <p className="sync-status" role="status">{syncedAt ? `Cập nhật lúc ${new Date(syncedAt).toLocaleTimeString("vi-VN")}` : "Chưa có cập nhật"} · Xác nhận tiền thủ công <button className="secondary" onClick={() => load()}>Kiểm tra lại</button></p>
                 <h1>
                   {view === "orders"
                     ? "Đơn hàng của bạn"
                     : "Theo dõi bữa của bạn"}
                 </h1>
+                <p className="sync-status" role="status">{syncedAt ? `Cập nhật lúc ${new Date(syncedAt).toLocaleTimeString("vi-VN")}` : "Chưa có cập nhật"} · Xác nhận tiền thủ công <button className="secondary" onClick={() => load()}>Kiểm tra lại</button></p>
                 {!user ? (
                   <section className="market-empty">
                     <p>Đăng nhập để xem đơn riêng của bạn.</p>
@@ -967,12 +966,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
             {view === "login" && (
               <section className="customer-login">
                 <div>
-                  <p className="eyebrow">BẾP NÚC · PILOT HÀ NỘI</p>
-                  <h1>
-                    Vào tài khoản,
-                    <br />
-                    tiếp tục chốt bữa.
-                  </h1>
+                  <h1>Đăng nhập Bếp Núc</h1>
                   <p>
                     Lựa chọn món và số suất được giữ trên trình duyệt này. Giá
                     và tồn sẽ kiểm tra lại.
@@ -1088,10 +1082,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
             muộn cần vận hành xử lý.
           </p>
         </details>
-        <p className="fine">
-          Chưa có tuyến đi bộ được xác minh an toàn. Kiểm tra đường thực tế
-          trước khi di chuyển.
-        </p>
+
       </SiteFooter>
       {selected && (
         <dialog
@@ -1240,30 +1231,9 @@ function CustomerOrder({
         </Link>
       ) : (
         <>
-          <code>{o.id}</code>
+
           {o.status === "paid" && o.code && <section className="pickup-code"><h3>Mã nhận của bạn</h3><code>{o.code}</code><button className="secondary" onClick={() => copy(o.code)}>Sao chép mã nhận</button><p role="status">{copied}</p><p>Đưa mã này cho quán trong giờ nhận bên dưới.</p></section>}
-          {["awaiting_payment", "paid", "picked_up"].includes(o.status) && <ol className="order-progress" aria-label="Tiến trình đơn hàng">
-            <li className="active" aria-current={o.status === "awaiting_payment" ? "step" : undefined}>Thanh toán & chờ xác nhận</li>
-            <li
-              className={
-                ["paid", "picked_up"].includes(o.status) ? "active" : ""
-              }
-            >
-              Đã thanh toán
-            </li>
-            <li className={o.status === "picked_up" ? "active" : ""}>
-              Đã nhận bữa
-            </li>
-          </ol>}
-          <section className="pickup-address">
-            <h3>Nhận tại {s?.name}</h3>
-            <p>{s?.address}</p>
-            <b>
-              {l
-                ? `${time(l.start)}–${time(l.end)}`
-                : "Xem khung nhận đã công bố"}
-            </b>
-          </section>
+
           {o.status === "awaiting_payment" && !data.bank && <p role="alert">Chưa có thông tin chuyển khoản được xác nhận. Không chuyển tiền; vui lòng liên hệ hỗ trợ.</p>}
           {o.status === "awaiting_payment" && data.bank && (
             <section className="bank-instructions">
@@ -1309,6 +1279,31 @@ function CustomerOrder({
             </section>
           )}
 
+          {["awaiting_payment", "paid", "picked_up"].includes(o.status) && (
+          <section className="pickup-address">
+            <h3>Nhận tại {s?.name}</h3>
+            <p>{s?.address}</p>
+            <b>
+              {l
+                ? `${time(l.start)}–${time(l.end)}`
+                : "Xem khung nhận đã công bố"}
+            </b>
+          </section>
+          )}
+          {["awaiting_payment", "paid", "picked_up"].includes(o.status) && <ol className="order-progress" aria-label="Tiến trình đơn hàng">
+            <li className="active" aria-current={o.status === "awaiting_payment" ? "step" : undefined}>Thanh toán & chờ xác nhận</li>
+            <li
+              className={
+                ["paid", "picked_up"].includes(o.status) ? "active" : ""
+              }
+            >
+              Đã thanh toán
+            </li>
+            <li className={o.status === "picked_up" ? "active" : ""}>
+              Đã nhận bữa
+            </li>
+          </ol>}
+          <p className="order-reference">Mã đơn: <code>{o.id}</code></p>
           {o.status === "picked_up" && (
             <p>Bữa đã được giao. Mã nhận không còn dùng được.</p>
           )}

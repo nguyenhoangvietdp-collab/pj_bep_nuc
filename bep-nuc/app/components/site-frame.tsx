@@ -19,8 +19,8 @@ export function SiteHeader({ role, name, approved }: HeaderProps) {
       ]
     : [
         { href: "/meals", label: "Chọn bữa" },
+        { href: "/offers", label: "Ưu đãi" },
         { href: "/orders", label: "Đơn hàng" },
-        { href: role && role !== "student" ? "/internal" : "/login", label: role && role !== "student" ? "Nội bộ" : "Tài khoản" },
       ];
   return <>
     <Link className="skip-link" href="#content">Đến nội dung chính</Link>
@@ -30,8 +30,11 @@ export function SiteHeader({ role, name, approved }: HeaderProps) {
         const active = !link.href.startsWith("#") && (path === link.href || path.startsWith(link.href + "/") || link.href === "/meals" && (path.startsWith("/shops/") || path === "/checkout"));
         return <Link key={link.href} href={link.href} aria-current={active ? "page" : undefined}>{link.label}</Link>;
       })}</nav>
-      {isCloudMvp && role && <button className="secondary" onClick={() => logoutMvp().catch(() => window.location.hash="/login")}>Đăng xuất</button>}
-      {name && <span className="frame-account">{name}<small>{role === "merchant" ? "Cửa hàng" : role === "ops" ? "Vận hành" : approved === false ? "Chờ duyệt" : "Sinh viên"}</small></span>}
+      <div className="frame-account-actions">
+        <Link className="frame-account-link" href={role && role !== "student" ? "/internal" : "/login"}>{role ? "Tài khoản" : "Đăng nhập"}</Link>
+        {name && <span className="frame-account" title={name}>{approved === false ? "Chờ duyệt" : role === "merchant" ? "Cửa hàng" : role === "ops" ? "Vận hành" : "Sinh viên"}</span>}
+        {isCloudMvp && role && <button className="text-button" onClick={() => logoutMvp().catch(() => window.location.hash="/login")}>Đăng xuất</button>}
+      </div>
     </div></header>
   </>;
 }
@@ -39,7 +42,7 @@ export function SiteFooter({ children, supportEmail }: { children?: ReactNode; s
   const support = supportLink(supportEmail, "");
   return <footer className="frame-footer"><div className="frame-footer-inner">
     <div className="frame-footer-heading"><Link className="frame-brand" href="/">Bếp Núc</Link>
-      <nav aria-label="Điều hướng cuối trang"><Link href="/meals">Chọn bữa</Link><Link href="/orders">Đơn hàng</Link>{support && <a href={support}>Liên hệ hỗ trợ</a>}</nav>
+      <nav aria-label="Điều hướng cuối trang"><Link href="/meals">Chọn bữa</Link><Link href="/offers">Ưu đãi</Link><Link href="/orders">Đơn hàng</Link>{support && <a href={support}>Liên hệ hỗ trợ</a>}</nav>
     </div>
     <p>Bữa cuối ngày tại Hà Nội. Tự nhận tại quán, thanh toán được xác nhận thủ công.</p>
     {children && <div className="frame-footer-help">{children}</div>}
