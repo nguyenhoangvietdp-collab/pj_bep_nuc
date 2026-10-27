@@ -6,6 +6,8 @@
 
 Phần mô tả demo phía dưới là lịch sử trước khi chuyển sang MVP; trang GitHub Pages hiện chỉ giới thiệu.
 
+Bộ tính thưởng tự nhận dùng điểm giả định Đống Đa (21.016, 105.826), không gắn điểm này làm địa chỉ quán thật. Khách nhập tọa độ hoặc chủ động yêu cầu vị trí một lần. Phép tính chạy trên thiết bị, không gửi/lưu tọa độ trong API hay tài khoản: Haversine đường chim bay, 8 điểm phần trăm/km, tối đa 2 km. Giá mô phỏng áp giảm nền 5%, voucher 7/10/20% và thưởng, chưa có trần tài chính quán; không phải báo giá giao dịch, không giữ suất/trừ voucher/mở nhận tiền. Backend production tiếp tục bỏ tọa độ và không thưởng khoảng cách cho đơn thật đến khi có dữ liệu quán và chính sách đã xác nhận.
+
 Nguồn: https://drive.google.com/drive/folders/1nHmOgV3W11EQLpEQ8V6h8TL18mQ-4_PQ . 14 Google Pics được xuất bằng nút Xuất → Kích thước ban đầu trong giao diện Google; không sửa ảnh gốc, không tăng độ phân giải, không thay quyền chia sẻ. Bản JPEG phục vụ từ website, không hotlink vào Drive và không yêu cầu khách đăng nhập Google. Tổng dung lượng 1.171.985 byte (~1,12 MiB).
 
 Bảng ghép và SHA-256: `product-image-sources.csv`. Tên món, khu vực và giá tham khảo lấy từ tên file; sửa cách viết “Nôm sứa” thành “Nộm sứa” ở nhãn giao diện, vẫn giữ nguyên tên nguồn trong CSV. Không suy luận khẩu phần, thành phần, dị ứng, chất lượng hoặc tính xác thực của ảnh từ hình nhìn thấy. Không xóa watermark hoặc dấu hiệu có sẵn trong ảnh.

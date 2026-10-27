@@ -1063,3 +1063,14 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 .commerce .menu-preview-price { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .commerce .menu-preview-price span { display: block; font-size: 14px; font-weight: 400; color: #526358; }
 @media (max-width: 599px) { .commerce .menu-preview-grid { grid-template-columns: minmax(0, 1fr); } }
+.commerce .pickup-preview { border: 1px solid #dce3dd; padding: 24px; margin-bottom: 32px; }
+.commerce .pickup-preview > p { max-width: 70ch; }
+.commerce .pickup-preview-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0; }
+.commerce .pickup-preview-fields label { display: grid; gap: 8px; min-width: 0; }
+.commerce .pickup-preview-fields input, .commerce .pickup-preview-fields select { width: 100%; min-width: 0; min-height: 44px; font: inherit; }
+.commerce .pickup-preview summary { cursor: pointer; padding: 12px 0; min-height: 44px; font-weight: 600; }
+.commerce .pickup-preview-result { border-top: 1px solid #dce3dd; margin-top: 24px; padding-top: 16px; }
+.commerce .pickup-preview-result dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; padding: 12px 0; }
+.commerce .pickup-preview-result dd { margin: 0; font-variant-numeric: tabular-nums; }
+.commerce .pickup-preview-result strong { font-size: 26px; }
+@media (max-width: 599px) { .commerce .pickup-preview { padding: 16px; } .commerce .pickup-preview-fields { grid-template-columns: minmax(0, 1fr); } }

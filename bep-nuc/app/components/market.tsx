@@ -7,6 +7,7 @@ import { useAppRouter as useRouter } from "./navigation";
 import { apiFetch, googleLogin } from "../../lib/mvp-client";
 import { isCloudMvp, readAppLocation, replaceAppUrl } from "../../lib/app-navigation";
 import { filterMenuAssets } from "../../lib/product-assets";
+import PickupPreview from "./pickup-preview";
 import {
   estimate,
   percent,
@@ -628,6 +629,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                 </section>
                 {!!upcoming.length && (
                   <section className="menu-preview" aria-labelledby="menu-preview-title">
+                    <PickupPreview/>
                     <header><h2 id="menu-preview-title">Các món đang chuẩn bị · {upcoming.length} món</h2><p>Ảnh và giá tham khảo do đội Bếp Núc cung cấp. Chưa mở bán; quán, khẩu phần và giờ nhận đang chờ xác nhận. Chưa áp voucher.</p></header>
                     <ul className="menu-preview-grid">
                       {upcoming.map(p => (
