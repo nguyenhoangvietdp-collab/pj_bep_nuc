@@ -6,8 +6,7 @@ import { SiteHeader, SiteFooter } from "./site-frame";
 import { useAppRouter as useRouter } from "./navigation";
 import { apiFetch, googleLogin } from "../../lib/mvp-client";
 import { isCloudMvp, readAppLocation, replaceAppUrl } from "../../lib/app-navigation";
-import { filterMenuAssets } from "../../lib/product-assets";
-import { launchPartner, launchMenuNames } from "../../lib/launch-menu";
+import { launchPartner, filterLaunchMenu } from "../../lib/launch-menu";
 import Offers from "./offers";
 import FulfillmentChoice from "./fulfillment-choice";
 import {
@@ -452,7 +451,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
       )
     : [];
   const upcoming = isCloudMvp && view === "browse" && !shopFilter && !receiving
-    ? filterMenuAssets(query, category, budget, sort).filter(p => launchMenuNames.includes(p.name) && !catalog?.listings.some(l => l.image === p.image))
+    ? filterLaunchMenu(query, category, budget, sort).filter(p => !catalog?.listings.some(l => l.image === p.image))
     : [];
   function foodDetails(l: Food, n: number, change: (n: number) => void) {
     const Heading = view === "meal" ? "h1" : "h2";
