@@ -2,6 +2,12 @@ import { estimate } from "./commerce";
 
 // Assumed point only; never used as a merchant address or a transaction quote.
 export const assumedPickup = { lat: 21.016, lng: 105.826, label: "Điểm giả định tại Đống Đa, Hà Nội" };
+export function fulfillmentPreview(menuPrice: number, voucher: number, location: {lat:number;lng:number}|undefined, method: "pickup"|"delivery") {
+  if(method==="pickup")return pickupPreview(menuPrice,voucher,location!);
+  if(method!=="delivery"||!Number.isSafeInteger(menuPrice)||menuPrice<=0||![0.07,0.1,0.2].includes(voucher))throw new Error("Món, voucher hoặc cách nhận không hợp lệ.");
+  const value=estimate(menuPrice,voucher);
+  return {distanceKm:null,bonusRate:0,baseDiscount:value.baseDiscount,voucherDiscount:value.voucherDiscount,bonusDiscount:0,indicativeTotal:value.total};
+}
 export function pickupPreview(menuPrice: number, voucher: number, location: { lat: number; lng: number }) {
   if (!Number.isSafeInteger(menuPrice) || menuPrice <= 0 || ![0.07, 0.1, 0.2].includes(voucher)) throw new Error("Món hoặc voucher không hợp lệ.");
   if (!location || !Number.isFinite(location.lat) || !Number.isFinite(location.lng) || Math.abs(location.lat) > 90 || Math.abs(location.lng) > 180) throw new Error("Vĩ độ phải từ −90 đến 90, kinh độ từ −180 đến 180.");

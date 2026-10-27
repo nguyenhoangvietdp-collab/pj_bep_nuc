@@ -8,6 +8,7 @@ import { apiFetch, googleLogin } from "../../lib/mvp-client";
 import { isCloudMvp, readAppLocation, replaceAppUrl } from "../../lib/app-navigation";
 import { filterMenuAssets, menuDishId } from "../../lib/product-assets";
 import PickupPreview from "./pickup-preview";
+import FulfillmentChoice from "./fulfillment-choice";
 import {
   estimate,
   percent,
@@ -31,12 +32,15 @@ type Catalog = {
 };
 type Filters = { category: string; budget: number; shop: string; stock: boolean; receiving: boolean };
 const defaultFilters: Filters = { category: "", budget: 0, shop: "", stock: true, receiving: false };
-type Draft = { listingId: string; qty: number; voucherId?: string };
+type Draft = { listingId: string; qty: number; voucherId?: string; fulfillment?: "pickup"|"delivery" };
 const states: Record<string, string> = {
   available: "Chưa dùng",
   reserved: "Đang giữ",
   used: "Đã dùng",
   awaiting_payment: "Chờ xác nhận tiền",
+  awaiting_delivery_fee: "Chờ xác nhận phí giao hàng",
+  out_for_delivery: "Đang giao tận nơi",
+  delivered: "Đã giao tận nơi",
   paid: "Đã thanh toán · đến quán nhận",
   picked_up: "Đã nhận bữa",
   expired: "Hết hạn thanh toán",
@@ -62,6 +66,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     [qty, setQty] = useState(1),
     [voucher, setVoucher] = useState(""),
     [location, setLocation] = useState(false),
+    [fulfillment,setFulfillment] = useState<"pickup"|"delivery">("pickup"),
+    [recipient,setRecipient] = useState(""), [phone,setPhone] = useState(""), [deliveryAddress,setDeliveryAddress] = useState(""),
     [tick, setTick] = useState(Date.now()),
     [query, setQuery] = useState(""),
     [budget, setBudget] = useState(0),
@@ -129,7 +135,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
       if(document.visibilityState!=="visible")return;
       if(!isCloudMvp){load();return;}
       const current=profileSnapshot.current;
-      if(!["orders","order","checkout"].includes(view) || !(current?.heldQuotes?.length || current?.orders?.some((o:any)=>["awaiting_payment","paid"].includes(o.status))))return;
+      if(!["orders","order","checkout"].includes(view) || !(current?.heldQuotes?.length || current?.orders?.some((o:any)=>["awaiting_delivery_fee","awaiting_payment","paid","out_for_delivery"].includes(o.status))))return;
       const version=++loadVersion.current;
       try{
         const response=await apiFetch("/api/pilot");
@@ -153,7 +159,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           d.qty >= 1 &&
           d.qty <= 3
         )
-          { setDraft(d); if (typeof d.voucherId === "string") setVoucher(d.voucherId); }
+          { setDraft(d); setFulfillment(d.fulfillment==="delivery"?"delivery":d.fulfillment==="pickup"?"pickup":sessionStorage.getItem("bc-fulfillment")==="delivery"?"delivery":"pickup"); if (typeof d.voucherId === "string") setVoucher(d.voucherId); }
       }
     } catch {}
     const p = new URLSearchParams(readAppLocation().search);
@@ -256,6 +262,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
   );
   const activeVoucher = profile?.vouchers?.find((v: any) => v.id === voucher && item && displayPrice(item, [v], now).rate === v.rate);
   const count = held?.qty || draft?.qty || 1;
+  const receiveMethod = held?.fulfillment || fulfillment;
+  const deliveryValid = recipient.trim().length>=2 && /^(0\d{9}|\+84\d{9})$/.test(phone.replace(/[\s-]/g,"")) && deliveryAddress.trim().length>=10;
   const amounts =
     held ||
     (item ? estimate(item.price * count, activeVoucher?.rate || 0) : undefined);
@@ -265,9 +273,10 @@ export default function Market({ view, id }: { view: string; id?: string }) {
   async function act(action: string, args: any) {
     if (mutation.current) return;
     mutation.current = true; setBusy(true); setError("");
-    const signature = JSON.stringify([user?.id, action, args]);
+    let signature = "";
     let key = crypto.randomUUID(), definitive = false;
     try {
+      signature=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(JSON.stringify([user?.id,action,args]))))).map(b=>b.toString(16).padStart(2,"0")).join("");
       try {
         const stored = JSON.parse(sessionStorage.getItem("bc-action") || "null");
         if (stored?.signature === signature && typeof stored.key === "string") key = stored.key;
@@ -278,9 +287,10 @@ export default function Market({ view, id }: { view: string; id?: string }) {
       if (action === "order") {
         const existing = current.orders?.find((o: any) => o.quoteId === args.quoteId);
         if (existing) { definitive = true; return existing; }
+        if(args.delivery && !current.heldQuotes?.some((q:any)=>q.id===args.quoteId&&q.fulfillment==="delivery")){definitive=true;throw new Error("Máy chủ chưa xác nhận hình thức giao hàng. Bỏ giữ suất và thử lại; chưa chuyển tiền.");}
       }
       if (action === "quote") {
-        const existing = current.heldQuotes?.find((q: any) => q.listingId === args.listingId && q.voucherId === args.voucherId && q.qty === args.qty);
+        const existing = current.heldQuotes?.find((q: any) => q.listingId === args.listingId && q.voucherId === args.voucherId && q.qty === args.qty && (q.fulfillment||"pickup")===(args.fulfillment||"pickup"));
         if (existing) { definitive = true; return { ok: true }; }
         if (current.heldQuotes?.length) { definitive = true; throw new Error("Bạn đang giữ một bữa khác. Kiểm tra hoặc bỏ giữ trước khi đặt lại."); }
       }
@@ -298,10 +308,11 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           const existing = state?.orders?.find((o: any) => o.quoteId === args.quoteId);
           if (existing) { definitive = true; return existing; }
         }
-        if (action === "quote" && state?.heldQuotes?.some((q: any) => q.listingId === args.listingId && q.voucherId === args.voucherId && q.qty === args.qty)) {
+        if (action === "quote" && state?.heldQuotes?.some((q: any) => q.listingId === args.listingId && q.voucherId === args.voucherId && q.qty === args.qty && (q.fulfillment||"pickup")===(args.fulfillment||"pickup"))) {
           definitive = true; return { ok: true };
         }
       }
+      if(definitive&&action==="accept_delivery_fee")await load();
       setError(definitive ? (e as Error).message : "Chưa xác định thao tác đã hoàn tất do mất kết nối. Kiểm tra trạng thái trước khi thử lại; không chuyển thêm tiền.");
       requestAnimationFrame(() => actionError.current?.focus());
     } finally {
@@ -314,7 +325,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     setSelected(l);
   }
   function saveDraft(l: Food, n: number) {
-    const d = { listingId: l.id, qty: n };
+    const d = { listingId: l.id, qty: n, fulfillment: (sessionStorage.getItem("bc-fulfillment")==="delivery"?"delivery":"pickup") as "delivery"|"pickup" };
     setDraft(d);
     sessionStorage.setItem("bc-draft", JSON.stringify(d));
     setSelected(undefined);
@@ -326,7 +337,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     let coords;
     setBusy(true);
     setError("");
-    if (location)
+    if (location && fulfillment==="pickup")
       try {
         coords = await new Promise((resolve, reject) =>
           navigator.geolocation.getCurrentPosition(
@@ -343,6 +354,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
       listingId: item.id,
       voucherId: activeVoucher.id,
       qty: count,
+      fulfillment,
       location: coords,
     });
   }
@@ -458,7 +470,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
             <Link href={`/shops/${l.shopId}`}>{s?.name}</Link>
           </div>
           <section className="meal-collection" aria-label="Nơi và giờ nhận">
-            <h3>Nhận tại quán</h3>
+            <h3>Quán và khung giờ bàn giao</h3>
             <p className="meal-address">{s?.address || "Chưa có địa chỉ nhận"}</p>
             <p className="meal-pickup"><b>{time(l.start)}–{time(l.end)}</b> · Còn {l.stock} suất</p>
             <p className="meal-allergens"><b>Dị ứng:</b> {l.allergens || "Chưa có thông tin. Hỏi quán trước khi đặt."}</p>
@@ -469,7 +481,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
             <Quantity n={n} max={Math.min(3, l.stock)} disabled={false} change={change} />
             <p className="detail-total" aria-live="polite">Tổng {n} suất <strong>{money(total.total)}</strong></p>
             <button disabled={l.stock < n || now >= l.end} onClick={() => saveDraft(l, n)}>Kiểm tra bữa đã chọn</button>
-            <p className="fine">Tối đa 3 suất · Tự nhận tại quán</p>
+            <p className="fine">Tối đa 3 suất · Chọn tự lấy hoặc giao ở bước tiếp theo</p>
           </section>
         </div>
       </div>
@@ -524,7 +536,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
 
                       <h1>Chọn bữa tối nay</h1>
                       <p className="market-eligibility">
-                        Tự nhận tại quán · Dành cho sinh viên đã được duyệt.
+                        Tự đến lấy hoặc giao tận nơi · Dành cho sinh viên đã được duyệt.
                       </p>
                     </div>
                   </section>
@@ -718,15 +730,14 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                           </b>
                         </div>
                       </div>
-                      <p className="fine">
-                        Tự đến quán nhận. Không có giao hàng hoặc phí ship.
-                      </p>
+                      <FulfillmentChoice name="checkout-fulfillment" value={receiveMethod} disabled={!!held||busy} change={method=>{setFulfillment(method);sessionStorage.setItem("bc-fulfillment",method);const d={listingId:item.id,qty:count,voucherId:activeVoucher?.id,fulfillment:method};setDraft(d);sessionStorage.setItem("bc-draft",JSON.stringify(d));}}/>
+                      {receiveMethod==="delivery" && user?.approved && user.role==="student" && <section className="delivery-contact"><h3>Thông tin nhận hàng</h3><label>Người nhận<input disabled={busy} autoComplete="name" value={recipient} maxLength={100} onChange={e=>setRecipient(e.target.value)} required/></label><label>Số điện thoại<input disabled={busy} type="tel" autoComplete="tel" placeholder="Số điện thoại Việt Nam, 10 chữ số" value={phone} maxLength={20} onChange={e=>setPhone(e.target.value)} required/></label><label>Địa chỉ đầy đủ tại Hà Nội<textarea disabled={busy} autoComplete="street-address" value={deliveryAddress} maxLength={250} onChange={e=>setDeliveryAddress(e.target.value)} required/></label><p className="fine">Đội Bếp Núc dùng thông tin này để báo phí và điều phối giao hàng. Chỉ thanh toán sau khi bạn đồng ý phí; hạn giữ 10 phút vẫn được áp dụng. Không có thưởng di chuyển cho đơn giao tận nơi.</p></section>}
                       <Quantity
                         n={count}
                         max={Math.min(3, item.stock)}
                         disabled={!!held || busy}
                         change={(n) => {
-                          const d = { listingId: item.id, qty: n, voucherId: activeVoucher?.id };
+                          const d = { listingId: item.id, qty: n, voucherId: activeVoucher?.id, fulfillment: receiveMethod };
                           setDraft(d);
                           sessionStorage.setItem("bc-draft", JSON.stringify(d));
                         }}
@@ -840,23 +851,25 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                     </section>
                     <aside className="checkout-summary" ref={summary} tabIndex={-1}>
                       <h2>Tóm tắt thanh toán</h2>
+                      {receiveMethod==="delivery" && user?.approved && !deliveryValid && <p className="fine">Điền đủ tên người nhận, số điện thoại hợp lệ và địa chỉ để giữ suất.</p>}{receiveMethod==="delivery" && <p className="delivery-fee-pending">Phí giao hàng: chờ vận hành báo. Số tiền bên dưới chỉ là tiền món.</p>}
                       {amounts && <details className="price-help"><summary>Chi tiết giảm giá</summary><PriceLines a={amounts} hideTotal /></details>}
                       <p className="price-type">
                         {held
-                          ? "Giá xác nhận từ Bếp Núc"
+                          ? receiveMethod==="delivery"?"Tiền món đã xác nhận; phí giao báo sau":"Giá xác nhận từ Bếp Núc"
                           : "Ước tính · chưa gồm thưởng tự nhận"}
                       </p>
                       <div className="checkout-action">
-                        {amounts && <div className="action-total"><span>{held ? "Tổng thanh toán" : activeVoucher ? "Tổng ước tính đã chọn voucher" : "Giá trước voucher"}</span><strong>{money(amounts.total)}</strong></div>}
+                        {amounts && <div className="action-total"><span>{receiveMethod==="delivery"?"Tiền món (chưa gồm phí giao)":held ? "Tổng thanh toán" : activeVoucher ? "Tổng ước tính đã chọn voucher" : "Giá trước voucher"}</span><strong>{money(amounts.total)}</strong></div>}
                         {held && <p>{seconds ? `Giữ suất còn ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}` : "Đã hết hạn. Kiểm tra lại giá trước khi thanh toán."}</p>}
                       {user?.approved &&
                         user.role === "student" &&
                         (held ? (
                           <button
-                            disabled={busy || !seconds}
+                            disabled={busy || !seconds || (receiveMethod==="delivery"&&!deliveryValid)}
                             onClick={async () => {
                               const o = await act("order", {
                                 quoteId: held.id,
+                                delivery: receiveMethod==="delivery"?{recipient,phone,address:deliveryAddress}:undefined,
                               });
                               if (o) {
                                 sessionStorage.removeItem("bc-draft");
@@ -866,12 +879,13 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                           >
                             {busy
                               ? "Đang xử lý…"
-                              : "Tiếp tục thanh toán"}
+                              : receiveMethod==="delivery" ? "Gửi yêu cầu giao hàng" : "Tiếp tục thanh toán"}
                           </button>
                         ) : (
                           <button
                             disabled={
                               busy ||
+                              (receiveMethod==="delivery"&&!deliveryValid) ||
                               (isCloudMvp && catalog.pilotOpen === false) ||
                               !activeVoucher ||
                               activeVoucher.state !== "available" ||
@@ -943,7 +957,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                           key={o.id}
                           o={o}
                           data={profile}
-                          detail={view === "order"}
+                          detail={view === "order"} busy={busy} action={act}
                           now={now}
                         />
                       ))}
@@ -1062,7 +1076,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
             <li>Kiểm tra giá và chọn một voucher phù hợp.</li>
             <li>Giữ hàng, xác nhận giá rồi tạo đơn.</li>
             <li>Chuyển đúng tiền và nội dung; chờ xác nhận thanh toán.</li>
-            <li>Đưa mã nhận tại quán trong khung giờ của món.</li>
+            <li>Tự lấy: đưa mã nhận tại quán. Giao tận nơi: đội Bếp Núc điều phối và xác nhận giao hàng.</li>
           </ol>
         </details>
         <details>
@@ -1199,11 +1213,15 @@ function CustomerOrder({
   data,
   detail,
   now,
+  busy,
+  action,
 }: {
   o: any;
   data: any;
   detail: boolean;
   now: number;
+  busy: boolean;
+  action: (action:string,args:any)=>Promise<any>;
 }) {
   const [copied, setCopied] = useState("");
   const l = data.listings.find((l: Food) => l.id === o.listingId),
@@ -1220,10 +1238,10 @@ function CustomerOrder({
     <article className="customer-order">
       <div className="order-heading">
         <h2>{l?.name || "Đơn hàng"}</h2>
-        <b>{states[o.status]}</b>
+        <b>{o.fulfillment==="delivery"&&o.status==="paid"?"Đã thanh toán · chờ người giao nhận món":states[o.status]}</b>
       </div>
       <p>
-        {o.qty} suất · {money(o.total)} · {s?.name}
+        {o.qty} suất · {o.status==="awaiting_delivery_fee"?"Tiền món ":""}{money(o.total)} · {s?.name}
       </p>
       {!detail ? (
         <Link className="button-link" href={`/orders/${o.id}`}>
@@ -1231,6 +1249,8 @@ function CustomerOrder({
         </Link>
       ) : (
         <>
+          {o.fulfillment==="delivery" && <section className="delivery-order-details"><h3>Giao tận nơi</h3><p>{o.delivery?.recipient} · {o.delivery?.phone}</p><p>{o.delivery?.address}</p><p>Tiền món {money(o.foodTotal)} · Phí giao {o.deliveryFee===undefined?"chờ xác nhận":money(o.deliveryFee)}</p></section>}
+          {o.status==="awaiting_delivery_fee" && <section className="delivery-fee-review" role="status"><h3>{o.deliveryFee===undefined?"Vận hành đang xác nhận phí giao":"Kiểm tra phí trước khi thanh toán"}</h3><p>Giữ suất đến {time(o.expires)}. Chưa chuyển tiền khi chưa đồng ý phí.</p>{o.deliveryFee!==undefined && <><p>Tiền món {money(o.foodTotal)} + giao hàng {money(o.deliveryFee)}</p><strong className="price">Tổng {money(o.foodTotal+o.deliveryFee)}</strong><button disabled={busy||o.expires<=now} onClick={()=>action("accept_delivery_fee",{orderId:o.id,revision:o.delivery.revision})}>Đồng ý tổng tiền và tiếp tục</button></>}<button className="secondary" disabled={busy} onClick={()=>action("decline_delivery_fee",{orderId:o.id})}>Hủy yêu cầu, trả lại suất và voucher</button></section>}
 
           {o.status === "paid" && o.code && <section className="pickup-code"><h3>Mã nhận của bạn</h3><code>{o.code}</code><button className="secondary" onClick={() => copy(o.code)}>Sao chép mã nhận</button><p role="status">{copied}</p><p>Đưa mã này cho quán trong giờ nhận bên dưới.</p></section>}
 
@@ -1242,7 +1262,7 @@ function CustomerOrder({
                 Trước {time(o.expires)}.{" "}
                 {o.expires <= now
                   ? "Hạn giữ đã hết. Không chuyển thêm tiền."
-                  : "Vận hành xác nhận thủ công; mã nhận xuất hiện sau xác nhận."}
+                  : o.fulfillment==="delivery"?"Vận hành xác nhận thủ công rồi điều phối người giao.":"Vận hành xác nhận thủ công; mã nhận xuất hiện sau xác nhận."}
               </p>
               <dl>
                 <dt>Ngân hàng</dt>
@@ -1275,11 +1295,11 @@ function CustomerOrder({
                 đã bán.
               </p>
               <p role="status">{copied}</p>
-              <p role="status">Chờ Bếp Núc kiểm tra tiền chuyển. Quay lại trang này để xem mã nhận sau khi được xác nhận. Không chuyển thêm nếu bạn đã chuyển đúng tiền.</p>
+              <p role="status">{o.fulfillment==="delivery"?"Chờ Bếp Núc kiểm tra tiền chuyển rồi theo dõi trạng thái giao hàng tại đây.":"Chờ Bếp Núc kiểm tra tiền chuyển. Quay lại trang này để xem mã nhận sau khi được xác nhận."} Không chuyển thêm nếu bạn đã chuyển đúng tiền.</p>
             </section>
           )}
 
-          {["awaiting_payment", "paid", "picked_up"].includes(o.status) && (
+          {o.fulfillment!=="delivery" && ["awaiting_payment", "paid", "picked_up"].includes(o.status) && (
           <section className="pickup-address">
             <h3>Nhận tại {s?.name}</h3>
             <p>{s?.address}</p>
@@ -1290,7 +1310,8 @@ function CustomerOrder({
             </b>
           </section>
           )}
-          {["awaiting_payment", "paid", "picked_up"].includes(o.status) && <ol className="order-progress" aria-label="Tiến trình đơn hàng">
+          {o.fulfillment==="delivery" && ["awaiting_payment","paid","out_for_delivery","delivered"].includes(o.status) && <p className="delivery-progress" role="status">{o.status==="awaiting_payment"?"Bước tiếp theo: chuyển đúng tổng tiền và chờ xác nhận.":o.status==="paid"?"Đội Bếp Núc đang điều phối người nhận món tại quán.":o.status==="out_for_delivery"?"Người giao đã nhận món. Vận hành sẽ xác nhận khi bạn nhận hàng.":"Vận hành đã xác nhận giao hàng thành công."}</p>}
+          {o.fulfillment!=="delivery" && ["awaiting_payment", "paid", "picked_up"].includes(o.status) && <ol className="order-progress" aria-label="Tiến trình đơn hàng">
             <li className="active" aria-current={o.status === "awaiting_payment" ? "step" : undefined}>Thanh toán & chờ xác nhận</li>
             <li
               className={

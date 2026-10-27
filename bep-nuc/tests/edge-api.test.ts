@@ -108,3 +108,24 @@ test("simultaneous address lookups cannot bypass the shared cooldown", async()=>
  assert.equal(responses.filter(r=>r.status===429).length,9);
  assert.equal(calls,1);
 });
+
+test("shipping API keeps contacts private and rejects stale or other-customer fee consent",async()=>{
+ const f=setup();
+ f.getState().users.push({id:"another-student",name:"Another",role:"student",approved:true});
+ const voucher=f.getState().vouchers.find(v=>v.userId==="student"&&v.rate===0.2)!;
+ const send=(token:string,action:string,args:any)=>f.request("pilot",token,{action,args:{...args,key:crypto.randomUUID()}});
+ const quoted=await send("student","quote",{listingId:"meal",voucherId:voucher.id,qty:1,fulfillment:"delivery",location:{lat:0,lng:0}});assert.equal(quoted.status,200);assert.equal(quoted.data.bonusDiscount,0);
+ const created=await send("student","order",{quoteId:quoted.data.id,delivery:{recipient:"Test Receiver",phone:"0901234567",address:"PRIVATE ADDRESS HANOI"}});assert.equal(created.status,200);
+ assert.equal((await send("merchant","delivery_fee",{orderId:created.data.id,fee:10000})).status,400);
+ await send("ops","delivery_fee",{orderId:created.data.id,fee:10000});
+ assert.equal((await send("another-student","accept_delivery_fee",{orderId:created.data.id,revision:1})).status,400);
+ await Promise.all([send("ops","delivery_fee",{orderId:created.data.id,fee:12000}),send("student","accept_delivery_fee",{orderId:created.data.id,revision:1})]);
+ const order=f.getState().orders[0];
+ assert.ok(order.status==="awaiting_delivery_fee" || order.delivery?.fee===10000);
+ if(order.status==="awaiting_delivery_fee")assert.equal((await send("student","accept_delivery_fee",{orderId:order.id,revision:order.delivery!.revision})).status,200);
+ const student=(await f.request("pilot","student")).data;
+ assert.equal(student.orders[0].total,student.orders[0].foodTotal+student.orders[0].deliveryFee);
+ assert.ok(!JSON.stringify((await f.request("pilot","merchant")).data).includes("PRIVATE ADDRESS HANOI"));
+ assert.ok(!JSON.stringify((await f.request("pilot","another-student")).data).includes("PRIVATE ADDRESS HANOI"));
+ assert.ok(!JSON.stringify(f.getState().audit).includes("PRIVATE ADDRESS HANOI"));
+});

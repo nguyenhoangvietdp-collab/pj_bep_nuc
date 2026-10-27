@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       "Sai yêu cầu",
     );
     let distance: number | null = null;
-    if (body.action === "quote") {
+    if (body.action === "quote" && body.args.fulfillment !== "delivery") {
       const destination = await transaction((s) => {
         const u = s.users.find((x) => x.id === id);
         requireThat(u?.approved && u.role === "student", "Không có quyền");

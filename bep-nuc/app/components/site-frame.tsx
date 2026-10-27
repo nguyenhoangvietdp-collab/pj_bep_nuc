@@ -44,7 +44,7 @@ export function SiteFooter({ children, supportEmail }: { children?: ReactNode; s
     <div className="frame-footer-heading"><Link className="frame-brand" href="/">Bếp Núc</Link>
       <nav aria-label="Điều hướng cuối trang"><Link href="/meals">Chọn bữa</Link><Link href="/offers">Ưu đãi</Link><Link href="/orders">Đơn hàng</Link>{support && <a href={support}>Liên hệ hỗ trợ</a>}</nav>
     </div>
-    <p>Bữa cuối ngày tại Hà Nội. Tự nhận tại quán, thanh toán được xác nhận thủ công.</p>
+    <p>Bữa cuối ngày tại Hà Nội. Tự đến lấy hoặc giao tận nơi; phí giao được xác nhận trước khi thanh toán.</p>
     {children && <div className="frame-footer-help">{children}</div>}
   </div></footer>;
 }

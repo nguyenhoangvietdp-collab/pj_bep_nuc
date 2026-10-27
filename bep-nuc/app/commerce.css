@@ -1135,3 +1135,16 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 .commerce .customer-order .pickup-address { padding: 20px 0; border: 0; border-top: 1px solid var(--line); margin-top: 24px; }
 .commerce .customer-order .pickup-code { padding: 20px; border: 1px solid var(--green); margin: 20px 0; }
 .commerce .customer-order .order-progress { margin-block: 16px; }
+.commerce .fulfillment-choice { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; min-width: 0; padding: 0; margin: 24px 0; border: 0; }
+.commerce .fulfillment-choice legend { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.commerce .fulfillment-choice label { display: flex; align-items: flex-start; gap: 10px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; margin: 0; }
+.commerce .fulfillment-choice label.is-selected { border-color: var(--green); background: #f7f8f7; }
+.commerce .fulfillment-choice input { flex: 0 0 auto; width: 18px; height: 18px; min-height: 0; margin: 3px 0 0; }
+.commerce .fulfillment-choice small { display: block; font-size: 14px; font-weight: 400; color: var(--muted); margin-top: 8px; }
+.commerce .delivery-contact { padding: 20px 0; border-top: 1px solid var(--line); }
+.commerce .delivery-contact label { display: block; margin: 12px 0; }
+.commerce .delivery-contact input, .commerce .delivery-contact textarea { display: block; width: 100%; min-width: 0; margin-top: 8px; padding: 12px; font: inherit; }
+.commerce .delivery-fee-pending, .commerce .delivery-fee-review { padding: 16px; background: #f7f8f7; border-left: 3px solid var(--green); margin-block: 16px; }
+.commerce .delivery-fee-review button { display: block; width: 100%; margin-top: 12px; }
+.commerce .delivery-order-details { border-bottom: 1px solid var(--line); padding-block: 16px; }
+@media(max-width:599px){.commerce .fulfillment-choice{grid-template-columns:minmax(0,1fr);}}

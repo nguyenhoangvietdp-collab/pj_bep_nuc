@@ -44,6 +44,7 @@ export type Voucher = {
   quoteId?: string;
 };
 export type Quote = {
+  fulfillment?: "pickup" | "delivery";
   id: string;
   userId: string;
   listingId: string;
@@ -62,14 +63,19 @@ export type Quote = {
   menuTotal?: number;
 };
 export type Order = {
+  fulfillment?: "pickup" | "delivery";
+  delivery?: { recipient: string; phone: string; address: string; fee?: number; revision: number; acceptedAt?: number; completedAt?: number; confirmation?: string };
   id: string;
   userId: string;
   quoteId: string;
   shopId: string;
   status:
+    | "awaiting_delivery_fee"
     | "awaiting_payment"
     | "paid"
     | "picked_up"
+    | "out_for_delivery"
+    | "delivered"
     | "expired"
     | "cancelled"
     | "no_show";
@@ -102,6 +108,7 @@ export type Settlement = {
   reference?: string;
 };
 export type State = {
+  deliveryCosts?: { id: string; orderId: string; amount: number; reference: string; at: number }[];
   geocodingUsage?: { day: string; count: number; lastAt?: number };
   users: User[];
   shops: Shop[];
@@ -193,7 +200,7 @@ export function expire(s: State, now: number) {
     if (
       q.state !== "released" &&
       q.expires <= now &&
-      (!o || o.status === "awaiting_payment")
+      (!o || ["awaiting_payment", "awaiting_delivery_fee"].includes(o.status))
     ) {
       q.state = "released";
       s.listings.find((l) => l.id === q.listingId)!.stock += q.qty;
@@ -251,6 +258,9 @@ export function readiness(s: State) {
   );
   return { eligibleShops: shops.length, ready: shops.length >= 3 };
 }
+export const shopFulfilled = (o: Order) => o.status === "picked_up" || (o.fulfillment === "delivery" && o.pickupAt !== undefined);
+export const customerReceived = (o: Order) => o.status === "picked_up" || o.status === "delivered";
+export const orderTotal = (s: State, o: Order) => s.quotes.find(q => q.id === o.quoteId)!.price + (o.delivery?.acceptedAt !== undefined ? o.delivery.fee! : 0);
 export function ledger(s: State) {
   const received = s.payments.reduce((a, p) => a + p.amount, 0),
     refunded = s.refunds
@@ -262,7 +272,9 @@ export function ledger(s: State) {
     merchantPaid = s.settlements
       .filter((t) => t.paid)
       .reduce((a, t) => a + t.amount, 0);
-  const delivered = s.orders.filter((o) => o.status === "picked_up");
+  const delivered = s.orders.filter(shopFulfilled);
+  const deliveryCostPaid = (s.deliveryCosts || []).reduce((n,c) => n+c.amount,0);
+  const deliveryFeesCollected = s.orders.filter(o=>o.delivery?.acceptedAt!==undefined && s.payments.some(p=>p.orderId===o.id&&p.valid)).reduce((n,o)=>n+o.delivery!.fee!,0);
   const merchantDue =
     delivered.reduce(
       (a, o) => a + s.quotes.find((q) => q.id === o.quoteId)!.payout,
@@ -270,8 +282,8 @@ export function ledger(s: State) {
     ) - merchantPaid;
   const contribution = delivered.reduce((a, o) => {
     const q = s.quotes.find((q) => q.id === o.quoteId)!;
-    return a + q.price - q.payout - q.cost;
-  }, 0);
+    return a + s.payments.filter(p=>p.orderId===o.id).reduce((n,p)=>n+p.amount,0) - s.refunds.filter(r=>r.orderId===o.id).reduce((n,r)=>n+r.amount,0) - q.payout - q.cost;
+  }, 0) - deliveryCostPaid;
   return {
     received,
     refunded,
@@ -279,8 +291,11 @@ export function ledger(s: State) {
     merchantPaid,
     merchantDue,
     contribution,
-    cash: received - refunded - merchantPaid,
-    unallocated: received - refunded - refundDue - merchantPaid - merchantDue,
+    deliveryFeesCollected,
+    deliveryCostPaid,
+    deliveryCostsUnconfirmed: s.orders.filter(o=>o.fulfillment==="delivery" && o.pickupAt!==undefined && !(s.deliveryCosts||[]).some(c=>c.orderId===o.id)).length,
+    cash: received - refunded - merchantPaid - deliveryCostPaid,
+    unallocated: received - refunded - refundDue - merchantPaid - merchantDue - deliveryCostPaid,
   };
 }
 export function view(s: State, u: User, now: number) {
@@ -297,10 +312,13 @@ export function view(s: State, u: User, now: number) {
       const q = s.quotes.find((q) => q.id === o.quoteId)!;
       return {
         ...o,
-        code: u.role === "student" ? o.code : undefined,
+        code: (u.role === "student" && o.fulfillment!=="delivery") || (u.role==="ops" && o.fulfillment==="delivery") ? o.code : undefined,
+        delivery: u.role==="merchant" ? undefined : o.delivery,
         listingId: q.listingId,
         qty: q.qty,
-        total: q.price,
+        foodTotal: q.price,
+        deliveryFee: o.delivery?.fee,
+        total: orderTotal(s,o),
         expires: q.expires,
         payout: u.role === "student" ? undefined : q.payout,
         refund:
@@ -338,11 +356,12 @@ export function view(s: State, u: User, now: number) {
           audit: s.audit.slice(-100),
           research: s.research,
           expenses: s.expenses,
+          deliveryCosts: s.deliveryCosts || [],
           exposures: s.exposures,
           metrics: {
-            delivered: s.orders.filter((o) => o.status === "picked_up").length,
+            delivered: s.orders.filter(customerReceived).length,
             deliveredUnits: s.orders
-              .filter((o) => o.status === "picked_up")
+              .filter(customerReceived)
               .reduce(
                 (n, o) => n + s.quotes.find((q) => q.id === o.quoteId)!.qty,
                 0,
@@ -350,7 +369,7 @@ export function view(s: State, u: User, now: number) {
             repeatCustomers: s.users.filter(
               (u) =>
                 s.orders.filter(
-                  (o) => o.userId === u.id && o.status === "picked_up",
+                  (o) => o.userId === u.id && customerReceived(o),
                 ).length >= 2,
             ).length,
             paidRefunds: s.refunds.filter((r) => r.done).length,
@@ -414,10 +433,14 @@ export function act(
       (v) => v.id === a.voucherId && v.userId === u.id && v.day === day(now),
     );
     requireThat(v && v.state === "available", "Voucher không còn khả dụng");
-    const p = price(l, a.qty, v.rate, distance);
+    const fulfillment = a.fulfillment ?? "pickup";
+    requireThat(["pickup", "delivery"].includes(fulfillment),"Cách nhận không hợp lệ");
+    const quoteDistance = fulfillment === "delivery" ? null : distance;
+    const p = price(l, a.qty, v.rate, quoteDistance);
     requireThat(l.stock >= a.qty, "Không đủ tồn");
     const q: Quote = {
       id: randomUUID(),
+      fulfillment,
       userId: u.id,
       listingId: l.id,
       voucherId: v.id,
@@ -430,10 +453,10 @@ export function act(
       state: "held",
       ...p,
       baseRate: v.rate,
-      distance,
+      distance: quoteDistance,
       menuTotal: l.price * a.qty,
       bonusReason:
-        distance === null
+        fulfillment === "delivery" ? "Giao tận nơi không áp thưởng tự nhận" : quoteDistance === null
           ? "Không xác định được tuyến; dùng voucher gốc"
           : "Ước lượng tuyến đi bộ; không chứng minh đã đi bộ",
     };
@@ -465,6 +488,16 @@ export function act(
       q && q.state === "held" && q.expires > now,
       "Báo giá hết hạn hoặc đã sử dụng",
     );
+    let delivery: Order["delivery"];
+    if(q.fulfillment==="delivery"){
+      requireThat(a.delivery && typeof a.delivery==="object","Cần thông tin nhận hàng");
+      requireThat(["recipient","phone","address"].every(k=>typeof a.delivery[k]==="string"),"Thông tin nhận hàng phải là văn bản");
+      const recipient=String(a.delivery.recipient||"").trim(),phone=String(a.delivery.phone||"").replace(/[\s-]/g,""),address=String(a.delivery.address||"").trim();
+      requireThat(recipient.length>=2&&recipient.length<=100&&!/[\x00-\x1f]/.test(recipient),"Tên người nhận từ 2–100 ký tự");
+      requireThat(/^(0\d{9}|\+84\d{9})$/.test(phone),"Số điện thoại nhận hàng không hợp lệ");
+      requireThat(address.length>=10&&address.length<=250&&!/[\x00-\x1f]/.test(address),"Nhập địa chỉ nhận đầy đủ tại Hà Nội, từ 10–250 ký tự");
+      delivery={recipient,phone,address,revision:0};
+    }
     q.state = "ordered";
     const l = s.listings.find((l) => l.id === q.listingId)!;
     const o: Order = {
@@ -472,11 +505,42 @@ export function act(
       userId: u.id,
       quoteId: q.id,
       shopId: l.shopId,
-      status: "awaiting_payment",
+      fulfillment: q.fulfillment || "pickup",
+      delivery,
+      status: delivery ? "awaiting_delivery_fee" : "awaiting_payment",
       created: now,
     };
     s.orders.push(o);
     result = { id: o.id };
+  } else if(action==="delivery_fee") {
+    ops();const o=s.orders.find(o=>o.id===a.orderId),q=o&&s.quotes.find(q=>q.id===o.quoteId);
+    requireThat(o?.delivery&&o.status==="awaiting_delivery_fee"&&q&&q.expires>now,"Đơn không còn chờ phí giao hàng");
+    requireThat(Number.isSafeInteger(a.fee)&&a.fee>=0&&a.fee<=1000000,"Phí giao phải là số nguyên từ 0 đến 1.000.000đ");
+    o.delivery.fee=a.fee;o.delivery.revision++;
+  } else if(action==="accept_delivery_fee") {
+    const o=s.orders.find(o=>o.id===a.orderId&&o.userId===u.id),q=o&&s.quotes.find(q=>q.id===o.quoteId);
+    requireThat(u.role==="student"&&o?.delivery&&o.status==="awaiting_delivery_fee"&&q&&q.expires>now,"Đơn không còn chờ xác nhận phí");
+    requireThat(o.delivery.fee!==undefined&&a.revision===o.delivery.revision,"Phí giao đã đổi hoặc chưa được báo. Hãy kiểm tra lại");
+    o.delivery.acceptedAt=now;o.status="awaiting_payment";
+  } else if(action==="decline_delivery_fee") {
+    const o=s.orders.find(o=>o.id===a.orderId&&o.userId===u.id);
+    requireThat(u.role==="student"&&o?.delivery&&o.status==="awaiting_delivery_fee","Không thể từ chối phí của đơn này");
+    const q=s.quotes.find(q=>q.id===o.quoteId)!;
+    o.status="cancelled";if(q.state!=="released"){s.listings.find(l=>l.id===q.listingId)!.stock+=q.qty;q.state="released";}
+    const voucher=s.vouchers.find(v=>v.id===q.voucherId)!;voucher.state="available";delete voucher.quoteId;
+  } else if(action==="delivery_complete") {
+    ops();const o=s.orders.find(o=>o.id===a.orderId);
+    requireThat(o?.delivery&&o.status==="out_for_delivery","Đơn chưa được bàn giao hoặc đã hoàn tất");
+    requireThat(typeof a.confirmation==="string"&&a.confirmation.trim().length>=3&&a.confirmation.length<=250,"Ghi căn cứ xác nhận khách đã nhận hàng");
+    o.delivery.completedAt=now;o.delivery.confirmation=a.confirmation.trim();o.status="delivered";
+  } else if(action==="delivery_cost") {
+    ops();const o=s.orders.find(o=>o.id===a.orderId);
+    requireThat(o?.delivery&&s.payments.some(p=>p.orderId===o.id&&p.valid),"Chỉ ghi chi phí giao cho đơn đã xác nhận tiền");
+    requireThat(Number.isSafeInteger(a.amount)&&a.amount>=0&&a.amount<=1000000,"Chi phí giao không hợp lệ");
+    requireThat(typeof a.reference==="string"&&a.reference.trim().length>=3&&a.reference.length<=128,"Cần chứng từ chi phí giao hàng");
+    const costs=s.deliveryCosts||[];
+    requireThat(!costs.some(c=>c.orderId===o.id||c.reference===a.reference.trim()) && !s.refunds.some(r=>r.reference===a.reference.trim()) && !s.settlements.some(t=>t.reference===a.reference.trim()),"Chi phí đơn hoặc chứng từ đã ghi nhận");
+    s.deliveryCosts=[...costs,{id:randomUUID(),orderId:o.id,amount:a.amount,reference:a.reference.trim(),at:now}];
   } else if (action === "payment") {
     ops();
     const o = s.orders.find((o) => o.id === a.orderId);
@@ -500,7 +564,7 @@ export function act(
       o.status === "awaiting_payment" &&
       q.expires > now &&
       a.receivedAt < q.expires &&
-      a.amount === q.price;
+      a.amount === orderTotal(s,o);
     s.payments.push({
       id: randomUUID(),
       orderId: o.id,
@@ -533,7 +597,7 @@ export function act(
       "Mã sai hoặc đã sử dụng",
     );
     requireThat(now >= l.start && now <= l.end, "Ngoài khung nhận hàng");
-    o.status = "picked_up";
+    o.status = o.fulfillment==="delivery" ? "out_for_delivery" : "picked_up";
     o.pickupAt = now;
     delete o.code;
   } else if (action === "cancel" || action === "no_show") {
@@ -544,22 +608,23 @@ export function act(
       l = s.listings.find((l) => l.id === q.listingId)!;
     requireThat(
       o.status === "paid" ||
-        (action === "cancel" && o.status === "awaiting_payment"),
+        (action === "cancel" && ["awaiting_payment","awaiting_delivery_fee","out_for_delivery"].includes(o.status)),
       "Đơn không thể hủy",
     );
-    if (action === "no_show") requireThat(now > l.end, "Chưa hết khung nhận");
-    if (o.status === "paid")
+    if (action === "no_show") requireThat(o.fulfillment!=="delivery" && now > l.end, "Chỉ đánh dấu no-show cho đơn tự nhận đã hết giờ");
+    if(o.status==="out_for_delivery")ops();
+    if (o.status === "paid" || o.status==="out_for_delivery")
       s.refunds.push({
         id: randomUUID(),
         orderId: o.id,
-        amount: q.price,
+        amount: orderTotal(s,o),
         reason: action === "cancel" ? "Quán hủy" : "No-show pilot",
         done: false,
       });
     o.status = action === "cancel" ? "cancelled" : "no_show";
     delete o.code;
     if (q.state !== "released") {
-      l.stock += q.qty;
+      if(o.pickupAt===undefined)l.stock += q.qty;
       q.state = "released";
     }
     const v = s.vouchers.find((v) => v.id === q.voucherId)!;
@@ -575,7 +640,8 @@ export function act(
       typeof a.reference === "string" &&
         a.reference.trim().length >= 3 &&
         !s.refunds.some((x) => x.reference === a.reference.trim()) &&
-        !s.settlements.some((x) => x.reference === a.reference.trim()),
+        !s.settlements.some((x) => x.reference === a.reference.trim()) &&
+        !(s.deliveryCosts||[]).some(x=>x.reference===a.reference.trim()),
       "Cần mã chuyển khoản hoàn riêng",
     );
     r.done = true;
@@ -590,7 +656,7 @@ export function act(
       .filter(
         (o) =>
           o.shopId === a.shopId &&
-          o.status === "picked_up" &&
+          shopFulfilled(o) &&
           !s.settlements.some((t) => t.orderIds.includes(o.id)),
       )
       .map((o) => o.id);
@@ -618,7 +684,8 @@ export function act(
       typeof a.reference === "string" &&
         a.reference.trim().length >= 3 &&
         !s.settlements.some((x) => x.reference === a.reference.trim()) &&
-        !s.refunds.some((x) => x.reference === a.reference.trim()),
+        !s.refunds.some((x) => x.reference === a.reference.trim()) &&
+        !(s.deliveryCosts||[]).some(x=>x.reference===a.reference.trim()),
       "Cần mã chuyển khoản trả quán riêng",
     );
     t.paid = true;
@@ -767,7 +834,7 @@ export function act(
     at: now,
     actor: u.id,
     action,
-    detail: action === "pickup" ? { orderId: a.orderId } : a,
+    detail: ["pickup","order","delivery_complete"].includes(action) ? { orderId: a.orderId ?? (result as any)?.id, quoteId: a.quoteId } : a,
   });
   return result;
 }
@@ -873,6 +940,7 @@ export function publicQuote(s: State, q: Quote) {
   const afterVoucher = Math.ceil(menuTotal * 0.95 * (1 - q.baseRate));
   return {
     id: q.id,
+    fulfillment: q.fulfillment || "pickup",
     listingId: q.listingId,
     qty: q.qty,
     voucherId: q.voucherId,

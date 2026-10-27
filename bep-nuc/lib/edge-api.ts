@@ -30,7 +30,7 @@ export function createEdgeHandler(deps: EdgeDependencies) {
       const parts = new URL(req.url).pathname.split("/").filter(Boolean);
       const route = parts[parts.length-1];
       const now = deps.now?.() ?? Date.now();
-      if (req.method === "GET" && route === "health") return response({ok:true});
+      if (req.method === "GET" && route === "health") return response({ok:true,deliveryFeeApproval:true});
       if (route === "geocode") {
         if (req.method !== "POST") return response({error:"Phương thức không hỗ trợ"},405);
         if (origin !== deps.config.origin) return response({error:"Origin không hợp lệ"},403);

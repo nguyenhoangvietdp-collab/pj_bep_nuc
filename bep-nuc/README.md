@@ -31,7 +31,7 @@ Bộ voucher cho mọi sinh viên đã duyệt được kích hoạt từ18:00 t
 
 ## Trải nghiệm mua bữa
 
-Trang `/` và `/shops/[id]` cho khách xem catalogue công khai. `/meals/[id]` mở chi tiết món, `/checkout` kiểm tra một loại món với 1–3 suất, `/orders` và `/orders/[id]` xem đơn riêng. Đăng nhập qua `/login`; quán và vận hành dùng `/internal`. Mô hình tự nhận tại quán, không giao hàng.
+Trang `/` và `/shops/[id]` cho khách xem catalogue công khai. `/meals/[id]` mở chi tiết món, `/checkout` kiểm tra một loại món với 1–3 suất, `/orders` và `/orders/[id]` xem đơn riêng. Đăng nhập qua `/login`; quán và vận hành dùng `/internal`. Khách chọn tự nhận tại quán hoặc giao tận nơi do đội Bếp Núc điều phối. Đơn giao cần ops báo phí và khách đồng ý tổng tiền trước khi thanh toán; không áp thưởng tự nhận. Xem `docs/manual-delivery.md` để vận hành, đối soát và triển khai đúng thứ tự.
 
 `GET /api/catalogue` không yêu cầu đăng nhập và không trả điều khoản tài chính riêng. API tài khoản trả báo giá đang giữ; `release_quote` chỉ bỏ báo giá chưa tạo đơn thuộc người dùng hiện tại. Nháp không giữ tồn. Ảnh tùy chọn là tài nguyên `/food-images/` trong website.
 

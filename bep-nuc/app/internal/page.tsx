@@ -10,6 +10,9 @@ const labels: Record<string, string> = {
   reserved: "Đang giữ",
   used: "Đã dùng",
   awaiting_payment: "Chờ xác nhận tiền",
+  awaiting_delivery_fee: "Chờ báo / đồng ý phí giao",
+  out_for_delivery: "Đang giao tận nơi",
+  delivered: "Khách đã nhận tận nơi",
   paid: "Đã nhận tiền · chờ lấy",
   picked_up: "Đã giao",
   expired: "Hết giữ hàng",
@@ -21,6 +24,9 @@ const labels: Record<string, string> = {
   merchantPaid: "Đã trả quán",
   merchantDue: "Còn phải trả quán",
   contribution: "Contribution sau chi phí biến đổi",
+  deliveryFeesCollected: "Phí giao đã thu",
+  deliveryCostPaid: "Chi phí giao đã chi",
+  deliveryCostsUnconfirmed: "Đơn chưa ghi chi phí giao",
   cash: "Tiền mặt còn giữ",
   unallocated: "Chưa phân bổ (không phải lợi nhuận)",
   name: "Tên món",
@@ -413,6 +419,11 @@ export default function Page() {
                 </p>
               </>
             )}
+            <p>{o.fulfillment==="delivery"?"Giao tận nơi":"Tự đến lấy"}</p>
+            {role==="ops" && o.delivery && <div className="delivery-contact"><p>{o.delivery.recipient} · {o.delivery.phone}</p><p>{o.delivery.address}</p><p>Tiền món {money(o.foodTotal)} · Phí giao {o.deliveryFee===undefined?"chưa báo":money(o.deliveryFee)}{o.delivery.acceptedAt!==undefined?" · Khách đã đồng ý":" · Chưa đồng ý phí"}</p></div>}
+            {role==="ops" && o.status==="awaiting_delivery_fee" && <form onSubmit={e=>{e.preventDefault();action("delivery_fee",{orderId:o.id,fee:Number(new FormData(e.currentTarget).get("fee"))});}}><label>Phí giao báo khách (đ)<input name="fee" type="number" min="0" max="1000000" step="1" defaultValue={o.deliveryFee??""} required/></label><p>Hạn giữ {time(o.expires)}; phí mới cần khách đồng ý trước khi chuyển khoản.</p><button disabled={busy}>Báo phí và chờ khách xác nhận</button></form>}
+            {role==="ops" && o.status==="out_for_delivery" && <form onSubmit={e=>{e.preventDefault();action("delivery_complete",{orderId:o.id,confirmation:String(new FormData(e.currentTarget).get("confirmation"))});}}><label>Căn cứ xác nhận khách nhận hàng<input name="confirmation" minLength={3} maxLength={250} placeholder="Ví dụ: khách xác nhận đã nhận qua điện thoại" required/></label><button disabled={busy}>Xác nhận khách đã nhận hàng</button></form>}
+            {role==="ops" && o.fulfillment==="delivery" && data.payments?.some((p:any)=>p.orderId===o.id&&p.valid) && !data.deliveryCosts?.some((c:any)=>c.orderId===o.id) && <form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);action("delivery_cost",{orderId:o.id,amount:Number(f.get("amount")),reference:String(f.get("reference"))});}}><h4>Chi phí người giao đã thực trả</h4><label>Số tiền (đ)<input name="amount" type="number" min="0" max="1000000" step="1" required/></label><label>Mã chứng từ / xác nhận chi<input name="reference" minLength={3} maxLength={128} required/></label><button disabled={busy}>Ghi nhận khoản đã chi</button></form>}
             {o.code && (
               <>
                 <p>Mã nhận dùng một lần — chỉ đưa cho quán:</p>
@@ -420,7 +431,7 @@ export default function Page() {
               </>
             )}
             {role === "ops" && (
-              <form
+              <details open={o.status==="awaiting_payment"}><summary>Ghi nhận chuyển khoản đã thực thu</summary><form
                 onSubmit={(e) => {
                   e.preventDefault();
                   const f = new FormData(e.currentTarget);
@@ -454,7 +465,7 @@ export default function Page() {
                   required
                 />
                 <button disabled={busy}>Ghi nhận tiền thực thu</button>
-              </form>
+              </form></details>
             )}
             {role !== "student" && o.status === "paid" && (
               <form
@@ -467,11 +478,11 @@ export default function Page() {
                 }}
               >
                 <input name="code" placeholder="Mã nhận từ khách" required />
-                <button disabled={busy}>Xác nhận đã giao</button>
+                <button disabled={busy}>{o.fulfillment==="delivery"?"Xác nhận quán bàn giao cho người giao":"Xác nhận đã giao"}</button>
               </form>
             )}
             {role !== "student" &&
-              ["paid", "awaiting_payment"].includes(o.status) && (
+              (["paid", "awaiting_payment","awaiting_delivery_fee"].includes(o.status) || role==="ops"&&o.status==="out_for_delivery") && (
                 <button
                   className="secondary"
                   onClick={() => action("cancel", { orderId: o.id })}
@@ -479,7 +490,7 @@ export default function Page() {
                   Quán hủy
                 </button>
               )}
-            {role !== "student" && o.status === "paid" && (
+            {role !== "student" && o.status === "paid" && o.fulfillment!=="delivery" && (
               <button
                 className="secondary"
                 onClick={() => action("no_show", { orderId: o.id })}
@@ -497,8 +508,8 @@ export default function Page() {
             <div className="grid">
               {Object.entries(data.ledger).map(([k, v]) => (
                 <div key={k}>
-                  {labels[k] || k}
-                  <strong>{money(Number(v))}</strong>
+                  {k==="contribution"&&data.ledger.deliveryCostsUnconfirmed?"Contribution tạm tính — còn thiếu chi phí giao":labels[k] || k}
+                  <strong>{k==="deliveryCostsUnconfirmed"?`${v} đơn`:money(Number(v))}</strong>
                 </div>
               ))}
             </div>
