@@ -429,7 +429,7 @@ export function act(
     );
     const l = s.listings.find((l) => l.id === a.listingId);
     requireThat(
-      l && s.shops.find((x) => x.id === l.shopId)?.approved && now < l.end,
+      l && s.shops.some(x=>x.id===l.shopId && x.approved && (!policy.production || !x.mock)) && now < l.end,
       "Món không còn nhận đơn",
     );
     const v = s.vouchers.find(

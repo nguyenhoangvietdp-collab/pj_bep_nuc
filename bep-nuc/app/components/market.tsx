@@ -6,7 +6,7 @@ import { SiteHeader, SiteFooter } from "./site-frame";
 import { useAppRouter as useRouter } from "./navigation";
 import { apiFetch, googleLogin } from "../../lib/mvp-client";
 import { isCloudMvp, readAppLocation, replaceAppUrl } from "../../lib/app-navigation";
-import { launchPartner, filterLaunchMenu } from "../../lib/launch-menu";
+import { filterLaunchMenu, menuShops } from "../../lib/launch-menu";
 import Offers from "./offers";
 import FulfillmentChoice from "./fulfillment-choice";
 import {
@@ -450,8 +450,9 @@ export default function Market({ view, id }: { view: string; id?: string }) {
         vouchers,
       )
     : [];
-  const upcoming = isCloudMvp && view === "browse" && !shopFilter && !receiving
-    ? filterLaunchMenu(query, category, budget, sort).filter(p => !catalog?.listings.some(l => l.image === p.image))
+  const browseShops = [...(catalog?.shops || []), ...(isCloudMvp ? menuShops.filter(p=>!catalog?.shops.some(s=>s.id===p.id)) : [])];
+  const upcoming = isCloudMvp && view === "browse" && !receiving
+    ? filterLaunchMenu(query, category, budget, sort).filter(p => (!shopFilter || p.shop.id===shopFilter) && !catalog?.listings.some(l => l.image === p.image))
     : [];
   function foodDetails(l: Food, n: number, change: (n: number) => void) {
     const Heading = view === "meal" ? "h1" : "h2";
@@ -590,7 +591,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                     {query && <button className="secondary" onClick={() => setQuery("")}>Từ khóa: {query} ×</button>}
                     {!!budget && <button className="secondary" onClick={() => setBudget(0)}>Đến {money(budget)} / suất ×</button>}
                     {category && <button className="secondary" onClick={() => setCategory("")}>{category} ×</button>}
-                    {shopFilter && view === "browse" && <button className="secondary" onClick={() => setShopFilter("")}>{catalog.shops.find(s => s.id === shopFilter)?.name || "Quán đã chọn"} ×</button>}
+                    {shopFilter && view === "browse" && <button className="secondary" onClick={() => setShopFilter("")}>{browseShops.find(s => s.id === shopFilter)?.name || "Quán đã chọn"} ×</button>}
                     {receiving && <button className="secondary" onClick={() => setReceiving(false)}>Đang nhận ×</button>}
                     {!stockOnly && <button className="secondary" onClick={() => setStockOnly(true)}>Hiện cả hết suất ×</button>}
                     {sort === "price" && <button className="secondary" onClick={() => setSort("end")}>Giá tăng dần ×</button>}
@@ -641,12 +642,12 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                 </section>
                 {!!upcoming.length && (
                   <section className="menu-preview" aria-labelledby="menu-preview-title">
-                    <header><h2 id="menu-preview-title">Thực đơn {launchPartner.name}</h2><p>{launchPartner.address} · Quán chưa mở suất cho những món dưới đây.</p></header>
+                    <header><h2 id="menu-preview-title">Thực đơn giới thiệu</h2><p>Ba cửa hàng mô phỏng được ghi rõ trên từng món và không nhận đơn hoặc tiền thật. Các món còn lại chờ quán mở suất.</p></header>
                     <ul className="menu-preview-grid">
                       {upcoming.map(p => (
                         <li key={p.image}>
                           <img src={p.image} alt={p.name} width="600" height="450" loading="lazy"/>
-                          <div className="menu-preview-info"><h3>{p.name}</h3><p className="menu-preview-price">{money(p.referencePrice)} <span>giá menu / suất</span></p><p>{launchPartner.address}</p><p className="fine">Chưa nhận đơn · Chưa áp voucher</p></div>
+                          <div className="menu-preview-info"><h3>{p.name}</h3><p className="menu-preview-price">{money(p.referencePrice)} <span>{p.shop.mock ? "giá mô phỏng / suất" : "giá menu / suất"}</span></p><p><b>{p.shop.name}</b><br/>{p.shop.address}</p><p className="fine">{p.shop.mock ? "Cửa hàng mô phỏng · Không nhận đơn thật" : "Chưa nhận đơn · Chưa áp voucher"}</p></div>
                         </li>
                       ))}
                     </ul>
@@ -659,19 +660,19 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                   <div className="drawer-fields">{filterFields(mobileFilters, setMobileFilters, "mobile")}</div>
                   <footer><button className="secondary" onClick={() => setMobileFilters(defaultFilters)}>Xóa bộ lọc</button><button onClick={() => { applyFilters(mobileFilters); filterDialog.current?.close(); filterOpener.current?.focus(); }}>Áp dụng bộ lọc</button></footer>
                 </dialog>
-                {view === "browse" && !!catalog.shops.length && (
+                {view === "browse" && !!browseShops.length && (
                   <section className="shop-list">
                     <h2>Khám phá các quán</h2>
                     <div>
-                      {catalog.shops.map((s) => (
+                      {browseShops.map((s) => (
                         <Link
                           className="shop-card"
-                          href={`/shops/${s.id}`}
+                          href={catalog.shops.some(p=>p.id===s.id) ? `/shops/${s.id}` : `/meals?shop=${s.id}`}
                           key={s.id}
                         >
                           <h3>{s.name}</h3>
                           <p>{s.address}</p>
-                          <span>Xem món & giờ nhận</span>
+                          <span>{"mock" in s && s.mock ? "Cửa hàng mô phỏng · Xem thực đơn" : "Xem thực đơn"}</span>
                         </Link>
                       ))}
                     </div>

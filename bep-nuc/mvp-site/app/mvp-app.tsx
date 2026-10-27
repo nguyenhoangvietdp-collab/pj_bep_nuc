@@ -29,7 +29,7 @@ export default function MvpApp(){
  if(!ready)return <div className="site-frame commerce"><SiteHeader/><main id="content" tabIndex={-1}><LoadingScreen/></main><SiteFooter/></div>;
  const match=route.pathname.match(/^\/(meals|shops|orders)\/([A-Za-z0-9_-]+)$/);
  const view=match?(match[1]==="meals"?"meal":match[1]==="shops"?"shop":"order"):({"/meals":"browse","/offers":"offers","/orders":"orders","/checkout":"checkout","/login":"login"} as Record<string,string>)[route.pathname];
- const key=route.pathname+(route.pathname==="/offers"?route.search:"")+":"+user;
+ const key=route.pathname+route.search+":"+user;
  if(mvpConfigured()&&route.pathname==="/internal")return <Internal key={key}/>;
  if(mvpConfigured()&&view)return <>{authError&&<p className="error" role="alert">{authError}</p>}<Market key={key} view={view} id={match?.[2]}/></>;
  return <CustomerHome configured={mvpConfigured()} authError={authError} authenticated={user!=="guest"}/>;
