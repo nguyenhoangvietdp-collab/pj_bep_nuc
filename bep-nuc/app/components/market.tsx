@@ -6,6 +6,7 @@ import { SiteHeader, SiteFooter } from "./site-frame";
 import { useAppRouter as useRouter } from "./navigation";
 import { apiFetch, googleLogin } from "../../lib/mvp-client";
 import { isCloudMvp, readAppLocation, replaceAppUrl } from "../../lib/app-navigation";
+import { filterMenuAssets } from "../../lib/product-assets";
 import {
   estimate,
   percent,
@@ -436,6 +437,9 @@ export default function Market({ view, id }: { view: string; id?: string }) {
         vouchers,
       )
     : [];
+  const upcoming = isCloudMvp && view === "browse" && !shopFilter && !receiving
+    ? filterMenuAssets(query, category, budget, sort).filter(p => !catalog?.listings.some(l => l.image === p.image))
+    : [];
   function foodDetails(l: Food, n: number, change: (n: number) => void) {
     const s = catalog?.shops.find((s) => s.id === l.shopId);
     const displayed = displayPrice(l, vouchers, now);
@@ -622,6 +626,19 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                     </article>
                   ); })}
                 </section>
+                {!!upcoming.length && (
+                  <section className="menu-preview" aria-labelledby="menu-preview-title">
+                    <header><h2 id="menu-preview-title">Các món đang chuẩn bị · {upcoming.length} món</h2><p>Ảnh và giá tham khảo do đội Bếp Núc cung cấp. Chưa mở bán; quán, khẩu phần và giờ nhận đang chờ xác nhận. Chưa áp voucher.</p></header>
+                    <ul className="menu-preview-grid">
+                      {upcoming.map(p => (
+                        <li key={p.image}>
+                          <img src={p.image} alt={p.name} width="600" height="450" loading="lazy"/>
+                          <div className="menu-preview-info"><span className="menu-preview-status">Chưa mở bán</span><h3>{p.name}</h3><p>{p.area} · Khu vực dự kiến</p><p className="menu-preview-price">{money(p.referencePrice)} <span>giá tham khảo</span></p></div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
                   </section>
                 </div>
                 <dialog className="filter-drawer" ref={filterDialog} aria-labelledby="filter-title" onCancel={() => filterOpener.current?.focus()}>

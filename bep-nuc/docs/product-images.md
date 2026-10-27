@@ -1,5 +1,11 @@
 # Ảnh món từ đội Bếp Núc — 26/10/2026
 
+## MVP — cập nhật 27/10/2026
+
+Đối chiếu lại thư mục Drive: đủ 14 ảnh, khớp bảng nguồn bên dưới. Catalogue MVP hiển thị toàn bộ trong nhóm “Các món đang chuẩn bị”, với tên, khu vực và giá tham khảo từ tên file. Không tạo quán, tồn kho, giờ nhận hoặc giá đối soát từ ảnh. Tìm kiếm, loại món, ngân sách và sắp xếp áp dụng trên giá tham khảo của nhóm này; bộ lọc quán/đang nhận chỉ hiển thị lô bán thật. Món chuẩn bị không có nút đặt hàng và không được tính voucher. Khi đã có listing thật dùng cùng ảnh, ẩn bản chuẩn bị để tránh trùng. Giữ nguyên nguồn và SHA-256 của các JPEG đã tải.
+
+Phần mô tả demo phía dưới là lịch sử trước khi chuyển sang MVP; trang GitHub Pages hiện chỉ giới thiệu.
+
 Nguồn: https://drive.google.com/drive/folders/1nHmOgV3W11EQLpEQ8V6h8TL18mQ-4_PQ . 14 Google Pics được xuất bằng nút Xuất → Kích thước ban đầu trong giao diện Google; không sửa ảnh gốc, không tăng độ phân giải, không thay quyền chia sẻ. Bản JPEG phục vụ từ website, không hotlink vào Drive và không yêu cầu khách đăng nhập Google. Tổng dung lượng 1.171.985 byte (~1,12 MiB).
 
 Bảng ghép và SHA-256: `product-image-sources.csv`. Tên món, khu vực và giá tham khảo lấy từ tên file; sửa cách viết “Nôm sứa” thành “Nộm sứa” ở nhãn giao diện, vẫn giữ nguyên tên nguồn trong CSV. Không suy luận khẩu phần, thành phần, dị ứng, chất lượng hoặc tính xác thực của ảnh từ hình nhìn thấy. Không xóa watermark hoặc dấu hiệu có sẵn trong ảnh.

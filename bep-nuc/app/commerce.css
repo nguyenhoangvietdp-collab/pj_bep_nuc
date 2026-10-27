@@ -1049,3 +1049,17 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
   .commerce .meal-detail { gap: 16px; }
   .commerce .meal-purchase { margin-top: 12px; padding: 14px; }
 }
+/* Team menu photos stay separate from purchasable lots. */
+.commerce .menu-preview { margin-top: 32px; padding-top: 24px; border-top: 1px solid #dce3dd; }
+.commerce .menu-preview header { margin-bottom: 20px; }
+.commerce .menu-preview header p { max-width: 70ch; color: #526358; line-height: 1.5; }
+.commerce .menu-preview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; list-style: none; padding: 0; margin: 0; }
+.commerce .menu-preview-grid li { min-width: 0; border: 1px solid #dce3dd; background: #fff; }
+.commerce .menu-preview-grid img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; }
+.commerce .menu-preview-info { padding: 16px; }
+.commerce .menu-preview-info h3 { font-size: 20px; margin: 12px 0 8px; }
+.commerce .menu-preview-info p { margin: 8px 0; }
+.commerce .menu-preview-status { font-size: 14px; color: #526358; }
+.commerce .menu-preview-price { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.commerce .menu-preview-price span { display: block; font-size: 14px; font-weight: 400; color: #526358; }
+@media (max-width: 599px) { .commerce .menu-preview-grid { grid-template-columns: minmax(0, 1fr); } }
