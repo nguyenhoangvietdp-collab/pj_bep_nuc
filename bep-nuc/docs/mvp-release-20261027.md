@@ -11,6 +11,7 @@
 ## Những thay đổi dùng thật
 
 - Bỏ bộ tính ưu đãi theo điểm nhận giả định và giá không áp trần quán.
+- Bản Cloudflare hiện chưa áp thưởng di chuyển; trang ưu đãi thông báo rõ điều này, không dùng điểm giả định để hứa giảm giá.
 - Trang ưu đãi dùng lô hàng thật, voucher khả dụng của tài khoản và giá hiển thị chung với catalogue. Báo giá backend vẫn là căn cứ chuyển khoản.
 - Ảnh chưa gắn với lô mở bán được trình bày là ảnh giới thiệu, không có nút mua hoặc giá ưu đãi có thể gây nhầm lẫn.
 - Lô mới mặc định đối soát 90/10. Hợp đồng khoản cố định cũ vẫn được hỗ trợ; báo giá cũ không bị tính lại.

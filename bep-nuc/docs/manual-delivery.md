@@ -2,7 +2,9 @@
 
 ## Luồng và chính sách
 
-Khách chọn Tự đến lấy hoặc Giao tận nơi tại Ưu đãi/checkout. Giao tận nơi chỉ áp giảm nền + một voucher trên tiền món; không có thưởng di chuyển, không giảm trên phí giao. Bộ tính ưu đãi vẫn mô phỏng bằng ảnh và điểm giả định, không phải nơi tạo đơn. Đơn thật cần listing/quán thật, tài khoản được duyệt và mọi gate pilot hiện có.
+Khách chọn Tự đến lấy hoặc Giao tận nơi tại Ưu đãi/checkout. Giao tận nơi chỉ áp giảm nền + một voucher trên tiền món; không có thưởng di chuyển, không giảm trên phí giao. Trang ưu đãi dùng listing thật và voucher khả dụng; bộ tính theo điểm giả định đã được bỏ. Đơn thật cần listing/quán thật, tài khoản được duyệt và mọi gate pilot hiện có.
+
+Lô mới mặc định chia quán 90% / Bếp Núc 10% trên tiền món sau ưu đãi, không gồm phí giao. Phần 10% là doanh thu giữ lại trước chi phí, chưa phải lợi nhuận. Khoản trả quán được chốt trong quote. Lô cũ dùng khoản cố định tiếp tục giữ cách tính cũ. Chi tiết tại [bản cập nhật MVP](mvp-release-20261027.md).
 
 Quote ghi fulfillment (pickup mặc định cho dữ liệu cũ); food price/floor/cost/margin vẫn độc lập với giao hàng. Đơn giao yêu cầu tên người nhận, số điện thoại Việt Nam và địa chỉ đầy đủ. Trạng thái: awaiting_delivery_fee → awaiting_payment → paid → out_for_delivery → delivered. Phí do ops báo, mỗi lần sửa tăng revision; khách phải đồng ý đúng revision trước khi có hướng dẫn chuyển khoản. Không tự dùng fee từ client, không tự coi phí chưa biết là 0đ, không bật nhận tiền tự động.
 
