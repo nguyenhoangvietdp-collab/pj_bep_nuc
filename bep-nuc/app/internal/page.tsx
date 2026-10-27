@@ -457,11 +457,13 @@ export default function Page() {
                 <input
                   name="at"
                   type="datetime-local"
+                  step="0.001"
+                  aria-label="Thời điểm tiền thực vào ngân hàng"
                   defaultValue={new Date(
                     data.now - new Date().getTimezoneOffset() * 60000,
                   )
                     .toISOString()
-                    .slice(0, 16)}
+                    .slice(0, 23)}
                   required
                 />
                 <button disabled={busy}>Ghi nhận tiền thực thu</button>
