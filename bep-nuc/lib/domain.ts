@@ -11,8 +11,8 @@ export type Shop = {
   id: string;
   name: string;
   address: string;
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
   approved: boolean;
   mock: boolean;
   signed: boolean;
@@ -25,6 +25,7 @@ export type Listing = {
   name: string;
   price: number;
   floor: number;
+  payoutShare?: 0.9;
   cost: number;
   margin: number;
   stock: number;
@@ -175,8 +176,9 @@ export function price(
     Number.isInteger(qty) && qty >= 1 && qty <= 3,
     "Số lượng phải từ 1 đến 3",
   );
+  requireThat(l.payoutShare === undefined || l.payoutShare === 0.9, "Tỷ lệ thực nhận không hợp lệ");
   const p = l.price * qty,
-    minimum = (l.floor + l.cost + l.margin) * qty,
+    minimum = l.payoutShare === 0.9 ? (l.cost + l.margin) * qty * 10 : (l.floor + l.cost + l.margin) * qty,
     maxRate = 1 - minimum / (0.95 * p);
   requireThat(
     base <= maxRate + 1e-10,
@@ -186,9 +188,10 @@ export function price(
     base + Math.min(Math.max(distance ?? 0, 0), 2) * 0.08,
     maxRate,
   );
+  const total = Math.max(minimum, Math.ceil(0.95 * p * (1 - rate)));
   return {
-    price: Math.max(minimum, Math.ceil(0.95 * p * (1 - rate))),
-    payout: l.floor * qty,
+    price: total,
+    payout: l.payoutShare === 0.9 ? total - Math.floor(total / 10) : l.floor * qty,
     cost: l.cost * qty,
     margin: l.margin * qty,
     rate,
@@ -713,10 +716,8 @@ export function act(
       typeof a.name === "string" &&
         a.name.length > 1 &&
         typeof a.address === "string" &&
-        Number.isFinite(a.lat) &&
-        Math.abs(a.lat) <= 90 &&
-        Number.isFinite(a.lng) &&
-        Math.abs(a.lng) <= 180,
+        ((a.lat === null && a.lng === null) ||
+          (Number.isFinite(a.lat) && Math.abs(a.lat) <= 90 && Number.isFinite(a.lng) && Math.abs(a.lng) <= 180)),
       "Thông tin quán không hợp lệ",
     );
     const partner: Shop = {
@@ -801,6 +802,8 @@ export function act(
     );
     for (const k of ["price", "floor", "cost", "margin", "stock"])
       requireThat(Number.isSafeInteger(a[k]) && a[k] >= 0, `Sai ${k}`);
+    requireThat(a.payoutShare === undefined || a.payoutShare === 0.9, "Tỷ lệ thực nhận không hợp lệ");
+    requireThat(a.payoutShare !== 0.9 || a.floor === 0, "Chia doanh thu không dùng khoản thực nhận cố định");
     requireThat(
       a.price > 0 &&
         Number.isFinite(a.start) &&
@@ -817,6 +820,7 @@ export function act(
       name: a.name.slice(0, 100),
       price: a.price,
       floor: a.floor,
+      payoutShare: a.payoutShare,
       cost: a.cost,
       margin: a.margin,
       stock: a.stock,

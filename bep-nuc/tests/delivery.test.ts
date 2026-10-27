@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { act, demoState, expire, issue, ledger, view } from "../lib/domain";
-import { fulfillmentPreview } from "../lib/pickup-preview";
 const now=Date.parse("2026-10-27T18:30:00+07:00");
 const contact={recipient:"Người thử",phone:"0901234567",address:"Địa chỉ kiểm thử, Đống Đa, Hà Nội"};
 function setup(){const s=demoState(now);issue(s,s.users[0],now);const call=(role:string,action:string,args:any={},at=now,distance:number|null=null)=>act(s,s.users.find(u=>u.id===role)!,action,{key:crypto.randomUUID(),...args},at,distance) as any;const quote=()=>call("student","quote",{listingId:"meal",voucherId:s.vouchers.find(v=>v.rate===0.2)!.id,qty:1,fulfillment:"delivery"},now,2);const order=()=>{const q=quote(),o=call("student","order",{quoteId:q.id,delivery:contact});return {q,o};};return {s,call,quote,order};}
@@ -51,10 +50,6 @@ test("cancel after courier handoff refunds food plus accepted fee without restoc
  const f=setup(),{q,o}=f.order();f.call("ops","delivery_fee",{orderId:o.id,fee:10000});f.call("student","accept_delivery_fee",{orderId:o.id,revision:1});f.call("ops","payment",{orderId:o.id,reference:"PAY-CANCEL",amount:q.total+10000,receivedAt:now});f.call("merchant","pickup",{orderId:o.id,code:f.s.orders[0].code});const stock=f.s.listings[0].stock;
  assert.throws(()=>f.call("merchant","cancel",{orderId:o.id}),/vận hành/);f.call("ops","cancel",{orderId:o.id});assert.equal(f.s.refunds[0].amount,q.total+10000);assert.equal(f.s.listings[0].stock,stock);assert.equal(ledger(f.s).merchantDue,32500);assert.equal(ledger(f.s).contribution,-35500);
 });
-test("delivery preview never gets pickup bonus and never invents a shipping fee",()=>{
- const value=fulfillmentPreview(50000,0.2,{lat:22,lng:106},"delivery");assert.equal(value.bonusDiscount,0);assert.equal(value.indicativeTotal,38000);assert.equal(value.distanceKm,null);assert.ok(!("shippingFee" in value));
-});
-
 test("prepaid carrier cost remains visible when a paid delivery is cancelled before handoff",()=>{
  const f=setup(),{q,o}=f.order();
  assert.throws(()=>f.call("ops","delivery_cost",{orderId:o.id,amount:9000,reference:"PREPAID"}),/xác nhận tiền/);

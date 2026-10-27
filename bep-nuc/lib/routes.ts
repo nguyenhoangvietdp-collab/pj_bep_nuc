@@ -1,8 +1,9 @@
 export async function walking(
   origin: unknown,
-  destination: { lat: number; lng: number },
+  destination: { lat: number | null; lng: number | null },
 ): Promise<number | null> {
   if (
+    destination.lat === null || destination.lng === null ||
     !process.env.GOOGLE_ROUTES_API_KEY ||
     !origin ||
     typeof origin !== "object"

@@ -5,6 +5,17 @@ import { demoState, expire, issue, type State } from "../lib/domain";
 import { validatePublicConfig } from "../lib/public-config";
 import { safeAppPath } from "../lib/app-navigation";
 const now=Date.parse("2026-10-27T18:30:00+07:00");
+test("initial operator bootstrap requires verified configured email and cannot override an existing operator",async()=>{
+ const s=demoState(now); s.users=s.users.filter(u=>u.role!=="ops");
+ const handler=createEdgeHandler({config:{origin:"https://bep-nuc.pages.dev",policy:{production:true,pilotEnabled:false,bankReady:false},acceptingOrders:false,bootstrapOpsEmail:"owner@example.test"},authenticate:async token=>({id:token,email:token==="other"?"other@example.test":"owner@example.test",emailVerified:token!=="unverified"}),transaction:async fn=>fn(s),now:()=>now});
+ async function auth(token:string){const r=await handler(new Request("https://test/auth",{headers:{authorization:`Bearer ${token}`}}));return (await r.json()).user;}
+ assert.equal((await auth("unverified")).role,"student");
+ assert.equal((await auth("other")).role,"student");
+ assert.equal((await auth("owner")).role,"ops");
+ assert.equal((await auth("owner")).approved,true);
+ assert.equal((await auth("another-id")).role,"student");
+ assert.equal(s.audit.filter(a=>a.action==="bootstrap_ops").length,1);
+});
 function setup(overrides:Partial<EdgeConfig>={},geocode?:EdgeDependencies["geocode"],clock=()=>now){
  let state=demoState(now),queue=Promise.resolve();
  state.shops[0]={...state.shops[0],mock:false,signed:true,recurring:true};

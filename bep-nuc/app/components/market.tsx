@@ -6,8 +6,9 @@ import { SiteHeader, SiteFooter } from "./site-frame";
 import { useAppRouter as useRouter } from "./navigation";
 import { apiFetch, googleLogin } from "../../lib/mvp-client";
 import { isCloudMvp, readAppLocation, replaceAppUrl } from "../../lib/app-navigation";
-import { filterMenuAssets, menuDishId } from "../../lib/product-assets";
-import PickupPreview from "./pickup-preview";
+import { filterMenuAssets } from "../../lib/product-assets";
+import { launchPartner, launchMenuNames } from "../../lib/launch-menu";
+import Offers from "./offers";
 import FulfillmentChoice from "./fulfillment-choice";
 import {
   estimate,
@@ -451,7 +452,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
       )
     : [];
   const upcoming = isCloudMvp && view === "browse" && !shopFilter && !receiving
-    ? filterMenuAssets(query, category, budget, sort).filter(p => !catalog?.listings.some(l => l.image === p.image))
+    ? filterMenuAssets(query, category, budget, sort).filter(p => launchMenuNames.includes(p.name) && !catalog?.listings.some(l => l.image === p.image))
     : [];
   function foodDetails(l: Food, n: number, change: (n: number) => void) {
     const Heading = view === "meal" ? "h1" : "h2";
@@ -527,7 +528,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           </section>
         ) : (
           <>
-            {view === "offers" && <PickupPreview initialDishId={new URLSearchParams(readAppLocation().search).get("dish")} browseHref={browseHref}/>}
+            {view === "offers" && <Offers listings={catalog.listings} shops={catalog.shops} vouchers={vouchers} now={now} browseHref={browseHref}/>}
             {(view === "browse" || view === "shop") && (
               <>
                 {view === "browse" ? (
@@ -582,7 +583,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                   </aside>
                   <section className="catalogue-results" aria-label="Kết quả tìm món">
                     <div className="catalogue-toolbar">
-                      <div><h2>{query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : catalog.listings.length ? "Món đang bán" : "Thực đơn"}</h2><p role="status" aria-live="polite">{catalog.listings.length ? `${shown.length} món${stockOnly ? " còn suất" : ""}` : `${upcoming.length} món · Giá tham khảo`}</p></div>
+                      <div><h2>{query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : "Món đang bán"}</h2><p role="status" aria-live="polite">{shown.length} món{stockOnly ? " còn suất" : ""}</p></div>
                       <button className="secondary mobile-filter-toggle" ref={filterOpener} onClick={() => { setMobileFilters(currentFilters); filterDialog.current?.showModal(); }}>Bộ lọc{filterCount > 0 ? ` (${filterCount})` : ""}</button>
                       <label className="catalogue-sort"><span>Sắp xếp</span><select value={sort} onChange={e => setSort(e.target.value)}><option value="end">{catalog.listings.length ? "Giờ nhận kết thúc sớm" : "Thứ tự thực đơn"}</option><option value="price">Giá thấp đến cao</option></select></label>
                     </div>
@@ -641,12 +642,12 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                 </section>
                 {!!upcoming.length && (
                   <section className="menu-preview" aria-labelledby="menu-preview-title">
-                    <header>{!!catalog.listings.length && <h2 id="menu-preview-title">Thực đơn đang chuẩn bị · {upcoming.length} món</h2>}<p id={!catalog.listings.length ? "menu-preview-title" : undefined}>Giá tham khảo, chưa áp voucher.</p></header>
+                    <header><h2 id="menu-preview-title">Thực đơn {launchPartner.name}</h2><p>{launchPartner.address} · Quán chưa mở suất cho những món dưới đây.</p></header>
                     <ul className="menu-preview-grid">
                       {upcoming.map(p => (
                         <li key={p.image}>
                           <img src={p.image} alt={p.name} width="600" height="450" loading="lazy"/>
-                          <div className="menu-preview-info"><h3>{p.name}</h3><p>{p.area} · Khu vực dự kiến</p><p className="menu-preview-price">{money(p.referencePrice)} <span>giá tham khảo / suất</span></p><Link className="menu-offer-link" href={`/offers?dish=${menuDishId(p.image)}`}>Xem ưu đãi <span aria-hidden="true">↗</span></Link></div>
+                          <div className="menu-preview-info"><h3>{p.name}</h3><p className="menu-preview-price">{money(p.referencePrice)} <span>giá menu / suất</span></p><p>{launchPartner.address}</p><p className="fine">Chưa nhận đơn · Chưa áp voucher</p></div>
                         </li>
                       ))}
                     </ul>

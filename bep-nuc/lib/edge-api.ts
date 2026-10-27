@@ -1,7 +1,7 @@
 import { act, catalogue, issue, readiness, view, type State, type RuntimePolicy } from "./domain.ts";
 import { GeocodingError, type AddressCandidate } from "./geocoding.ts";
-export type VerifiedIdentity = { id: string; email?: string };
-export type EdgeConfig = { origin: string; policy: RuntimePolicy; bank?: { name: string; account: string; holder: string }; supportEmail?: string; acceptingOrders: boolean };
+export type VerifiedIdentity = { id: string; email?: string; emailVerified?: boolean };
+export type EdgeConfig = { origin: string; policy: RuntimePolicy; bank?: { name: string; account: string; holder: string }; supportEmail?: string; bootstrapOpsEmail?: string; acceptingOrders: boolean };
 export type EdgeDependencies = {
   config: EdgeConfig;
   authenticate: (token: string) => Promise<VerifiedIdentity | null>;
@@ -59,6 +59,10 @@ export function createEdgeHandler(deps: EdgeDependencies) {
       const user = await run(s => {
         let u=s.users.find(u=>u.id===identity.id);
         if (!u) { u={id:identity.id,name:(identity.email || "Sinh viên").slice(0,120),role:"student",approved:false}; s.users.push(u); }
+        if (identity.emailVerified && identity.email?.toLowerCase() === deps.config.bootstrapOpsEmail?.trim().toLowerCase() && !s.users.some(x=>x.role === "ops")) {
+          u.role="ops"; u.approved=true;
+          s.audit.push({id:crypto.randomUUID(),at:now,actor:u.id,action:"bootstrap_ops",detail:{userId:u.id}});
+        }
         return {...u};
       });
       if (req.method === "GET" && route === "auth") return response({user,supportEmail:deps.config.supportEmail});

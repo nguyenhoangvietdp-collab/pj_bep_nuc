@@ -1081,6 +1081,12 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 .commerce .offer-summary-content h2 { font-size: 24px; margin: 8px 0 12px; }
 .commerce .offer-status { font-size: 14px; font-weight: 500; color: var(--muted); }
 .commerce .offer-next { border-top: 1px solid var(--line); padding-top: 20px; margin-top: 20px; }
+.commerce .offer-live-meal { display: grid; gap: 20px; padding-block: 24px; border-top: 1px solid var(--line); }
+.commerce .offer-live-meal img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; }
+.commerce .offer-vouchers > div { flex: 1; padding: 16px; border: 1px solid var(--line); }
+.commerce .offer-vouchers > div b { font-size: 24px; }
+.commerce .offer-summary ol { padding-left: 22px; }
+.commerce .offer-summary li { margin-bottom: 16px; }
 .commerce .offer-result { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line); }
 .commerce .estimate-label { font-size: 14px; color: var(--muted); }
 .commerce .offer-total { font-size: 36px; line-height: 1.2; display: block; font-variant-numeric: tabular-nums; }

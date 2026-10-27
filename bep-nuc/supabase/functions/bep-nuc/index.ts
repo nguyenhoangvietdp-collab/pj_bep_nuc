@@ -11,8 +11,8 @@ const sql=postgres(connection,{max:1,prepare:false,idle_timeout:1,connect_timeou
 const bank={name:env("BANK_NAME") || "",account:env("BANK_ACCOUNT") || "",holder:env("BANK_HOLDER") || ""};
 Deno.serve(createEdgeHandler({
  geocode:address => photonGeocode(address),
- config:{origin,policy:{production:true,pilotEnabled:env("REAL_PILOT_ENABLED")==="true",bankReady:!!(bank.name&&bank.account&&bank.holder)},bank,supportEmail:env("SUPPORT_EMAIL"),acceptingOrders:env("ACCEPTING_ORDERS")!=="false"},
- authenticate:async token=>{const {data,error}=await auth.auth.getUser(token);return error||!data.user?null:{id:data.user.id,email:data.user.email};},
+ config:{origin,policy:{production:true,pilotEnabled:env("REAL_PILOT_ENABLED")==="true",bankReady:!!(bank.name&&bank.account&&bank.holder)},bank,supportEmail:env("SUPPORT_EMAIL"),bootstrapOpsEmail:env("BOOTSTRAP_OPS_EMAIL"),acceptingOrders:env("ACCEPTING_ORDERS")!=="false"},
+ authenticate:async token=>{const {data,error}=await auth.auth.getUser(token);return error||!data.user?null:{id:data.user.id,email:data.user.email,emailVerified:!!data.user.email_confirmed_at};},
  transaction:async fn=>{
    const outcome=await sql.begin(async tx=>{
      await tx`SELECT pg_advisory_xact_lock(32002026)`;

@@ -5,6 +5,8 @@ import { SiteFooter } from "../components/site-frame";
 import Link, { useAppRouter } from "../components/navigation";
 import { apiFetch, googleLogin } from "../../lib/mvp-client";
 import { isCloudMvp } from "../../lib/app-navigation";
+import { productAssets } from "../../lib/product-assets";
+import { launchPartner, launchMenuNames } from "../../lib/launch-menu";
 const labels: Record<string, string> = {
   available: "Chưa dùng",
   reserved: "Đang giữ",
@@ -346,7 +348,7 @@ export default function Page() {
             {data.listings.map((l: any) => (
               <section className="panel" key={l.id}>
                 <h3>{l.name}</h3>
-                <p>Khoản quán nhận: {money(l.floor)}/suất</p>
+                <p>Khoản quán nhận: {l.payoutShare === .9 ? "90% tiền món khách thực trả, không gồm phí giao" : `${money(l.floor)}/suất`}</p>
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -742,6 +744,7 @@ function RefForm({ submit }: { submit: (r: string) => unknown }) {
   );
 }
 function ListingForm({ shopId, submit }: any) {
+  const [revenueShare, setRevenueShare] = useState(true);
   return (
     <section className="panel">
       <h2>Đăng lô dư</h2>
@@ -754,11 +757,13 @@ function ListingForm({ shopId, submit }: any) {
             a[k] = f.get(k);
           for (const k of ["price", "floor", "cost", "margin", "stock"])
             a[k] = Number(f.get(k));
+          if (revenueShare) { a.payoutShare=.9; a.floor=0; }
           for (const k of ["start", "end"])
             a[k] = new Date(String(f.get(k))).getTime();
           submit(a);
         }}
       >
+        <label>Điền nhanh từ ảnh món có sẵn<select defaultValue="" onChange={e=>{const item=productAssets.find(p=>p.image===e.target.value),form=e.currentTarget.form;if(!item||!form)return;for(const [name,value] of Object.entries({name:item.name,price:item.referencePrice,image:item.image,category:item.category})){const field=form.elements.namedItem(name) as HTMLInputElement|HTMLSelectElement|null;if(field)field.value=String(value);}}}><option value="">Chọn món để điền tên, giá và ảnh</option>{productAssets.map(p=><option key={p.image} value={p.image}>{p.name} · {money(p.referencePrice)}</option>)}</select></label>
         {["name", "storage", "allergens"].map((k) => (
           <label key={k}>
             {labels[k]}
@@ -777,7 +782,9 @@ function ListingForm({ shopId, submit }: any) {
           Ảnh có sẵn trong website (tùy chọn)
           <input name="image" placeholder="/food-images/ten-mon.jpg" />
         </label>
-        {["price", "floor", "cost", "margin", "stock"].map((k) => (
+        <label>Cách đối soát<select value={revenueShare ? "share" : "fixed"} onChange={e=>setRevenueShare(e.target.value==="share")}><option value="share">Quán 90% / Bếp Núc 10% tiền món thực thu</option><option value="fixed">Khoản cố định mỗi suất (hợp đồng cũ)</option></select></label>
+        <p>Phí giao không chia cho quán. Phần 10% còn lại phải đủ chi phí và biên tối thiểu bạn nhập.</p>
+        {["price", ...(!revenueShare ? ["floor"] : []), "cost", "margin", "stock"].map((k) => (
           <label key={k}>
             {labels[k]}
             <input name={k} type="number" min="0" required />
@@ -805,6 +812,8 @@ function OperationsForms({ data, submit }: any) {
       {data.partners.map((p: any) => (
         <section className="panel" key={p.id}>
           <b>{p.name}</b>
+          <p>{p.address}</p>
+          {p.id===launchPartner.id && <p>Thực đơn đã chọn: {productAssets.filter(item=>launchMenuNames.includes(item.name)).map(item=>`${item.name} ${money(item.referencePrice)}`).join(" · ")}. Điền số suất và giờ nhận thực tế khi đăng lô.</p>}
           <p>
             {p.id} · {p.mock ? "Dữ liệu giả" : "Quán thật"} · ký:{" "}
             {String(p.signed)} · nguồn dư lặp lại: {String(p.recurring)}
@@ -823,6 +832,7 @@ function OperationsForms({ data, submit }: any) {
               Đã xác minh hồ sơ, duyệt đối tác
             </button>
           )}
+          {!p.mock && <details><summary>Đăng món cho quán này</summary><ListingForm shopId={p.id} submit={(args:any)=>submit("listing",args)}/></details>}
         </section>
       ))}
       <section className="panel">
@@ -833,8 +843,8 @@ function OperationsForms({ data, submit }: any) {
             submit("partner", {
               name: f.get("name"),
               address: f.get("address"),
-              lat: Number(f.get("lat")),
-              lng: Number(f.get("lng")),
+              lat: String(f.get("lat")).trim() ? Number(f.get("lat")) : null,
+              lng: String(f.get("lng")).trim() ? Number(f.get("lng")) : null,
               approved: false,
               signed: false,
               recurring: false,
@@ -850,14 +860,12 @@ function OperationsForms({ data, submit }: any) {
             type="number"
             step="any"
             placeholder="Vĩ độ"
-            required
           />
           <input
             name="lng"
             type="number"
             step="any"
             placeholder="Kinh độ"
-            required
           />
           <button>Thêm quán</button>
         </form>
