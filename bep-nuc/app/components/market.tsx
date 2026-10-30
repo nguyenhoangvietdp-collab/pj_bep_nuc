@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "./navigation";
+import PilotDisclaimer from "./pilot-disclaimer";
+import MealRequests from "./meal-requests";
 import LoadingScreen from "./loading-screen";
 import { SiteHeader, SiteFooter } from "./site-frame";
 import { useAppRouter as useRouter } from "./navigation";
@@ -119,7 +121,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
       try {
         const mode = auth.user?.approved && auth.user.role === "student" ? "student" : "guest";
         if (mode === "student" && sessionStorage.getItem("bc-price-mode") === "guest")
-          setNotice("Giá và kết quả đã cập nhật theo voucher của bạn. Chưa gồm thưởng vị trí.");
+          setNotice("Giá và kết quả đã cập nhật theo voucher của bạn. Phí giao được báo riêng nếu bạn chọn giao tận nơi.");
         sessionStorage.setItem("bc-price-mode", mode);
       } catch {}
       return nextProfile;
@@ -162,6 +164,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           { setDraft(d); setFulfillment(d.fulfillment==="delivery"?"delivery":d.fulfillment==="pickup"?"pickup":sessionStorage.getItem("bc-fulfillment")==="delivery"?"delivery":"pickup"); if (typeof d.voucherId === "string") setVoucher(d.voucherId); }
       }
     } catch {}
+    try { setFulfillment(sessionStorage.getItem("bc-fulfillment")==="delivery"?"delivery":"pickup"); } catch {}
     const p = new URLSearchParams(readAppLocation().search);
     setQuery(p.get("q") || "");
     const limit = Number(p.get("budget"));
@@ -413,7 +416,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
         {["", ...foodCategories].map(value => <label key={value} className="facet-option"><input type="radio" name={`${prefix}-category`} checked={values.category === value} onChange={() => change({ ...values, category: value })} /><span>{value || "Tất cả món"}</span></label>)}
       </fieldset>
       <fieldset className="facet-group"><legend>Giá mỗi suất</legend>
-        <p className="facet-hint">Theo giá đang hiển thị, chưa gồm thưởng vị trí.</p>
+        <p className="facet-hint">Theo giá món đang hiển thị; chưa gồm phí giao.</p>
         {[0, 30000, 40000, 50000].map(value => <label key={value} className="facet-option"><input type="radio" name={`${prefix}-budget`} checked={values.budget === value} onChange={() => change({ ...values, budget: value })} /><span>{value ? `Không quá ${money(value)}` : "Không giới hạn"}</span></label>)}
         <label className="custom-budget">Ngân sách khác (đ)<input type="number" min="0" step="1" inputMode="numeric" placeholder="Ví dụ: 35000" value={values.budget || ""} onChange={e => { const n = Number(e.target.value); if(Number.isSafeInteger(n) && n >= 0) change({ ...values, budget: n }); }} /></label>
       </fieldset>
@@ -478,7 +481,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           </section>
           <section className="meal-purchase" aria-label="Chọn số suất và kiểm tra giá">
             <div className="meal-price"><strong>{money(displayed.total)} <small>/ suất</small></strong><span>Giá menu {money(l.price)}</span></div>
-            <p className="fine">{displayed.rate ? `Ước tính với voucher ${percent(displayed.rate)} · chưa gồm thưởng vị trí` : "Chưa áp voucher"}</p>
+            <p className="fine">{displayed.rate ? `Ước tính với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}</p>
             <Quantity n={n} max={Math.min(3, l.stock)} disabled={false} change={change} />
             <p className="detail-total" aria-live="polite">Tổng {n} suất <strong>{money(total.total)}</strong></p>
             <button disabled={l.stock < n || now >= l.end} onClick={() => saveDraft(l, n)}>Kiểm tra bữa đã chọn</button>
@@ -493,6 +496,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     <div className={`site-frame commerce commerce-${view}`} id="top">
       <SiteHeader role={user?.role} name={user?.name} approved={user?.approved} />
       <main id="content" tabIndex={-1}>
+      {isCloudMvp && ["browse","shop","meal","checkout","offers"].includes(view) && <PilotDisclaimer/>}
+      {isCloudMvp && ["browse","orders"].includes(view) && <MealRequests name={query || undefined}/>}
       {catalog?.demo && (
         <aside className="market-demo">
           DEMO · Dữ liệu và tiền giả <Link href="/login">Đổi vai trò thử</Link>
@@ -514,7 +519,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           </div>
         )}
         {loadError && <div role="alert" className="error">{loadError} <button className="secondary" onClick={() => load()}>Kiểm tra lại</button></div>}
-        {isCloudMvp && catalog?.pilotOpen === false && view !== "offers" && <p className="market-notice" role="status">Đang chuẩn bị mở bán.</p>}
+        {isCloudMvp && catalog?.pilotOpen === false && view !== "offers" && <p className="market-notice" role="status">Chưa mở nhận đơn. Bạn có thể xem thực đơn giới thiệu; chỉ đặt và thanh toán khi món được mở bán.</p>}
         {notice && (
           <p role="status" className="market-notice">
             {notice}
@@ -547,7 +552,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                     <h1>{shop.name}</h1>
                     <p>{shop.address}</p>
                     <p>
-                      Tự nhận tại quán · Xem khung nhận của từng món bên dưới.
+                      Tự đến lấy hoặc giao tận nơi · Kiểm tra giờ nhận và phí giao trước khi thanh toán.
                     </p>
                     {shop.image && <img src={shop.image} alt={shop.name} />}
                   </section>
@@ -557,6 +562,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                   </section>
                 )}
                 {pendingOrder && <aside className="resume-order"><p>Bạn có bữa đang chờ thanh toán. Nếu đã chuyển tiền, tiếp tục theo dõi đơn này.</p><Link className="button-link" href={`/orders/${pendingOrder.id}`}>Tiếp tục đơn đang chờ</Link></aside>}
+                <section className="browse-fulfillment" aria-label="Chọn cách nhận"><FulfillmentChoice name="browse-fulfillment" value={fulfillment} change={method=>{setFulfillment(method);try{sessionStorage.setItem("bc-fulfillment",method);}catch{}}}/><p className="fine">{fulfillment === "delivery" ? "Giá món chưa gồm phí giao. Bạn được báo và đồng ý phí trước khi chuyển khoản." : "Tự đến địa chỉ quán, trong khung giờ nhận của món."}</p></section>
                 <section className="catalogue-search" aria-label="Tìm món hoặc quán">
         <form
           className="header-search" role="search"
@@ -583,9 +589,9 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                   </aside>
                   <section className="catalogue-results" aria-label="Kết quả tìm món">
                     <div className="catalogue-toolbar">
-                      <div><h2>{query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : "Món đang bán"}</h2><p role="status" aria-live="polite">{shown.length} món{stockOnly ? " còn suất" : ""}</p></div>
+                      <div><h2>{query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : !catalog.listings.length ? "Khám phá thực đơn" : "Món đang bán"}</h2><p role="status" aria-live="polite">{catalog.listings.length ? `${shown.length} món${stockOnly ? " còn suất" : ""}` : "Chưa có suất mở bán · Tham khảo món bên dưới"}</p></div>
                       <button className="secondary mobile-filter-toggle" ref={filterOpener} onClick={() => { setMobileFilters(currentFilters); filterDialog.current?.showModal(); }}>Bộ lọc{filterCount > 0 ? ` (${filterCount})` : ""}</button>
-                      <label className="catalogue-sort"><span>Sắp xếp</span><select value={sort} onChange={e => setSort(e.target.value)}><option value="end">{catalog.listings.length ? "Giờ nhận kết thúc sớm" : "Thứ tự thực đơn"}</option><option value="price">Giá thấp đến cao</option></select></label>
+                      {(catalog.listings.length > 0 || sort === "price") && <label className="catalogue-sort"><span>Sắp xếp</span><select value={sort} onChange={e => setSort(e.target.value)}><option value="end">{catalog.listings.length ? "Giờ nhận kết thúc sớm" : "Thứ tự thực đơn"}</option><option value="price">Giá thấp đến cao</option></select></label>}
                     </div>
                   <div className="filter-chips" role="group" aria-label="Bộ lọc đang áp dụng">
                     {query && <button className="secondary" onClick={() => setQuery("")}>Từ khóa: {query} ×</button>}
@@ -633,7 +639,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                         </div>
                         <div className="food-card-purchase">
                           <div className="food-price-row"><strong className="food-price">{money(displayed.total)}</strong><span className="food-menu-price">Giá menu <s>{money(l.price)}</s></span></div>
-                          <p className="price-condition">{displayed.rate ? `Với voucher ${percent(displayed.rate)} · Chưa gồm thưởng vị trí` : "Chưa áp voucher"}</p>
+                          <p className="price-condition">{displayed.rate ? `Với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}{fulfillment === "delivery" && " · Chưa gồm phí giao"}</p>
                           <button disabled={!l.stock || now >= l.end} onClick={() => openFood(l)}>Chọn bữa này</button>
                         </div>
                       </div>
@@ -642,12 +648,12 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                 </section>
                 {!!upcoming.length && (
                   <section className="menu-preview" aria-labelledby="menu-preview-title">
-                    <header><h2 id="menu-preview-title">Thực đơn giới thiệu</h2><p>Ba cửa hàng mô phỏng được ghi rõ trên từng món và không nhận đơn hoặc tiền thật. Các món còn lại chờ quán mở suất.</p></header>
+                    <header><h2 id="menu-preview-title">Thực đơn giới thiệu</h2><p>Thực đơn và giá tham khảo đang được xác nhận với cửa hàng. Gửi yêu cầu để Bếp Núc kiểm tra khả năng phục vụ.</p></header>
                     <ul className="menu-preview-grid">
                       {upcoming.map(p => (
                         <li key={p.image}>
                           <img src={p.image} alt={p.name} width="600" height="450" loading="lazy"/>
-                          <div className="menu-preview-info"><h3>{p.name}</h3><p className="menu-preview-price">{money(p.referencePrice)} <span>{p.shop.mock ? "giá mô phỏng / suất" : "giá menu / suất"}</span></p><p><b>{p.shop.name}</b><br/>{p.shop.address}</p><p className="fine">{p.shop.mock ? "Cửa hàng mô phỏng · Không nhận đơn thật" : "Chưa nhận đơn · Chưa áp voucher"}</p></div>
+                          <div className="menu-preview-info"><p className="menu-availability">Chờ xác nhận khả năng phục vụ</p><h3><Link href={`/meals?q=${encodeURIComponent(p.name)}`}>{p.name}</Link></h3><p className="menu-preview-price">{money(p.referencePrice)} <span>Giá tham khảo / suất</span></p><p><b>{p.shop.name}</b><br/>{p.shop.address}</p><p className="fine">Chưa gồm voucher và phí giao</p></div>
                         </li>
                       ))}
                     </ul>
@@ -752,8 +758,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                         <section className="checkout-gate">
                           <h2>Đăng nhập để dùng voucher và đặt bữa</h2>
                           <p>
-                            Bếp Núc đang thử với sinh viên được mời. Xem món
-                            công khai, đặt hàng sau khi được duyệt.
+                            Đăng nhập bằng tài khoản sinh viên được mời. Vận hành kiểm tra và duyệt tài khoản trước khi bạn dùng voucher, giữ suất hoặc thanh toán.
                           </p>
                           <Link className="button-link" href={loginHref}>
                             Đăng nhập để tiếp tục
@@ -763,8 +768,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                         <section className="checkout-gate">
                           <h2>Tài khoản đang chờ duyệt</h2>
                           <p>
-                            Lựa chọn đã lưu. Bạn vẫn có thể xem món trong lúc
-                            chờ vận hành duyệt.
+                            Lựa chọn đã lưu. Vận hành cần duyệt tài khoản trước khi bạn đặt bữa. Bạn chưa giữ suất và chưa cần chuyển tiền; có thể quay lại xem món trong lúc chờ.
                           </p>
                           <button onClick={() => load()}>
                             Kiểm tra trạng thái duyệt

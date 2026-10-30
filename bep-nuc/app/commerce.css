@@ -1154,3 +1154,17 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 .commerce .delivery-fee-review button { display: block; width: 100%; margin-top: 12px; }
 .commerce .delivery-order-details { border-bottom: 1px solid var(--line); padding-block: 16px; }
 @media(max-width:599px){.commerce .fulfillment-choice{grid-template-columns:minmax(0,1fr);}}
+
+/* Receiving choice belongs before food discovery, not only checkout. */
+.commerce .browse-fulfillment { padding: 0 0 20px; margin-bottom: 20px; border-bottom: 1px solid var(--line); }
+.commerce .browse-fulfillment .fulfillment-choice { margin: 0; }
+.commerce .browse-fulfillment > .fine { margin: 12px 0 0; }
+.commerce .menu-availability { font-size: 14px; font-weight: 600; margin: 0 0 10px; color: var(--muted); }
+
+.pilot-disclaimer { width:min(560px,calc(100% - 32px)); max-height:90dvh; overflow:auto; padding:24px; border:1px solid #ccd3ce; border-radius:12px; color:#0C2B15; background:white; }
+.pilot-disclaimer::backdrop { background:rgb(12 43 21 / 45%); }
+.pilot-disclaimer button { margin:8px 8px 0 0; }
+.meal-requests { max-width:800px; margin:24px auto; padding:24px 16px; border-bottom:1px solid #ccd3ce; }
+.meal-requests article,.meal-requests form { padding:16px 0; border-top:1px solid #ccd3ce; }
+.meal-requests label { display:block; margin:12px 0; }
+.meal-requests input:not([type=checkbox]),.meal-requests select { width:100%; min-height:44px; }

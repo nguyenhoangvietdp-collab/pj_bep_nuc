@@ -81,7 +81,7 @@ export function createEdgeHandler(deps: EdgeDependencies) {
         const current=s.users.find(u=>u.id===user.id)!; issue(s,current,now);
         if(!current.approved)throw new ClientError("Tài khoản đang chờ vận hành duyệt",403);
         // Pausing new reservations must not remove payment instructions from existing orders.
-        return {...view(s,current,now),demo:false,mapsEnabled:false,supportEmail:deps.config.supportEmail,bank:deps.config.policy.bankReady?deps.config.bank:undefined};
+        return {...view(s,current,now),demo:false,mapsEnabled:false,supportEmail:deps.config.supportEmail,bank:deps.config.policy.bankReady && s.orders.some(o=>o.userId===current.id&&o.status==="awaiting_payment"&&s.quotes.some(q=>q.id===o.quoteId&&q.expires>now))?deps.config.bank:undefined};
       }));
       if (origin !== deps.config.origin) return response({error:"Origin không hợp lệ"},403);
       if (Number(req.headers.get("content-length") || 0)>32768) return response({error:"Yêu cầu quá lớn"},413);
@@ -89,7 +89,7 @@ export function createEdgeHandler(deps: EdgeDependencies) {
       let body: any; try { body=JSON.parse(text); } catch { return response({error:"JSON không hợp lệ"},400); }
       if (!body || typeof body.action!=="string" || !body.args || typeof body.args!=="object" || Array.isArray(body.args)) return response({error:"Sai yêu cầu"},400);
       if(!/^[a-z_]{1,32}$/.test(body.action) || typeof body.args.key!=="string" || body.args.key.length<8 || body.args.key.length>128) return response({error:"Khóa hoặc thao tác không hợp lệ"},400);
-      if (body.action==="quote" && !deps.config.acceptingOrders) return response({error:"Tạm dừng nhận đơn mới. Bạn vẫn có thể theo dõi đơn hiện tại."},409);
+      if (["quote","confirm_meal_request","accept_meal_request"].includes(body.action) && !deps.config.acceptingOrders) return response({error:"Tạm dừng nhận đơn mới. Bạn vẫn có thể theo dõi đơn hiện tại."},409);
       return response(await run(s => {
         const current=s.users.find(u=>u.id===user.id)!; issue(s,current,now);
         // Maps intentionally disabled on the zero-budget deployment.

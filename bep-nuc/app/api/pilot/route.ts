@@ -21,7 +21,7 @@ export async function GET() {
         ...data,
         demo: demo(),
         supportEmail: process.env.SUPPORT_EMAIL || null,
-        bank: demo()
+        bank: !data.orders.some((o:any)=>o.status==="awaiting_payment" && o.expires>clock()) ? undefined : demo()
           ? { name: "TIỀN GIẢ", account: "KHÔNG CHUYỂN TIỀN", holder: "DEMO" }
           : {
               name: process.env.BANK_NAME,

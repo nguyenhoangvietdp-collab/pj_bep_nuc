@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { SiteHeader, ProductHero, HowItWorks } from "../components/brand";
 import { SiteFooter } from "../components/site-frame";
+import MealRequests from "../components/meal-requests";
 import Link, { useAppRouter } from "../components/navigation";
 import { apiFetch, googleLogin } from "../../lib/mvp-client";
 import { isCloudMvp } from "../../lib/app-navigation";
@@ -156,6 +157,7 @@ export default function Page() {
       <div className="site-frame internal-frame" id="top">
         <SiteHeader />
         <main className="site-shell" id="content" tabIndex={-1}>
+      {data?.user.role === "ops" && <MealRequests ops/>}
         <section className="login-layout">
           <div>
             <p className="eyebrow">BẾP NÚC · HÀ NỘI</p>
@@ -213,6 +215,7 @@ export default function Page() {
     <div className="site-frame internal-frame" id="top">
       <SiteHeader role={role} name={data.user.name} />
       <main className="site-shell" id="content" tabIndex={-1}>
+      {data?.user.role === "ops" && <MealRequests ops/>}
       {data.demo && (
         <aside className="demo">
           <span>MÔ PHỎNG · Không chuyển tiền thật</span>

@@ -26,6 +26,14 @@ export default function MvpApp(){
    finally{if(alive){sync();setReady(true);}}
   })();return()=>{alive=false;unsubscribe();window.removeEventListener("hashchange",sync);};
  },[]);
+ useEffect(()=>{
+  if(!ready)return;
+  const frame=requestAnimationFrame(()=>{
+   document.getElementById("content")?.focus({preventScroll:true});
+   window.scrollTo(0,0);
+   document.title=({"/":"Bếp Núc — Bữa cuối ngày","/meals":"Chọn bữa — Bếp Núc","/offers":"Ưu đãi — Bếp Núc","/checkout":"Kiểm tra bữa — Bếp Núc","/orders":"Đơn hàng — Bếp Núc","/login":"Đăng nhập — Bếp Núc"} as Record<string,string>)[route.pathname] || "Chi tiết — Bếp Núc";
+  });return()=>cancelAnimationFrame(frame);
+ },[ready,route.pathname]);
  if(!ready)return <div className="site-frame commerce"><SiteHeader/><main id="content" tabIndex={-1}><LoadingScreen/></main><SiteFooter/></div>;
  const match=route.pathname.match(/^\/(meals|shops|orders)\/([A-Za-z0-9_-]+)$/);
  const view=match?(match[1]==="meals"?"meal":match[1]==="shops"?"shop":"order"):({"/meals":"browse","/offers":"offers","/orders":"orders","/checkout":"checkout","/login":"login"} as Record<string,string>)[route.pathname];

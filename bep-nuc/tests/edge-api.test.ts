@@ -72,7 +72,7 @@ test("Edge API never enables real ordering from missing evidence or a paused pil
  assert.equal((await f.request("pilot","student",{action:"quote",args:{listingId:"meal",qty:1,voucherId,key:"closed-quote"}})).status,400);
  const paused=setup({acceptingOrders:false});assert.equal((await paused.request("pilot","student",{action:"quote",args:{key:"paused-quote"}})).status,409);
  assert.equal((await paused.request("pilot","ops")).status,200);
- assert.equal((await paused.request("pilot","student")).data.bank.account,"TEST-ONLY");
+ assert.equal((await paused.request("pilot","student")).data.bank,undefined);
 });
 test("Edge API rejects unwanted origins and malformed writes without exposing infrastructure errors",async()=>{
  const f=setup();const denied=await f.request("pilot","ops",{},"https://other.pages.dev");assert.equal(denied.status,403);assert.equal(denied.res.headers.get("access-control-allow-origin"),null);
