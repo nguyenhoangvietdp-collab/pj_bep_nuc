@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "./navigation";
-import PilotDisclaimer from "./pilot-disclaimer";
 import ShopPicture from "./shop-picture";
 import {productAssets} from "../../lib/product-assets";
 import MealRequests from "./meal-requests";
@@ -500,7 +499,6 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     <div className={`site-frame commerce commerce-${view}`} id="top">
       <SiteHeader role={user?.role} name={user?.name} approved={user?.approved} />
       <main id="content" tabIndex={-1}>
-      {isCloudMvp && ["browse","shop","meal","checkout","offers"].includes(view) && <PilotDisclaimer/>}
       
       {catalog?.demo && (
         <aside className="market-demo">
@@ -523,7 +521,6 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           </div>
         )}
         {loadError && <div role="alert" className="error">{loadError} <button className="secondary" onClick={() => load()}>Kiểm tra lại</button></div>}
-        {isCloudMvp && catalog?.pilotOpen === false && ["browse","shop","meal"].includes(view) && <p className="market-notice" role="status">Chưa mở nhận đơn. Bạn có thể xem thực đơn giới thiệu; chỉ đặt và thanh toán khi món được mở bán.</p>}
         {notice && (
           <p role="status" className="market-notice">
             {notice}

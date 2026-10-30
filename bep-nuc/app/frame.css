@@ -99,3 +99,10 @@ button, input, select, textarea, summary { font: inherit; }
 .commerce-footer .footer-bottom p { margin:0; }
 @media(max-width:999px){.commerce-footer .footer-columns{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:599px){.commerce-footer .footer-columns{grid-template-columns:minmax(0,1fr);gap:24px}.commerce-footer .footer-columns,.commerce-footer .footer-bottom{padding-inline:16px}}
+
+.brand-logo { display:inline-flex;width:120px;aspect-ratio:2/1;align-items:center;justify-content:center;vertical-align:middle; }
+.brand-logo img { display:block;width:100%;height:auto;aspect-ratio:2/1;object-fit:contain; }
+.frame-brand:has(.brand-logo) { display:inline-flex;align-items:center;min-height:44px; }
+.footer-logo { background:#0c2b15;padding:8px 12px;border-radius:8px;color:white; }
+.commerce-footer .footer-bottom .trial-information { color:#16382b;font-size:14px;min-height:44px;text-decoration:underline; }
+@media(max-width:767px){.brand-logo{width:100px}}

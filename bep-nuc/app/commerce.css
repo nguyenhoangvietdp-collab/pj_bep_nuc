@@ -1180,3 +1180,20 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 .shop-photo-fallback { background:#eef2ee;display:grid;place-items:center;padding:16px; }
 @media(max-width:1099px){.commerce .shop-list > div{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:599px){.commerce .shop-list > div{grid-template-columns:minmax(0,1fr)}}
+
+.commerce.home-page > main { display:flex;flex-direction:column; }
+.commerce .home-centered-hero { position:relative;isolation:isolate;overflow:hidden;display:grid;place-items:center;min-height:520px;padding:48px 24px;background:#0c2b15;color:white;text-align:center;flex:1; }
+.home-centered-hero .hero-background,.home-centered-hero .hero-lower-blur,.home-centered-hero .hero-shade { position:absolute;inset:0;z-index:-1;pointer-events:none; }
+.home-centered-hero .hero-background,.home-centered-hero .hero-lower-blur { background-image:var(--hero-image);background-size:cover;background-position:50% 42%; }
+.home-centered-hero .hero-lower-blur { filter:blur(24px);transform:scale(1.08);mask-image:linear-gradient(to bottom,transparent 30%,black 67%);-webkit-mask-image:linear-gradient(to bottom,transparent 30%,black 67%); }
+.home-centered-hero .hero-shade { background:linear-gradient(to bottom,rgba(4,20,10,.60),rgba(4,20,10,.82)); }
+.hero-centered-content { display:flex;flex-direction:column;align-items:center;max-width:720px;margin:auto; }
+.hero-centered-content .hero-wordmark { width:260px;max-width:70vw; }
+.commerce .home-centered-hero h1 { color:white;font-size:clamp(36px,4vw,56px);line-height:1.15;max-width:18ch;margin:20px 0 16px; }
+.hero-centered-content > p { max-width:46ch;line-height:1.6;margin:0 0 24px;font-size:18px;color:white; }
+.commerce .hero-centered-content .hero-primary { background:white;color:#0c2b15;border-color:white;min-height:48px;padding:12px 28px; }
+.hero-centered-content > .hero-caption { font-size:14px;margin:20px 0 0;color:#edf4ee; }
+.hero-centered-content .hero-primary:hover { background:#e6f3e8; }
+.hero-centered-content :focus-visible { outline:3px solid #d1f5d6;outline-offset:5px; }
+.home-page > .frame-footer { margin-top:0; }
+@media(max-width:767px){.commerce .home-centered-hero{min-height:440px;padding:32px 16px}.hero-centered-content .hero-wordmark{width:220px}.hero-centered-content > p{font-size:16px}.commerce .home-centered-hero h1{font-size:36px}}

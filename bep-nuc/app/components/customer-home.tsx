@@ -1,14 +1,9 @@
 "use client";
 import Link from "./navigation";
-import { SiteHeader, SiteFooter } from "./site-frame";
-import { productAssets } from "../../lib/product-assets";
-import { launchMenuNames, launchPartner } from "../../lib/launch-menu";
-const meals = productAssets.filter(p => launchMenuNames.includes(p.name));
-
-export default function CustomerHome({ configured = true, authError = "", authenticated = false, supportEmail }: { configured?: boolean; authError?: string; authenticated?: boolean; supportEmail?: string }) {
-  return <div className="site-frame commerce home-page"><SiteHeader role={authenticated ? "student" : undefined}/><main id="content" tabIndex={-1}><div className="market-content">
-    <section className="home-introduction"><div><h1>Bữa cuối ngày,<br/>tự lấy hoặc giao.</h1><p className="home-lead">Tìm bữa hợp túi tiền. Tự đến lấy hoặc chọn giao tận nơi, với phí được báo trước khi thanh toán.</p>{authError && <p className="error" role="alert">{authError}</p>}{configured ? <Link className="button-link" href="/meals">Xem thực đơn <span aria-hidden="true">↗</span></Link> : <p role="status">Đang chuẩn bị mở bán. Bếp Núc chưa hoàn tất kết nối dịch vụ đặt hàng.</p>}<p className="fine">Xem món không cần đăng nhập. Đăng nhập bằng tài khoản sinh viên được mời; vận hành duyệt tài khoản trước khi bạn đặt bữa.</p></div><figure><img src={meals[0].image} alt={meals[0].name} width="600" height="450"/><figcaption>{meals[0].name} · Ảnh đội Bếp Núc cung cấp</figcaption></figure></section>
-    <section className="home-how"><header><h2>Chọn bữa, nhận theo cách bạn muốn.</h2><p>Ba bước khi Bếp Núc mở nhận đơn.</p></header><ol><li><span>01</span><h3>Tìm bữa phù hợp</h3><p>Xem món, giá, nơi và giờ nhận. Mỗi đơn một loại món, từ 1–3 suất.</p></li><li><span>02</span><h3>Kiểm tra rồi thanh toán</h3><p>Chọn voucher và giữ suất. Nếu giao tận nơi, đồng ý phí giao trước khi chuyển đúng tổng tiền.</p></li><li><span>03</span><h3>Nhận theo cách bạn chọn</h3><p>Tự đến quán với mã nhận hoặc chờ đội Bếp Núc điều phối giao tận nơi.</p></li></ol></section>
-    <section className="home-menu"><header><h2>Thực đơn tại Đống Đa</h2><Link href="/meals">Xem thực đơn →</Link></header><div className="home-food-pictures">{meals.map(p=><figure key={p.image}><Link href={`/checkout?menu=${encodeURIComponent(p.name)}`}><img src={p.image} alt={p.name} width="480" height="360" loading="lazy"/></Link><figcaption>{p.name}</figcaption></figure>)}</div><p className="fine">{launchPartner.name} · {launchPartner.address}. Kiểm tra số suất và giờ nhận trong thực đơn trước khi đặt.</p></section>
-  </div></main><SiteFooter supportEmail={supportEmail}/></div>;
+import {SiteHeader,SiteFooter} from "./site-frame";
+import BrandLogo from "./brand-logo";
+import {productAssets} from "../../lib/product-assets";
+const background=productAssets.find(p=>p.name==="Bún riêu")!.image;
+export default function CustomerHome({configured=true,authError="",authenticated=false,supportEmail}:{configured?:boolean;authError?:string;authenticated?:boolean;supportEmail?:string}){
+ return <div className="site-frame commerce home-page"><SiteHeader role={authenticated?"student":undefined}/><main id="content" tabIndex={-1}><section className="home-centered-hero" style={{"--hero-image":`url("${background}")`} as React.CSSProperties}><div className="hero-background" aria-hidden="true"/><div className="hero-lower-blur" aria-hidden="true"/><div className="hero-shade" aria-hidden="true"/><div className="hero-centered-content"><BrandLogo className="hero-wordmark"/><h1>Bữa cuối ngày,<br/>hợp túi tiền.</h1><p>Tìm bữa bạn thích, kiểm tra giá rồi chọn tự đến lấy hoặc giao tận nơi.</p>{authError&&<p className="error" role="alert">{authError}</p>}{configured?<Link className="button-link hero-primary" href="/meals">Chọn bữa ngay</Link>:<p role="status">Bếp Núc đang chuẩn bị kết nối dịch vụ đặt hàng.</p>}<p className="hero-caption">Xem món không cần đăng nhập. Thanh toán sau khi tài khoản và báo giá được xác nhận.</p></div></section></main><SiteFooter supportEmail={supportEmail}/></div>;
 }
