@@ -1168,3 +1168,15 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 .meal-requests article,.meal-requests form { padding:16px 0; border-top:1px solid #ccd3ce; }
 .meal-requests label { display:block; margin:12px 0; }
 .meal-requests input:not([type=checkbox]),.meal-requests select { width:100%; min-height:44px; }
+
+.commerce .reference-checkout { max-width:800px;margin:0 auto; }
+.commerce .reference-meal-photo { display:block;width:100%;max-height:320px;object-fit:cover;border-radius:12px; }
+.commerce .shop-list > div { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:24px; }
+.commerce .shop-card { display:block;overflow:hidden;padding:0 0 16px;border-radius:12px; }
+.commerce .shop-card h3,.commerce .shop-card > p,.commerce .shop-card > span { margin:12px 16px 0; }
+.shop-picture { margin:0;position:relative; }
+.shop-picture img,.shop-photo-fallback { width:100%;aspect-ratio:16/9;object-fit:cover;display:block; }
+.shop-picture figcaption { position:absolute;bottom:8px;left:8px;background:white;color:#16382b;padding:4px 8px;border-radius:4px;font-size:14px; }
+.shop-photo-fallback { background:#eef2ee;display:grid;place-items:center;padding:16px; }
+@media(max-width:1099px){.commerce .shop-list > div{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:599px){.commerce .shop-list > div{grid-template-columns:minmax(0,1fr)}}

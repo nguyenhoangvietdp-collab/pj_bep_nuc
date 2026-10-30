@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "./navigation";
 import PilotDisclaimer from "./pilot-disclaimer";
+import ShopPicture from "./shop-picture";
+import {productAssets} from "../../lib/product-assets";
 import MealRequests from "./meal-requests";
 import LoadingScreen from "./loading-screen";
 import { SiteHeader, SiteFooter } from "./site-frame";
@@ -492,6 +494,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     );
   }
 
+  const referenceName = new URLSearchParams(typeof window === "undefined" ? "" : readAppLocation().search).get("menu");
+  const referenceMeal = productAssets.find(p=>p.name===referenceName);
   return (
     <div className={`site-frame commerce commerce-${view}`} id="top">
       <SiteHeader role={user?.role} name={user?.name} approved={user?.approved} />
@@ -562,8 +566,6 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                   </section>
                 )}
                 {pendingOrder && <aside className="resume-order"><p>Bạn có bữa đang chờ thanh toán. Nếu đã chuyển tiền, tiếp tục theo dõi đơn này.</p><Link className="button-link" href={`/orders/${pendingOrder.id}`}>Tiếp tục đơn đang chờ</Link></aside>}
-                <section className="browse-fulfillment" aria-label="Chọn cách nhận"><FulfillmentChoice name="browse-fulfillment" value={fulfillment} change={method=>{setFulfillment(method);try{sessionStorage.setItem("bc-fulfillment",method);}catch{}}}/><p className="fine">{fulfillment === "delivery" ? "Giá món chưa gồm phí giao. Bạn được báo và đồng ý phí trước khi chuyển khoản." : "Tự đến địa chỉ quán, trong khung giờ nhận của món."}</p></section>
-                {isCloudMvp && query && <MealRequests name={query}/> }
                 <section className="catalogue-search" aria-label="Tìm món hoặc quán">
         <form
           className="header-search" role="search"
@@ -654,7 +656,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                       {upcoming.map(p => (
                         <li key={p.image}>
                           <img src={p.image} alt={p.name} width="600" height="450" loading="lazy"/>
-                          <div className="menu-preview-info"><p className="menu-availability">Chờ xác nhận khả năng phục vụ</p><h3><Link href={`/meals?q=${encodeURIComponent(p.name)}`}>{p.name}</Link></h3><p className="menu-preview-price">{money(p.referencePrice)} <span>Giá tham khảo / suất</span></p><p><b>{p.shop.name}</b><br/>{p.shop.address}</p><p className="fine">Chưa gồm voucher và phí giao</p></div>
+                          <div className="menu-preview-info"><p className="menu-availability">Chờ xác nhận khả năng phục vụ</p><h3><Link href={`/checkout?menu=${encodeURIComponent(p.name)}`}>{p.name}</Link></h3><p className="menu-preview-price">{money(p.referencePrice)} <span>Giá tham khảo / suất</span></p><p><b>{p.shop.name}</b><br/>{p.shop.address}</p><p className="fine">Chưa gồm voucher và phí giao</p></div>
                         </li>
                       ))}
                     </ul>
@@ -677,9 +679,9 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                           href={catalog.shops.some(p=>p.id===s.id) ? `/shops/${s.id}` : `/meals?shop=${s.id}`}
                           key={s.id}
                         >
-                          <h3>{s.name}</h3>
+                          <ShopPicture shopId={s.id} name={s.name} image={"image" in s ? s.image : undefined}/><h3>{s.name}</h3>
                           <p>{s.address}</p>
-                          <span>{"mock" in s && s.mock ? "Cửa hàng mô phỏng · Xem thực đơn" : "Xem thực đơn"}</span>
+                          <span>Xem thực đơn</span>
                         </Link>
                       ))}
                     </div>
@@ -701,7 +703,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                   </section>
                 );
               })()}
-            {view === "checkout" && (
+            {view === "checkout" && referenceName && <section className="reference-checkout"><Link href={browseHref}>Quay lại chọn món</Link><h1>Kiểm tra bữa của bạn</h1>{referenceMeal ? <><img className="reference-meal-photo" src={referenceMeal.image} alt={referenceMeal.name} width="600" height="450"/><p>Giá tham khảo {money(referenceMeal.referencePrice)} / suất. Nguồn món và giá cuối cùng cần được xác nhận.</p><MealRequests name={referenceMeal.name}/></> : <p>Món tham khảo không tồn tại. Vui lòng quay lại chọn món.</p>}</section>}
+            {view === "checkout" && !referenceName && (
               <>
                 <Link href={browseHref}>Tiếp tục tìm món</Link>
                 <h1>Kiểm tra bữa của bạn</h1>
@@ -1087,7 +1090,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
             <li>Tự lấy: đưa mã nhận tại quán. Giao tận nơi: đội Bếp Núc điều phối và xác nhận giao hàng.</li>
           </ol>
         </details>
-        <details>
+        <details id="voucher-help">
           <summary>Voucher hoạt động thế nào?</summary>
           <p>
             Sinh viên đã được duyệt nhận voucher 7%, 10%, 20% từ 18:00. Mỗi
@@ -1096,7 +1099,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           </p>
           <p>Giảm nền 5% trước, sau đó áp dụng voucher. Không cộng dồn ba voucher.</p>
         </details>
-        <details>
+        <details id="refund-help">
           <summary>Hủy đơn và hoàn tiền</summary>
           <p>
             Quán hủy: hoàn tiền, phục hồi voucher nếu còn trong tối. No-show

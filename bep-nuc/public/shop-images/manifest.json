@@ -1,0 +1,34 @@
+[
+  {
+    "file": "hanoi-eatery-1.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Streetfood_1.jpg",
+    "author": "Superbass",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "changes": "Cropped to 16:9 and resized to 960x540; illustration, not the named shop."
+  },
+  {
+    "file": "hanoi-eatery-2.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Street_food_in_Hanoi.jpg",
+    "author": "Christophe95",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "changes": "Cropped to 16:9 and resized to 960x540; illustration, not the named shop."
+  },
+  {
+    "file": "hanoi-eatery-3.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Hanoi_Street_Food_(95655835).jpeg",
+    "author": "\nSurya Santoso",
+    "license": "CC BY 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
+    "changes": "Cropped to 16:9 and resized to 960x540; illustration, not the named shop."
+  },
+  {
+    "file": "hanoi-eatery-4.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Street_food_preparation_in_Hanoi_(49357906106).jpg",
+    "author": "Martin Lewison from Forest Hills, NY, U.S.A.",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+    "changes": "Cropped to 16:9 and resized to 960x540; illustration, not the named shop."
+  }
+]

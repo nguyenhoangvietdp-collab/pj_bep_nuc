@@ -40,11 +40,10 @@ export function SiteHeader({ role, name, approved }: HeaderProps) {
 }
 export function SiteFooter({ children, supportEmail }: { children?: ReactNode; supportEmail?: string }) {
   const support = supportLink(supportEmail, "");
-  return <footer className="frame-footer"><div className="frame-footer-inner">
-    <div className="frame-footer-heading"><Link className="frame-brand" href="/">Bếp Núc</Link>
-      <nav aria-label="Điều hướng cuối trang"><Link href="/meals">Chọn bữa</Link><Link href="/offers">Ưu đãi</Link><Link href="/orders">Đơn hàng</Link>{support && <a href={support}>Liên hệ hỗ trợ</a>}</nav>
-    </div>
-    <p>Bữa cuối ngày tại Hà Nội. Tự đến lấy hoặc giao tận nơi; phí giao được xác nhận trước khi thanh toán.</p>
-    <div className="frame-footer-help"><h3>Hướng dẫn & hỗ trợ</h3>{children || <p>Kiểm tra món, thời gian nhận và tổng tiền được xác nhận trước khi thanh toán.</p>}</div>
-  </div></footer>;
+  return <footer className="frame-footer commerce-footer"><div className="footer-columns">
+    <section><h2>Chăm sóc khách hàng</h2>{children || <details><summary>Cách đặt món và theo dõi đơn</summary><p>Chọn món, gửi yêu cầu và kiểm tra báo giá trước khi thanh toán. Theo dõi xử lý trong Đơn hàng.</p></details>}{support&&<a href={support}>Liên hệ hỗ trợ</a>}</section>
+    <nav aria-label="Về Bếp Núc"><h2>Về Bếp Núc</h2><Link href="/">Giới thiệu Bếp Núc</Link><Link href="/meals">Chọn bữa</Link><Link href="/offers">Ưu đãi</Link><Link href="/orders">Đơn hàng của bạn</Link></nav>
+    <section><h2>Thanh toán</h2><p>Chuyển khoản ngân hàng</p><p>Chỉ chuyển tiền sau khi món, thời gian nhận/giao và tổng tiền đã được xác nhận, đồng ý.</p><p>Vận hành xác nhận thanh toán thủ công.</p></section>
+    <section><h2>Nhận hàng</h2><p>Tự đến lấy tại quán</p><p>Hoặc giao tận nơi do đội Bếp Núc điều phối. Phí giao được báo trước khi thanh toán.</p><Link href="/orders">Theo dõi yêu cầu & đơn hàng</Link></section>
+  </div><div className="footer-bottom"><Link className="frame-brand" href="/">Bếp Núc</Link><p>Sản phẩm đang trong giai đoạn thử nghiệm, chưa thương mại hoá.</p><details><summary>Nguồn ảnh minh hoạ quán</summary><p>Ảnh không mô tả mặt tiền của quán được ghi tên. Xem tác giả, giấy phép và thay đổi trong <a href="/shop-images/credits.html">nguồn ảnh</a>.</p></details></div></footer>;
 }
