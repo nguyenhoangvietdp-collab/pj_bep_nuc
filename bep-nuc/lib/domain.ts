@@ -407,7 +407,7 @@ export function act(
   distance: number | null = null,
   policy: RuntimePolicy = policyFromEnv(typeof process === "undefined" ? {} : process.env),
   requestConsent = false): unknown {
-  requireThat(u.approved, "Tài khoản chưa được duyệt");
+  requireThat(u.approved || (u.role === "student" && action === "meal_request"), "Tài khoản chưa được duyệt");
   const key = `${u.id}:${action}:${a.key}`;
   requireThat(
     typeof a.key === "string" && a.key.length >= 8,

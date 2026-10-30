@@ -48,7 +48,7 @@ test("Edge API has anonymous catalogue, verified identity and role-scoped financ
  assert.equal((await f.request("pilot")).status,401);assert.equal((await f.request("pilot","invalid")).status,401);
  assert.equal((await f.request("export","student")).status,403);
  const pending=await f.request("auth","new-user");assert.equal(pending.data.user.role,"student");assert.equal(pending.data.user.approved,false);
- assert.equal((await f.request("pilot","new-user")).status,403);
+ const preview=await f.request("pilot","new-user");assert.equal(preview.status,200);assert.deepEqual(preview.data.orders,[]);assert.equal(preview.data.bank,undefined);
  const merchant=await f.request("pilot","merchant");assert.ok(merchant.data.listings.every((l:any)=>l.shopId===f.getState().users.find(u=>u.id==="merchant")!.shopId));
 });
 test("Edge API preserves server prices, voucher reservation, payment/pickup idempotency and export privacy",async()=>{

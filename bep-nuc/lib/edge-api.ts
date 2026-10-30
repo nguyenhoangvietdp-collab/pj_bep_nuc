@@ -67,7 +67,7 @@ export function createEdgeHandler(deps: EdgeDependencies) {
         return {...u};
       });
       if (req.method === "GET" && route === "auth") return response({user,supportEmail:deps.config.supportEmail});
-      if (!user.approved) return response({error:"Tài khoản đang chờ vận hành duyệt"},403);
+      if (!user.approved && route !== "pilot") return response({error:"Tài khoản đang chờ vận hành duyệt"},403);
       if (req.method === "GET" && route === "export") {
         if (user.role !== "ops") return response({error:"Chỉ vận hành được xuất đối soát"},403);
         return response(await run(s => {
@@ -78,8 +78,8 @@ export function createEdgeHandler(deps: EdgeDependencies) {
       }
       if (route !== "pilot") return response({error:"Phương thức không hỗ trợ"},405);
       if (req.method === "GET") return response(await run(s => {
-        const current=s.users.find(u=>u.id===user.id)!; issue(s,current,now);
-        if(!current.approved)throw new ClientError("Tài khoản đang chờ vận hành duyệt",403);
+        const current=s.users.find(u=>u.id===user.id)!; if(current.approved) issue(s,current,now);
+        if(!current.approved) return {user:current,mealRequests:(s.mealRequests||[]).filter(r=>r.userId===current.id).map(({quoteId,...r})=>r),orders:[],vouchers:[],heldQuotes:[],supportEmail:deps.config.supportEmail};
         // Pausing new reservations must not remove payment instructions from existing orders.
         return {...view(s,current,now),demo:false,mapsEnabled:false,supportEmail:deps.config.supportEmail,bank:deps.config.policy.bankReady && s.orders.some(o=>o.userId===current.id&&o.status==="awaiting_payment"&&s.quotes.some(q=>q.id===o.quoteId&&q.expires>now))?deps.config.bank:undefined};
       }));
@@ -91,8 +91,9 @@ export function createEdgeHandler(deps: EdgeDependencies) {
       if(!/^[a-z_]{1,32}$/.test(body.action) || typeof body.args.key!=="string" || body.args.key.length<8 || body.args.key.length>128) return response({error:"Khóa hoặc thao tác không hợp lệ"},400);
       if (["quote","confirm_meal_request","accept_meal_request"].includes(body.action) && !deps.config.acceptingOrders) return response({error:"Tạm dừng nhận đơn mới. Bạn vẫn có thể theo dõi đơn hiện tại."},409);
       return response(await run(s => {
-        const current=s.users.find(u=>u.id===user.id)!; issue(s,current,now);
+        const current=s.users.find(u=>u.id===user.id)!; if(current.approved) issue(s,current,now);
         // Maps intentionally disabled on the zero-budget deployment.
+        if(!current.approved && body.action!=="meal_request")throw new ClientError("Tài khoản đang chờ vận hành duyệt",403);
         const args={...body.args}; delete args.location;
         return act(s,current,body.action,args,now,null,deps.config.policy);
       }));

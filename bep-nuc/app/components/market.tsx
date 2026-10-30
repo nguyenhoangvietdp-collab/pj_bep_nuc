@@ -110,7 +110,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
       if (!c.ok || !a.ok) throw new Error("Chưa tải được trạng thái mới. Dữ liệu đang hiển thị có thể đã cũ.");
       const nextCatalog = await c.json(), received = Date.now(), auth = await a.json();
       let nextProfile;
-      if (auth.user?.approved) {
+      if (auth.user) {
         const p = await apiFetch("/api/pilot", { cache: "no-store", signal: AbortSignal.timeout(12000) });
         if (!p.ok) throw new Error("Chưa tải được đơn và voucher. Thử kiểm tra lại trước khi đặt.");
         nextProfile = await p.json();
@@ -497,7 +497,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
       <SiteHeader role={user?.role} name={user?.name} approved={user?.approved} />
       <main id="content" tabIndex={-1}>
       {isCloudMvp && ["browse","shop","meal","checkout","offers"].includes(view) && <PilotDisclaimer/>}
-      {isCloudMvp && ["browse","orders"].includes(view) && <MealRequests name={query || undefined}/>}
+      
       {catalog?.demo && (
         <aside className="market-demo">
           DEMO · Dữ liệu và tiền giả <Link href="/login">Đổi vai trò thử</Link>
@@ -519,7 +519,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           </div>
         )}
         {loadError && <div role="alert" className="error">{loadError} <button className="secondary" onClick={() => load()}>Kiểm tra lại</button></div>}
-        {isCloudMvp && catalog?.pilotOpen === false && view !== "offers" && <p className="market-notice" role="status">Chưa mở nhận đơn. Bạn có thể xem thực đơn giới thiệu; chỉ đặt và thanh toán khi món được mở bán.</p>}
+        {isCloudMvp && catalog?.pilotOpen === false && ["browse","shop","meal"].includes(view) && <p className="market-notice" role="status">Chưa mở nhận đơn. Bạn có thể xem thực đơn giới thiệu; chỉ đặt và thanh toán khi món được mở bán.</p>}
         {notice && (
           <p role="status" className="market-notice">
             {notice}
@@ -563,6 +563,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                 )}
                 {pendingOrder && <aside className="resume-order"><p>Bạn có bữa đang chờ thanh toán. Nếu đã chuyển tiền, tiếp tục theo dõi đơn này.</p><Link className="button-link" href={`/orders/${pendingOrder.id}`}>Tiếp tục đơn đang chờ</Link></aside>}
                 <section className="browse-fulfillment" aria-label="Chọn cách nhận"><FulfillmentChoice name="browse-fulfillment" value={fulfillment} change={method=>{setFulfillment(method);try{sessionStorage.setItem("bc-fulfillment",method);}catch{}}}/><p className="fine">{fulfillment === "delivery" ? "Giá món chưa gồm phí giao. Bạn được báo và đồng ý phí trước khi chuyển khoản." : "Tự đến địa chỉ quán, trong khung giờ nhận của món."}</p></section>
+                {isCloudMvp && query && <MealRequests name={query}/> }
                 <section className="catalogue-search" aria-label="Tìm món hoặc quán">
         <form
           className="header-search" role="search"
@@ -941,6 +942,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                     ? "Đơn hàng của bạn"
                     : "Theo dõi bữa của bạn"}
                 </h1>
+                {view === "orders" && isCloudMvp && <MealRequests/>}
+                <h2>Đơn đã xác nhận</h2>
                 <p className="sync-status" role="status">{syncedAt ? `Cập nhật lúc ${new Date(syncedAt).toLocaleTimeString("vi-VN")}` : "Chưa có cập nhật"} · Xác nhận tiền thủ công <button className="secondary" onClick={() => load()}>Kiểm tra lại</button></p>
                 {!user ? (
                   <section className="market-empty">
@@ -950,7 +953,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                     </Link>
                   </section>
                 ) : !user.approved ? (
-                  <p>Tài khoản đang chờ duyệt. Bạn vẫn xem được catalogue.</p>
+                  <section className="market-empty"><p>Chưa có đơn thanh toán. Bạn vẫn có thể gửi yêu cầu đặt món trong lúc chờ duyệt.</p><Link className="button-link" href="/meals">Chọn món</Link></section>
                 ) : user.role !== "student" ? (
                   <Link href="/internal">Xem đơn trong khu vực nội bộ</Link>
                 ) : (

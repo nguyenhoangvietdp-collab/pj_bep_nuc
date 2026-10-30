@@ -66,3 +66,23 @@ button, input, select, textarea, summary { font: inherit; }
 .frame-account-actions .text-button { font-size: 14px; min-height: 44px; }
 .frame-account-actions .frame-account { color: var(--muted); font-size: 14px; }
 @media (max-width: 767px) { .frame-account-actions { max-width: 210px; gap: 0 12px; } .frame-account-actions .frame-account { display: none; } }
+/* Distinct navigation chrome; the task surface remains white. */
+.site-frame .frame-header { background:#0C2B15; color:#fff; border-bottom:0; }
+.site-frame .frame-header a,.site-frame .frame-header button,.site-frame .frame-header .frame-brand { color:#fff; }
+.site-frame .frame-header .frame-account { color:#d7e8dc; }
+.site-frame .frame-header nav a[aria-current="page"] { color:#fff; border-bottom-color:#b3ecb7; }
+.site-frame .frame-header :focus-visible { outline-color:#c6f5c9; }
+.site-frame .frame-footer { background:#F7F8F7; }
+.frame-footer-inner { display:grid; grid-template-columns:1fr 1fr; gap:16px 48px; padding-block:40px; }
+.frame-footer-heading { display:contents; }
+.frame-footer-heading > .frame-brand { grid-column:1; grid-row:1; }
+.frame-footer-heading > nav { grid-column:2; grid-row:1; align-self:start; }
+.frame-footer-inner > p { grid-column:1; grid-row:2; font-size:16px; margin:0; }
+.frame-footer-help { grid-column:2; grid-row:2 / span 2; margin:0; padding:0; border:0; width:100%; font-size:16px; }
+.account-status { padding:20px; margin:20px 0; background:#f1f5f2; color:#16382b; border-radius:12px; }
+.account-status h3 { font-size:18px; margin:0 0 8px; }
+.account-status p,.commerce .market-notice { font-size:16px; line-height:1.5; color:#16382b; }
+.request-estimate { background:#f7f8f7; padding:16px; border-radius:12px; margin:20px 0; }
+.meal-requests { max-width:none; margin:24px 0; padding:0 0 24px; }
+.meal-requests form > button { margin:8px 12px 0 0; }
+@media(max-width:767px){.frame-footer-inner{grid-template-columns:minmax(0,1fr);gap:20px;padding-block:32px}.frame-footer-heading > .frame-brand,.frame-footer-heading > nav,.frame-footer-inner > p,.frame-footer-help{grid-column:1;grid-row:auto}.frame-header-inner{grid-template-columns:minmax(0,1fr) auto}.frame-header nav{gap:0 16px}.frame-account-actions{max-width:190px}.site-frame .frame-account-actions .frame-account{display:block;flex-basis:auto}.frame-brand{font-size:24px}}

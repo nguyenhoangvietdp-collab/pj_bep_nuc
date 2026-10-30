@@ -12,7 +12,7 @@ export async function GET() {
     const data = await transaction((s) => {
       const u = s.users.find((u) => u.id === id);
       requireThat(u, "Không có tài khoản");
-      requireThat(u.approved, "Tài khoản đang chờ vận hành duyệt");
+      if(!u.approved) return {user:u,mealRequests:(s.mealRequests||[]).filter(r=>r.userId===u.id).map(({quoteId,...r})=>r),orders:[],vouchers:[],heldQuotes:[]};
       issue(s, u, clock());
       return view(s, u, clock());
     });

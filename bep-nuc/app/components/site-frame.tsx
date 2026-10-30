@@ -45,6 +45,6 @@ export function SiteFooter({ children, supportEmail }: { children?: ReactNode; s
       <nav aria-label="Điều hướng cuối trang"><Link href="/meals">Chọn bữa</Link><Link href="/offers">Ưu đãi</Link><Link href="/orders">Đơn hàng</Link>{support && <a href={support}>Liên hệ hỗ trợ</a>}</nav>
     </div>
     <p>Bữa cuối ngày tại Hà Nội. Tự đến lấy hoặc giao tận nơi; phí giao được xác nhận trước khi thanh toán.</p>
-    {children && <div className="frame-footer-help">{children}</div>}
+    <div className="frame-footer-help"><h3>Hướng dẫn & hỗ trợ</h3>{children || <p>Kiểm tra món, thời gian nhận và tổng tiền được xác nhận trước khi thanh toán.</p>}</div>
   </div></footer>;
 }
