@@ -12,8 +12,11 @@ import { isCloudMvp, readAppLocation, replaceAppUrl } from "../../lib/app-naviga
 import { filterLaunchMenu, menuShops } from "../../lib/launch-menu";
 import Offers from "./offers";
 import FulfillmentChoice from "./fulfillment-choice";
+import SavedPlace from "./saved-place";
+import {voucherLabel,voucherCurrent,type PublicTradingRules} from "../../lib/trading";
 import {
   estimate,
+  lotEstimate,
   percent,
   browseUrl,
   displayPrice,
@@ -32,6 +35,7 @@ type Catalog = {
   pilotOpen?: boolean;
   shops: PublicShop[];
   listings: Food[];
+  tradingRules?:PublicTradingRules;
 };
 type Filters = { category: string; budget: number; shop: string; stock: boolean; receiving: boolean };
 const defaultFilters: Filters = { category: "", budget: 0, shop: "", stock: true, receiving: false };
@@ -118,7 +122,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
       }
       if (version !== loadVersion.current) return;
       setCatalog(nextCatalog); fetched.current = received;
-      setUser(auth.user); setSupportEmail(auth.supportEmail); setProfile(nextProfile); profileSnapshot.current=nextProfile; setSyncedAt(Date.now()); setLoadError("");
+      setUser(nextProfile?.user??auth.user); setSupportEmail(auth.supportEmail); setProfile(nextProfile); profileSnapshot.current=nextProfile; setSyncedAt(Date.now()); setLoadError("");
       try {
         const mode = auth.user?.approved && auth.user.role === "student" ? "student" : "guest";
         if (mode === "student" && sessionStorage.getItem("bc-price-mode") === "guest")
@@ -246,7 +250,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
   const now = catalog
     ? catalog.now + (catalog.demo ? 0 : tick - fetched.current)
     : tick;
-  const vouchers = user?.approved && user.role === "student" ? profile?.vouchers || [] : [];
+  const modern=catalog?.tradingRules?.version===2;
+  const vouchers = user?.approved && user.role === "student" && (!modern||user.place) ? profile?.vouchers || [] : [];
   const held = profile?.heldQuotes?.[0];
   const pendingOrder = profile?.orders?.find((o: any) => o.status === "awaiting_payment" && o.expires > now);
   useEffect(() => {
@@ -264,13 +269,14 @@ export default function Market({ view, id }: { view: string; id?: string }) {
   const shop = catalog?.shops.find(
     (s) => s.id === (view === "shop" ? id : item?.shopId),
   );
-  const activeVoucher = profile?.vouchers?.find((v: any) => v.id === voucher && item && displayPrice(item, [v], now).rate === v.rate);
+  const activeVoucher = vouchers.find((v: any) => v.id === voucher && item && v.state==="available"&&voucherCurrent(v,now)&&(modern?(v.amount?item.eligibleFixed||countForDraft()>1:item.eligible.includes(v.rate)||countForDraft()>1):displayPrice(item,[v],now).rate===v.rate));
+  function countForDraft(){return held?.qty||draft?.qty||1;}
   const count = held?.qty || draft?.qty || 1;
   const receiveMethod = held?.fulfillment || fulfillment;
   const deliveryValid = recipient.trim().length>=2 && /^(0\d{9}|\+84\d{9})$/.test(phone.replace(/[\s-]/g,"")) && deliveryAddress.trim().length>=10;
   const amounts =
     held ||
-    (item ? estimate(item.price * count, activeVoucher?.rate || 0) : undefined);
+    (item ? modern?lotEstimate(item,count,activeVoucher):estimate(item.price * count, activeVoucher?.rate || 0) : undefined);
   const seconds = held
     ? Math.max(0, Math.ceil((held.expires - now) / 1000))
     : 0;
@@ -336,7 +342,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     router.push("/checkout");
   }
   async function quote() {
-    if (!item || !activeVoucher || mutation.current) return;
+    if (!item || (!modern&&!activeVoucher) || mutation.current) return;
     mutation.current = true;
     let coords;
     setBusy(true);
@@ -356,7 +362,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     mutation.current = false;
     await act("quote", {
       listingId: item.id,
-      voucherId: activeVoucher.id,
+      voucherId: activeVoucher?.id,
       qty: count,
       fulfillment,
       location: coords,
@@ -413,10 +419,10 @@ export default function Market({ view, id }: { view: string; id?: string }) {
   }
   function filterFields(values: Filters, change: (next: Filters) => void, prefix: string) {
     return <>
-      <fieldset className="facet-group"><legend>Loại món</legend>
+      <fieldset className="facet-group"><legend>Nhóm hàng</legend>
         {["", ...foodCategories].map(value => <label key={value} className="facet-option"><input type="radio" name={`${prefix}-category`} checked={values.category === value} onChange={() => change({ ...values, category: value })} /><span>{value || "Tất cả món"}</span></label>)}
       </fieldset>
-      <fieldset className="facet-group"><legend>Giá mỗi suất</legend>
+      <fieldset className="facet-group"><legend>Giá mỗi lô</legend>
         <p className="facet-hint">Theo giá món đang hiển thị; chưa gồm phí giao.</p>
         {[0, 30000, 40000, 50000].map(value => <label key={value} className="facet-option"><input type="radio" name={`${prefix}-budget`} checked={values.budget === value} onChange={() => change({ ...values, budget: value })} /><span>{value ? `Không quá ${money(value)}` : "Không giới hạn"}</span></label>)}
         <label className="custom-budget">Ngân sách khác (đ)<input type="number" min="0" step="1" inputMode="numeric" placeholder="Ví dụ: 35000" value={values.budget || ""} onChange={e => { const n = Number(e.target.value); if(Number.isSafeInteger(n) && n >= 0) change({ ...values, budget: n }); }} /></label>
@@ -474,18 +480,19 @@ export default function Market({ view, id }: { view: string; id?: string }) {
             <Heading>{l.name}</Heading>
             <Link href={`/shops/${l.shopId}`}>{s?.name}</Link>
           </div>
+          {l.lot&&<section className="lot-proof"><p className="lot-reason">{l.lot.offer==="surplus"?"Còn lại cuối phiên":"Ưu đãi cửa hàng"} · {l.lot.kind==="flowers"?"Hoa cắm nhà":"Đồ ăn"}</p><h3>Vì sao giá giảm?</h3><p>{l.lot.reason}</p><p><b>Bạn nhận:</b> {l.lot.contents}</p><p><b>Tình trạng:</b> {l.lot.condition}</p><p>Tiệm cập nhật lúc {time(l.lot.checkedAt)}</p>{l.lot.kind==="flowers"&&<p>{l.lot.stems} cành dùng được · {l.lot.species} · {l.lot.packaging}</p>}{l.lot.referencePrice&&<details><summary>Giá tham chiếu {money(l.lot.referencePrice)}</summary><p>{l.lot.referenceEvidence}</p><p>Mốc tham chiếu chưa bao gồm công đi lại hoặc lựa chọn thay thế của bạn.</p></details>}</section>}
           <section className="meal-collection" aria-label="Nơi và giờ nhận">
             <h3>Quán và khung giờ bàn giao</h3>
             <p className="meal-address">{s?.address || "Chưa có địa chỉ nhận"}</p>
             <p className="meal-pickup"><b>{time(l.start)}–{time(l.end)}</b> · Còn {l.stock} suất</p>
-            <p className="meal-allergens"><b>Dị ứng:</b> {l.allergens || "Chưa có thông tin. Hỏi quán trước khi đặt."}</p>
+            {l.lot?.kind!=="flowers"&&<p className="meal-allergens"><b>Dị ứng:</b> {l.allergens || "Chưa có thông tin. Hỏi quán trước khi đặt."}</p>}
           </section>
           <section className="meal-purchase" aria-label="Chọn số suất và kiểm tra giá">
-            <div className="meal-price"><strong>{money(displayed.total)} <small>/ suất</small></strong><span>Giá menu {money(l.price)}</span></div>
-            <p className="fine">{displayed.rate ? `Ước tính với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}</p>
+            <div className="meal-price"><strong>{money(displayed.total)} <small>/ {l.lot?"lô":"suất"}</small></strong><span>{l.lot?"Giá lô trước voucher":"Giá menu"} {money(l.price)}</span></div>
+            <p className="fine">{displayed.voucher ? `Ước tính với voucher ${voucherLabel(displayed.voucher)}` : displayed.rate ? `Ước tính với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}</p>
             <Quantity n={n} max={Math.min(3, l.stock)} disabled={false} change={change} />
             <p className="detail-total" aria-live="polite">Tổng {n} suất <strong>{money(total.total)}</strong></p>
-            <button disabled={l.stock < n || now >= l.end} onClick={() => saveDraft(l, n)}>Kiểm tra bữa đã chọn</button>
+            <button disabled={l.stock < n || now >= l.end} onClick={() => saveDraft(l, n)}>Kiểm tra lô đã chọn</button>
             <p className="fine">Tối đa 3 suất · Chọn tự lấy hoặc giao ở bước tiếp theo</p>
           </section>
         </div>
@@ -534,16 +541,16 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           </section>
         ) : (
           <>
-            {view === "offers" && <Offers listings={catalog.listings} shops={catalog.shops} vouchers={vouchers} now={now} browseHref={browseHref}/>}
+            {view === "offers" && <>{user?.approved&&modern&&<SavedPlace place={user.place} demo={catalog.demo} disabled={busy||!!held} save={a=>act("save_place",a)}/>}<Offers listings={catalog.listings} shops={catalog.shops} vouchers={vouchers} now={now} browseHref={browseHref} rules={catalog.tradingRules}/></>}
             {(view === "browse" || view === "shop") && (
               <>
                 {view === "browse" ? (
                   <section className="market-banner">
                     <div>
 
-                      <h1>Chọn bữa tối nay</h1>
+                      <h1>Đồ ăn và hoa, đúng lúc bạn cần.</h1>
                       <p className="market-eligibility">
-                        Tự đến lấy hoặc giao tận nơi · Dành cho sinh viên đã được duyệt.
+                        Xem lý do giảm, tình trạng lô và khung nhận. Giá lô luôn hiển thị trước voucher và phí giao.
                       </p>
                     </div>
                   </section>
@@ -589,7 +596,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                   </aside>
                   <section className="catalogue-results" aria-label="Kết quả tìm món">
                     <div className="catalogue-toolbar">
-                      <div><h2>{query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : !catalog.listings.length ? "Khám phá thực đơn" : "Món đang bán"}</h2><p role="status" aria-live="polite">{catalog.listings.length ? `${shown.length} món${stockOnly ? " còn suất" : ""}` : "Chưa có suất mở bán · Tham khảo món bên dưới"}</p></div>
+                      <div><h2>{query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : !catalog.listings.length ? "Khám phá thực đơn" : "Lô đang có"}</h2><p role="status" aria-live="polite">{catalog.listings.length ? `${shown.length} món${stockOnly ? " còn suất" : ""}` : "Chưa có suất mở bán · Tham khảo món bên dưới"}</p></div>
                       <button className="secondary mobile-filter-toggle" ref={filterOpener} onClick={() => { setMobileFilters(currentFilters); filterDialog.current?.showModal(); }}>Bộ lọc{filterCount > 0 ? ` (${filterCount})` : ""}</button>
                       {(catalog.listings.length > 0 || sort === "price") && <label className="catalogue-sort"><span>Sắp xếp</span><select value={sort} onChange={e => setSort(e.target.value)}><option value="end">{catalog.listings.length ? "Giờ nhận kết thúc sớm" : "Thứ tự thực đơn"}</option><option value="price">Giá thấp đến cao</option></select></label>}
                     </div>
@@ -635,12 +642,13 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                           <Link className="shop-meta" href={`/shops/${l.shopId}`}>{catalog.shops.find(s => s.id === l.shopId)?.name}</Link>
                           <p className="food-address">{catalog.shops.find(s => s.id === l.shopId)?.address || "Chưa có địa chỉ nhận"}</p>
                           <p className="pickup-line"><b>Nhận {time(l.start)}–{time(l.end)}</b></p>
-                          <span className="stock-label">{l.stock ? `Còn ${l.stock} suất` : "Hết suất"}</span>
+                          <span className="stock-label">{l.stock ? `Còn ${l.stock} ${l.lot?"lô":"suất"}` : "Hết hàng"}</span>
                         </div>
                         <div className="food-card-purchase">
-                          <div className="food-price-row"><strong className="food-price">{money(displayed.total)}</strong><span className="food-menu-price">Giá menu <s>{money(l.price)}</s></span></div>
-                          <p className="price-condition">{displayed.rate ? `Với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}{fulfillment === "delivery" && " · Chưa gồm phí giao"}</p>
-                          <button disabled={!l.stock || now >= l.end} onClick={() => openFood(l)}>Chọn bữa này</button>
+                          <div className="food-price-row"><strong className="food-price">{money(displayed.total)}</strong><span className="food-menu-price">{l.lot?"Giá lô":"Giá menu"} {money(l.price)}</span></div>
+                          {l.lot&&<p className="fine">{l.lot.offer==="surplus"?"Lô còn lại cuối phiên":"Khuyến mãi cửa hàng"} · {l.lot.kind==="flowers"?`${l.lot.stems} cành · gói cơ bản`:l.lot.contents}</p>}
+                          <p className="price-condition">{displayed.voucher ? `Với voucher ${voucherLabel(displayed.voucher)}` : displayed.rate ? `Với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}{fulfillment === "delivery" && " · Chưa gồm phí giao"}</p>
+                          <button disabled={!l.stock || now >= l.end} onClick={() => openFood(l)}>Xem lô này</button>
                         </div>
                       </div>
                     </article>
@@ -704,7 +712,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
             {view === "checkout" && !referenceName && (
               <>
                 <Link href={browseHref}>Tiếp tục tìm món</Link>
-                <h1>Kiểm tra bữa của bạn</h1>
+                <h1>Kiểm tra lô đã chọn</h1>
                 <p className="checkout-stage" role="status">Bước {held ? "2/3 · Đã giữ suất, kiểm tra giá xác nhận" : "1/3 · Kiểm tra bữa và chọn voucher"}</p>
                 {!item ? (
                   <section className="market-empty">
@@ -751,9 +759,9 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                         }}
                       />
                       <details className="food-safety">
-                        <summary>Bảo quản & thông tin dị ứng</summary>
+                        <summary>{item.lot?.kind==="flowers"?"Chăm hoa & gói cơ bản":"Bảo quản & thông tin dị ứng"}</summary>
                         <p>{item.storage || "Chưa có hướng dẫn bảo quản. Hỏi quán trước khi đặt."}</p>
-                        <p>{item.allergens || "Chưa có thông tin dị ứng. Hỏi quán trước khi đặt."}</p>
+                        {item.lot?.kind!=="flowers"&&<p>{item.allergens || "Chưa có thông tin dị ứng. Hỏi quán trước khi đặt."}</p>}
                       </details>
                       {!user ? (
                         <section className="checkout-gate">
@@ -784,9 +792,10 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                         </p>
                       ) : (
                         <>
+                          {modern&&<SavedPlace place={user.place} demo={catalog.demo} disabled={!!held||busy} save={a=>act("save_place",a)}/>}
                           <h2>Chọn một voucher</h2>
                           <fieldset className="checkout-vouchers"><legend>Chọn một voucher cho đơn này</legend>
-                            {[0.07, 0.1, 0.2].map((rate) => {
+                            {modern?<><label className={`voucher-option ${!voucher?"selected":""}`}><input type="radio" name="voucher" checked={!voucher&&!held?.voucherId} disabled={!!held||busy} onChange={()=>setVoucher("")}/><b>Giá lô</b><span>Không dùng voucher</span></label>{[.15,.1,9000].flatMap(kind=>{const matches=(profile?.vouchers||[]).filter((v:any)=>kind===9000?v.amount===9000:v.rate===kind&&!v.amount);const v=matches.find((v:any)=>v.id===held?.voucherId)||matches.find((v:any)=>v.id===voucher)||matches.find((v:any)=>v.state==="available")||matches[0];return v?[{...v,remaining:matches.filter((v:any)=>v.state==="available").length}]:[];}).map((v:any)=>{const preview=lotEstimate(item,count,v),eligible=user.place&&v.state==="available"&&voucherCurrent(v,now)&&(v.amount?item.eligibleFixed||count>1:item.eligible.includes(v.rate)||count>1);return <label key={v.id} className={`voucher-option ${voucher===v.id||held?.voucherId===v.id?"selected":""}`}><input type="radio" name="voucher" checked={voucher===v.id||held?.voucherId===v.id} disabled={!eligible||!!held||busy} onChange={()=>setVoucher(v.id)}/><b>{voucherLabel(v)}</b><span className="voucher-copy"><strong>{money(preview.total)}</strong><small>{v.amount?"Giảm cố định":`Tối đa ${money(v.cap??0)}`} · {states[v.state]} · còn {v.remaining} lượt</small><small>{held?.voucherId===v.id?"Đã giữ cho đơn này":!user.place?"Lưu vị trí trước khi chọn":!eligible?"Lô hoặc lượt chưa đủ điều kiện":"Giá cuối kiểm tra khi giữ lô"}</small></span></label>;})}</>:[0.07, 0.1, 0.2].map((rate) => {
                               const v = profile?.vouchers?.find(
                                 (v: any) => v.rate === rate,
                               );
@@ -813,7 +822,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                               );
                             })}
                           </fieldset>
-                          <p className="fine">Bạn tự chọn một voucher. Có thể giữ voucher lớn cho bữa sau.</p>
+                          <p className="fine">Bạn tự chọn một voucher; có thể để dành lượt cho đơn sau.</p>
                         </>
                       )}
                       {held && (
@@ -857,15 +866,15 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                     </section>
                     <aside className="checkout-summary" ref={summary} tabIndex={-1}>
                       <h2>Tóm tắt thanh toán</h2>
-                      {receiveMethod==="delivery" && user?.approved && !deliveryValid && <p className="fine">Điền đủ tên người nhận, số điện thoại hợp lệ và địa chỉ để giữ suất.</p>}{receiveMethod==="delivery" && <p className="delivery-fee-pending">Phí giao hàng: chờ vận hành báo. Số tiền bên dưới chỉ là tiền món.</p>}
+                      {receiveMethod==="delivery" && user?.approved && !deliveryValid && <p className="fine">Điền đủ tên người nhận, số điện thoại hợp lệ và địa chỉ để giữ suất.</p>}{receiveMethod==="delivery" && <p className="delivery-fee-pending">Phí giao hàng: chờ vận hành báo. Số tiền bên dưới chỉ là tiền hàng.</p>}
                       {amounts && <details className="price-help"><summary>Chi tiết giảm giá</summary><PriceLines a={amounts} hideTotal /></details>}
                       <p className="price-type">
                         {held
-                          ? receiveMethod==="delivery"?"Tiền món đã xác nhận; phí giao báo sau":"Giá xác nhận từ Bếp Núc"
+                          ? receiveMethod==="delivery"?"Tiền hàng đã xác nhận; phí giao báo sau":"Giá xác nhận từ Bếp Núc"
                           : "Ước tính · chưa gồm thưởng tự nhận"}
                       </p>
                       <div className="checkout-action">
-                        {amounts && <div className="action-total"><span>{receiveMethod==="delivery"?"Tiền món (chưa gồm phí giao)":held ? "Tổng thanh toán" : activeVoucher ? "Tổng ước tính đã chọn voucher" : "Giá trước voucher"}</span><strong>{money(amounts.total)}</strong></div>}
+                        {amounts && <div className="action-total"><span>{receiveMethod==="delivery"?"Tiền hàng (chưa gồm phí giao)":held ? "Tổng thanh toán" : activeVoucher ? "Tổng ước tính đã chọn voucher" : "Giá trước voucher"}</span><strong>{money(amounts.total)}</strong></div>}
                         {held && <p>{seconds ? `Giữ suất còn ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}` : "Đã hết hạn. Kiểm tra lại giá trước khi thanh toán."}</p>}
                       {user?.approved &&
                         user.role === "student" &&
@@ -892,9 +901,9 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                             disabled={
                               busy ||
                               (receiveMethod==="delivery"&&!deliveryValid) ||
-                              (isCloudMvp && catalog.pilotOpen === false) ||
-                              !activeVoucher ||
-                              activeVoucher.state !== "available" ||
+                              catalog.pilotOpen === false ||
+                              (!modern&&!activeVoucher) ||
+                              (!!activeVoucher&&activeVoucher.state !== "available") ||
                               item.stock < count ||
                               now >= item.end
                             }
@@ -909,7 +918,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                       </div>
                       {!held && !activeVoucher && displayPrice(item, vouchers, now).rate > 0 && <p className="price-suggestion">Nếu chọn voucher {percent(displayPrice(item, vouchers, now).rate)}: <strong>{money(displayPrice(item, vouchers, now, count).total)}</strong>. Bạn chưa chọn voucher.</p>}
                       {error && <div role="alert" className="error" ref={actionError} tabIndex={-1}>{error}<button className="secondary" disabled={busy} onClick={() => load()}>Kiểm tra trạng thái</button></div>}
-                      {!isCloudMvp && !held && user?.approved && user.role === "student" && <details className="optional-benefit"><summary>Thưởng vị trí & cách tính giá (tùy chọn)</summary>                          <details className="price-help"><summary>Cách tính giảm giá</summary><p>Giảm nền 5% trước, sau đó áp dụng một voucher. Không cộng dồn ba voucher. Giá ước tính chưa gồm thưởng vị trí; giá xác nhận được kiểm tra khi giữ suất.</p></details>
+                      {!modern&&!isCloudMvp && !held && user?.approved && user.role === "student" && <details className="optional-benefit"><summary>Thưởng vị trí & cách tính giá (tùy chọn)</summary>                          <details className="price-help"><summary>Cách tính giảm giá</summary><p>Giảm nền 5% trước, sau đó áp dụng một voucher. Không cộng dồn ba voucher. Giá ước tính chưa gồm thưởng vị trí; giá xác nhận được kiểm tra khi giữ suất.</p></details>
                           <label className="inline-check">
                             <input
                               type="checkbox"
@@ -940,7 +949,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                 <h1>
                   {view === "orders"
                     ? "Đơn hàng của bạn"
-                    : "Theo dõi bữa của bạn"}
+                    : "Theo dõi đơn của bạn"}
                 </h1>
                 {view === "orders" && isCloudMvp && <MealRequests/>}
                 <h2>Đơn đã xác nhận</h2>
@@ -1090,16 +1099,14 @@ export default function Market({ view, id }: { view: string; id?: string }) {
         <details id="voucher-help">
           <summary>Voucher hoạt động thế nào?</summary>
           <p>
-            Sinh viên đã được duyệt nhận voucher 7%, 10%, 20% từ 18:00. Mỗi
-            loại dùng một lần, hết hạn 23:59. Mỗi đơn dùng một voucher phù hợp
-            với món; xem voucher của bạn khi kiểm tra đơn.
+            Voucher theo tuần: hai lượt15%, hai lượt10% và9.000đ cố định với số lượt được công bố theo ngân sách. Lưu điểm xuất phát trước khi chọn; mỗi đơn một voucher tiền hàng đủ điều kiện.
           </p>
-          <p>Giảm nền 5% trước, sau đó áp dụng voucher. Không cộng dồn ba voucher.</p>
+          <p>Giá lô đã được cửa hàng xác nhận; giao dịch mới không tự giảm thêm5%. Xem khoản hỗ trợ và tổng tiền trước khi thanh toán.</p>
         </details>
         <details id="refund-help">
           <summary>Hủy đơn và hoàn tiền</summary>
           <p>
-            Quán hủy: hoàn tiền, phục hồi voucher nếu còn trong tối. No-show
+            Quán hủy: hoàn tiền, phục hồi voucher nếu còn trong tuần. No-show
             trong pilot: hoàn tiền, voucher đã dùng không phục hồi. Chuyển khoản
             muộn cần vận hành xử lý.
           </p>
@@ -1145,7 +1152,7 @@ function FoodImage({ l }: { l: Food }) {
           onError={() => setFailed(true)}
         />
       ) : (
-        <span>Chưa có ảnh món</span>
+        <span>Chưa có ảnh lô</span>
       )}
       {l.image?.includes("demo-") && (
         <span className="demo-image-label">Ảnh minh họa · DEMO</span>
@@ -1165,8 +1172,8 @@ function Quantity({
   change: (n: number) => void;
 }) {
   return (
-    <div className="quantity-control" role="group" aria-label="Số suất">
-      <b>Số suất</b>
+    <div className="quantity-control" role="group" aria-label="Số lượng">
+      <b>Số lượng</b>
       <button
         className="secondary"
         aria-label="Giảm số suất"
@@ -1192,11 +1199,11 @@ function PriceLines({ a, hideTotal = false }: { a: any; hideTotal?: boolean }) {
     <>
       <dl className="price-lines">
         <div>
-          <dt>Giá menu</dt>
+          <dt>{a.pricingVersion===2?"Giá lô trước ưu đãi":"Giá menu"}</dt>
           <dd>{money(a.menuTotal)}</dd>
         </div>
         <div>
-          <dt>Giảm nền 5%</dt>
+          <dt>{a.pricingVersion===2?"Giảm nền không áp dụng":"Giảm nền 5%"}</dt>
           <dd>−{money(a.baseDiscount)}</dd>
         </div>
         <div>
@@ -1204,7 +1211,7 @@ function PriceLines({ a, hideTotal = false }: { a: any; hideTotal?: boolean }) {
           <dd>−{money(a.voucherDiscount)}</dd>
         </div>
         <div>
-          <dt>Thưởng tự nhận</dt>
+          <dt>Hỗ trợ tự nhận</dt>
           <dd>−{money(a.bonusDiscount)}</dd>
         </div>
         {!hideTotal && <div className="total-line">
@@ -1212,7 +1219,7 @@ function PriceLines({ a, hideTotal = false }: { a: any; hideTotal?: boolean }) {
           <dd>{money(a.total)}</dd>
         </div>}
       </dl>
-      <p className="saved-line">Tiết kiệm {money(a.saved)}</p>
+      <p className="saved-line">Giảm {money(a.saved)} so với giá trước ưu đãi. Cân nhắc thêm công đi lại và lựa chọn thay thế.</p>
     </>
   );
 }
@@ -1232,6 +1239,7 @@ function CustomerOrder({
   action: (action:string,args:any)=>Promise<any>;
 }) {
   const [copied, setCopied] = useState("");
+  const [description,setDescription]=useState("");
   const l = data.listings.find((l: Food) => l.id === o.listingId),
     s = data.shops.find((s: PublicShop) => s.id === o.shopId);
   async function copy(text: string) {
@@ -1249,7 +1257,7 @@ function CustomerOrder({
         <b>{o.fulfillment==="delivery"&&o.status==="paid"?"Đã thanh toán · chờ người giao nhận món":states[o.status]}</b>
       </div>
       <p>
-        {o.qty} suất · {o.status==="awaiting_delivery_fee"?"Tiền món ":""}{money(o.total)} · {s?.name}
+        {o.qty} suất · {o.status==="awaiting_delivery_fee"?"Tiền hàng ":""}{money(o.total)} · {s?.name}
       </p>
       {!detail ? (
         <Link className="button-link" href={`/orders/${o.id}`}>
@@ -1257,8 +1265,12 @@ function CustomerOrder({
         </Link>
       ) : (
         <>
-          {o.fulfillment==="delivery" && <section className="delivery-order-details"><h3>Giao tận nơi</h3><p>{o.delivery?.recipient} · {o.delivery?.phone}</p><p>{o.delivery?.address}</p><p>Tiền món {money(o.foodTotal)} · Phí giao {o.deliveryFee===undefined?"chờ xác nhận":money(o.deliveryFee)}</p></section>}
-          {o.status==="awaiting_delivery_fee" && <section className="delivery-fee-review" role="status"><h3>{o.deliveryFee===undefined?"Vận hành đang xác nhận phí giao":"Kiểm tra phí trước khi thanh toán"}</h3><p>Giữ suất đến {time(o.expires)}. Chưa chuyển tiền khi chưa đồng ý phí.</p>{o.deliveryFee!==undefined && <><p>Tiền món {money(o.foodTotal)} + giao hàng {money(o.deliveryFee)}</p><strong className="price">Tổng {money(o.foodTotal+o.deliveryFee)}</strong><button disabled={busy||o.expires<=now} onClick={()=>action("accept_delivery_fee",{orderId:o.id,revision:o.delivery.revision})}>Đồng ý tổng tiền và tiếp tục</button></>}<button className="secondary" disabled={busy} onClick={()=>action("decline_delivery_fee",{orderId:o.id})}>Hủy yêu cầu, trả lại suất và voucher</button></section>}
+          {o.fulfillment==="delivery" && <section className="delivery-order-details"><h3>Giao tận nơi</h3><p>{o.delivery?.recipient} · {o.delivery?.phone}</p><p>{o.delivery?.address}</p><p>Tiền hàng {money(o.foodTotal)} · Phí giao {o.deliveryFee===undefined?"chờ xác nhận":money(o.deliveryFee)}</p></section>}
+          {o.shippingSupport>0&&<p>Phí vận chuyển {money(o.grossDeliveryFee)} · Bếp Núc hỗ trợ {money(o.shippingSupport)} · Bạn trả {money(o.deliveryFee)}</p>}
+          {o.lotSnapshot&&<details><summary>Thông tin lô đã xác nhận</summary><p>{o.lotSnapshot.contents}</p><p>{o.lotSnapshot.condition}</p><p>{o.lotSnapshot.reason}</p><PriceLines a={o.priceBreakdown}/></details>}
+          {["awaiting_payment","awaiting_delivery_fee"].includes(o.status)&&<button className="secondary" disabled={busy} onClick={()=>action("cancel",{orderId:o.id})}>Hủy đơn chưa thanh toán</button>}
+          {["paid","picked_up","out_for_delivery","delivered"].includes(o.status)&&<section className="order-issue"><h3>Báo sai lô hoặc cần hỗ trợ</h3>{(data.issues??[]).filter((x:any)=>x.orderId===o.id).map((x:any)=><p key={x.id}>{x.status==="open"?"Đang chờ xử lý":x.resolution} · {x.description}</p>)}{!(data.issues??[]).some((x:any)=>x.orderId===o.id&&x.status==="open")&&<form onSubmit={async e=>{e.preventDefault();if(await action("report_issue",{orderId:o.id,description}))setDescription("");}}><label>Mô tả tình trạng hoặc vấn đề<textarea value={description} onChange={e=>setDescription(e.target.value)} minLength={5} maxLength={1000} required/></label><p className="fine">Giữ ảnh lô và nội dung đơn để đối chiếu khi được yêu cầu. Vận hành xem xét trước quyết định hoàn tiền.</p><button className="secondary" disabled={busy}>Gửi yêu cầu hỗ trợ</button></form>}</section>}
+          {o.status==="awaiting_delivery_fee" && <section className="delivery-fee-review" role="status"><h3>{o.deliveryFee===undefined?"Vận hành đang xác nhận phí giao":"Kiểm tra phí trước khi thanh toán"}</h3><p>Giữ suất đến {time(o.expires)}. Chưa chuyển tiền khi chưa đồng ý phí.</p>{o.deliveryFee!==undefined && <><p>Tiền hàng {money(o.foodTotal)} + giao hàng {money(o.deliveryFee)}</p><strong className="price">Tổng {money(o.foodTotal+o.deliveryFee)}</strong><button disabled={busy||o.expires<=now} onClick={()=>action("accept_delivery_fee",{orderId:o.id,revision:o.delivery.revision})}>Đồng ý tổng tiền và tiếp tục</button></>}<button className="secondary" disabled={busy} onClick={()=>action("decline_delivery_fee",{orderId:o.id})}>Hủy yêu cầu, trả lại suất và voucher</button></section>}
 
           {o.status === "paid" && o.code && <section className="pickup-code"><h3>Mã nhận của bạn</h3><code>{o.code}</code><button className="secondary" onClick={() => copy(o.code)}>Sao chép mã nhận</button><p role="status">{copied}</p><p>Đưa mã này cho quán trong giờ nhận bên dưới.</p></section>}
 

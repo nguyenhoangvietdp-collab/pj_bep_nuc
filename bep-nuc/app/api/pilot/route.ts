@@ -43,7 +43,9 @@ export async function POST(req: NextRequest) {
       "Origin không hợp lệ",
     );
     const id = await identity();
-    const body = await req.json();
+    requireThat(Number(req.headers.get("content-length")||0)<=32768,"Yêu cầu quá lớn");
+    const text=await req.text();requireThat(new TextEncoder().encode(text).length<=32768,"Yêu cầu quá lớn");
+    const body = JSON.parse(text);
     requireThat(
       typeof body.action === "string" &&
         body.args &&
@@ -51,10 +53,12 @@ export async function POST(req: NextRequest) {
       "Sai yêu cầu",
     );
     let distance: number | null = null;
+    let routePlaceId:string|undefined;
     if (body.action === "quote" && body.args.fulfillment !== "delivery") {
       const destination = await transaction((s) => {
         const u = s.users.find((x) => x.id === id);
         requireThat(u?.approved && u.role === "student", "Không có quyền");
+        if(s.tradingRules?.version!==1)body.args.location=u.place?{lat:u.place.lat,lng:u.place.lng}:undefined;
         const listing = s.listings.find((l) => l.id === body.args.listingId);
         requireThat(listing, "Không có món");
         requireThat(
@@ -74,6 +78,8 @@ export async function POST(req: NextRequest) {
         ).length;
         const routeAllowed =
           !!body.args.location &&
+          !!process.env.GOOGLE_ROUTES_API_KEY &&
+          (s.tradingRules?.version===1||!!s.tradingRules?.enabled&&s.tradingRules.pickupBands.length>0&&(!body.args.voucherId||s.tradingRules.stackReceiving)) &&
           used < Number(process.env.ROUTES_MONTHLY_REQUEST_LIMIT || 1000);
         s.audit.push({
           id: randomUUID(),
@@ -93,15 +99,18 @@ export async function POST(req: NextRequest) {
         return {
           shop: s.shops.find((x) => x.id === listing.shopId)!,
           routeAllowed,
+          placeId:u.place?.id,
         };
       });
       if (destination.routeAllowed)
         distance = await walking(body.args.location, destination.shop);
+      routePlaceId=destination.placeId;
       delete body.args.location;
     }
     const data = await transaction((s) => {
       const u = s.users.find((x) => x.id === id);
       requireThat(u, "Không có tài khoản");
+      if(body.action==="quote"&&body.args.fulfillment!=="delivery"&&s.tradingRules?.version!==1)requireThat(u.place?.id===routePlaceId,"Vị trí đã thay đổi; hãy kiểm tra lại báo giá");
       issue(s, u, clock());
       return act(s, u, body.action, body.args, clock(), distance);
     });

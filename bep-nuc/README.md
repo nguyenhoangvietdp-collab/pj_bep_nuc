@@ -23,11 +23,11 @@ node --env-file=.env.local --import tsx scripts/staff.ts SUPABASE_USER_ID ops
 node --env-file=.env.local --import tsx scripts/staff.ts SUPABASE_USER_ID merchant SHOP_ID
 ```
 
-Sinh viên mới mặc định chờ duyệt. Không cho người dùng tự chọn vai trò thật. Server giữ kết nối PostgreSQL; không đưa DATABASE_URL hoặc Google key vào biến NEXT_PUBLIC. Bảng bc_state bật RLS, thu hồi quyền PUBLIC; cần thu hồi quyền anon/authenticated riêng trong Supabase nếu project đã đặt default grants. Chỉ tài khoản server sở hữu bảng được đọc/ghi. Cấu hình kết nối TLS theo hướng dẫn Supabase cho môi trường triển khai. Google Routes key giới hạn API Routes, quota/ngân sách ở Google Cloud; quota cần cấu hình trước khi dùng thật. Khi Routes thất bại hoặc không lấy vị trí, dùng voucher gốc. Không lưu tọa độ khách.
+Sinh viên mới mặc định chờ duyệt. Không cho tự chọn vai trò thật. Server giữ DATABASE_URL và khóa dịch vụ, không đưa vào NEXT_PUBLIC. bc_state bật RLS, khóa các role browser. Giao dịch mới lưu điểm nơi ở/địa danh do khách khai báo để tính tuyến, không theo dõi GPS hoặc xác minh cư trú; thiếu tuyến thì không hỗ trợ khoảng cách. Xem [hướng dẫn cập nhật](docs/trading-update-20261101.md) về quyền, ảnh và vận hành.
 
-Production khóa đặt hàng nếu chưa bật REAL_PILOT_ENABLED=true, chưa có ba quán thật đã duyệt/ký/nguồn dư lặp lại và món đủ voucher20%, hoặc thiếu thông tin ngân hàng. Gate kiểm tra khả năng tài chính của món; tồn tại thời điểm mua được kiểm tra riêng để việc một quán hết hàng không khóa cả cụm. Gate là kiểm tra bản ghi vận hành, không thay thế xác minh hiện trường. Quyền ops ghi đối tác phải đi kèm hồ sơ được lưu ngoài app. Demo không được triển khai public.
+Production khóa đặt hàng nếu chưa bật REAL_PILOT_ENABLED, thiếu ngân hàng hoặc chưa có ba tiệm thật đã duyệt/ký/nguồn dư lặp lại, có lô đủ thông tin và biên. Không còn yêu cầu mọi tiệm phải đủ voucher20%. Gate là kiểm tra bản ghi, không thay xác minh hiện trường. Demo không được triển khai công khai.
 
-Bộ voucher cho mọi sinh viên đã duyệt được kích hoạt từ18:00 theo giờ Việt Nam; bản ghi được tạo ở giao dịch kế tiếp, không có push notification. Giữ hàng cũng không vượt mốc23:59. Google Routes có giới hạn số yêu cầu/tháng ở server, mặc định1000; giá/quota thực tế vẫn phải kiểm tra và cấu hình Google Cloud. Không coi giới hạn số request là đo chi phí hóa đơn.
+Voucher mới theo tuần giờ Việt Nam: hai lượt15%, hai lượt10%,9k cố định theo số lượt và cap được vận hành cấp ngân sách. Mặc định production chưa bật ưu đãi, chưa đặt số lượt9k/cap thực. Lô mới được đặt sau khi đăng/duyệt đến giờ cắt của lô, không bắt hoa hoặc đồ ăn phải chờ18h. Giữ tối đa10phút, không quá cuối khung lô hoặc thời điểm sang tuần. Tuần mới bắt đầu thứ Hai00:00; rà lại nguồn tài trợ từng tuần.
 
 ## Trải nghiệm mua bữa
 
@@ -41,9 +41,9 @@ Trang `/` và `/shops/[id]` cho khách xem catalogue công khai. `/meals/[id]` m
 
 Một aggregate PostgreSQL JSONB cho cụm pilot nhỏ; transaction + advisory lock toàn cục chống tranh tồn/voucher trên nhiều tiến trình production. PGlite có hàng đợi trong một tiến trình. Chuyển sang bảng chuẩn hóa/index và khóa theo lô khi mở rộng. API trả DTO theo vai trò, không trả giá sàn/chi phí/biên/settlement cho sinh viên. Mutation có origin check, phân quyền, idempotency key và audit. Expiry được xử lý ở mỗi giao dịch; khi không có traffic, việc giải phóng giữ hàng xảy ra ở lần truy cập kế tiếp. Không có cron được triển khai tự động.
 
-Chi phí và biên tối thiểu tính **mỗi suất**, nhân số lượng1–3. Lô mới mặc định quán nhận 90% tiền món khách thực trả sau ưu đãi, không gồm phí giao; Bếp Núc giữ 10% trước chi phí. Tiền làm tròn lên đồng, phần Bếp Núc giữ phải đủ chi phí và biên tối thiểu. Lô cố định cũ vẫn kiểm tra F+C+m. Voucher dùng lúc xác nhận tiền đúng hạn; tiền muộn/sai/thu thêm được ghi vào hàng chờ hoàn, không lấy lại tồn. No-show chỉ xử lý sau khung nhận; tiền hoàn thủ công. Mã nhận ngẫu nhiên24 ký tự, dùng một lần. Đối soát chỉ gom đơn đã giao chưa được gom trước đó; thao tác trả tiền yêu cầu mã giao dịch khác.
+Chi phí và biên tối thiểu tính mỗi lô, nhân số lượng1–3. Lô mới dùng giá lô trực tiếp và khoản tiệm nhận cố định, không tự giảm nền5% hoặc chia90%. Lô do merchant đăng cần ops duyệt chất lượng và chi phí trước mở bán. Báo giá/đơn cũ giữ nguyên snapshot. Voucher giữ khi báo giá, tiêu khi bàn giao. Tiền muộn/sai/thu thêm vào hàng chờ hoàn. Hoàn sau bàn giao không xóa nghĩa vụ tiệm; mã nhận dùng một lần.
 
-Sổ `cash` = thu - hoàn đã trả - trả quán - chi phí giao đã chi. `refundDue` và `merchantDue` là nghĩa vụ chưa trả. `unallocated` gồm tiền đơn chưa giao và chênh lệch gộp, **không phải lợi nhuận**. Contribution trừ chi phí biến đổi cấu hình và chi phí giao đã ghi, chưa trừ chi phí cố định/CAC. Đơn giao chưa có chi phí người giao khiến contribution tạm tính. Chi phí thực tế cần thay giá trị sàng lọc3.000đ và biên2.000đ trước pilot.
+Sổ cash = thu − hoàn đã trả − trả tiệm − chi phí giao đã chi. Tách refundDue, merchantDue, heldCustomerFunds và deliveryReserve. unallocated đã trừ các phần này nhưng vẫn không phải lợi nhuận. Contribution chỉ bao phủ chi phí đã cấu hình và chi phí giao đã ghi; chi phí lô cần gồm công/lỗi/CAC phù hợp, không đếm trùng. Xem docs/trading-update-20261101.md để triển khai backend, ảnh và frontend cùng phiên bản.
 
 ```powershell
 npm run type-check

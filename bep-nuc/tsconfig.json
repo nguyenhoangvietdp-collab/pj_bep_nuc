@@ -27,8 +27,23 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    ".next-bcg/types/**/*.ts",
+    ".next-build/types/**/*.ts",
+    ".next-delivery-check/types/**/*.ts",
+    ".next-filter/types/**/*.ts",
+    ".next-focus/types/**/*.ts",
+    ".next-home/types/**/*.ts",
+    ".next-journey/types/**/*.ts",
+    ".next-mvp-compat/types/**/*.ts",
+    ".next-mvp-release-check/types/**/*.ts",
+    ".next-redesign-check/types/**/*.ts",
+    ".next-trading-check/types/**/*.ts",
+    ".next-vertical/types/**/*.ts",
+    ".next-visual/types/**/*.ts",
+    ".next-white/types/**/*.ts",
     ".next/types/**/*.ts",
-    "next-env.d.ts"
+    "next-env.d.ts",
+    ".next-trading-preview/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

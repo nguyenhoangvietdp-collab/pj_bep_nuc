@@ -1,0 +1,65 @@
+{
+  "status": "USER_CONFIRMED_FIXED_9000_AND_MORE_SUPPORT_FOR_FARTHER_CUSTOMERS_OTHER_PARAMETERS_HYPOTHETICAL",
+  "user_confirmed": {"fixed_voucher_vnd": 9000, "distance_direction": "farther_customers_receive_more_support"},
+  "base": 38000,
+  "cost": 5263.157894736842,
+  "rows": [
+    {
+      "voucher": "15%",
+      "discount": 5700,
+      "customerPay": 32300,
+      "merchantPayout": 28000,
+      "nonVoucherVariableAndCAC": 5263.157894736842,
+      "contribution": -963.1578947368416
+    },
+    {
+      "voucher": "10%",
+      "discount": 3800,
+      "customerPay": 34200,
+      "merchantPayout": 28000,
+      "nonVoucherVariableAndCAC": 5263.157894736842,
+      "contribution": 936.8421052631584
+    },
+    {
+      "voucher": "9000_FIXED",
+      "discount": 9000,
+      "customerPay": 29000,
+      "merchantPayout": 28000,
+      "nonVoucherVariableAndCAC": 5263.157894736842,
+      "contribution": -4263.157894736842
+    }
+  ],
+  "maxVoucherForCM2000": 2736.8421052631584,
+  "shipping": [
+    {
+      "fee": 15000,
+      "support30pct": 4500,
+      "customer70pct": 10500,
+      "oldMeal10pctCM": -3563.1578947368416
+    },
+    {
+      "fee": 20000,
+      "support30pct": 6000,
+      "customer70pct": 14000,
+      "oldMeal10pctCM": -5063.157894736842
+    },
+    {
+      "fee": 30000,
+      "support30pct": 9000,
+      "customer70pct": 21000,
+      "oldMeal10pctCM": -8063.157894736842
+    },
+    {
+      "fee": 40000,
+      "support30pct": 12000,
+      "customer70pct": 28000,
+      "oldMeal10pctCM": -11063.157894736842
+    }
+  ],
+  "weeklyAt38000": {
+    "two15pct": 11400,
+    "two10pct": 7600,
+    "totalBeforeFixed9000": 19000,
+    "plusEach9000": 9000
+  }
+}

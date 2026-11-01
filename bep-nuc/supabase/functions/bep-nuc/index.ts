@@ -3,6 +3,8 @@ import postgres from "postgres";
 import { createEdgeHandler } from "../../../lib/edge-api.ts";
 import { empty, expire, issue, type State } from "../../../lib/domain.ts";
 import { photonGeocode } from "../../../lib/geocoding.ts";
+import {routeDistance} from "../../../lib/route-distance.ts";
+import {storeLotImage} from "../../../lib/lot-images.ts";
 const env = (name: string) => Deno.env.get(name);
 const url=env("SUPABASE_URL"), key=env("SUPABASE_ANON_KEY"), connection=env("MVP_DATABASE_URL"), origin=env("APP_ORIGIN");
 if (!url || !key || !connection || !origin || new URL(origin).origin!==origin || !origin.startsWith("https://")) throw new Error("Missing or invalid production configuration");
@@ -11,6 +13,8 @@ const sql=postgres(connection,{max:1,prepare:false,idle_timeout:1,connect_timeou
 const bank={name:env("BANK_NAME") || "",account:env("BANK_ACCOUNT") || "",holder:env("BANK_HOLDER") || ""};
 Deno.serve(createEdgeHandler({
  geocode:address => photonGeocode(address),
+ uploadImage:env("SUPABASE_SERVICE_ROLE_KEY")?((bytes,mime)=>storeLotImage(url,env("SUPABASE_SERVICE_ROLE_KEY")!,bytes,mime)):undefined,
+ routeDistance:env("GOOGLE_ROUTES_API_KEY")?((from,to)=>routeDistance(env("GOOGLE_ROUTES_API_KEY")!,from,to)):undefined,
  config:{origin,policy:{production:true,pilotEnabled:env("REAL_PILOT_ENABLED")==="true",bankReady:!!(bank.name&&bank.account&&bank.holder)},bank,supportEmail:env("SUPPORT_EMAIL"),bootstrapOpsEmail:env("BOOTSTRAP_OPS_EMAIL"),acceptingOrders:env("ACCEPTING_ORDERS")!=="false"},
  authenticate:async token=>{const {data,error}=await auth.auth.getUser(token);return error||!data.user?null:{id:data.user.id,email:data.user.email,emailVerified:!!data.user.email_confirmed_at};},
  transaction:async fn=>{

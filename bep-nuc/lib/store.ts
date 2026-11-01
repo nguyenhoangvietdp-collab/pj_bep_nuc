@@ -2,7 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import postgres from "postgres";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import { State, demoState, empty, expire, issue } from "./domain";
+import { State, modernDemoState as demoState, empty, expire, issue } from "./domain";
 const schema = `CREATE TABLE IF NOT EXISTS bc_state (id integer PRIMARY KEY CHECK(id=1), data jsonb NOT NULL); ALTER TABLE bc_state ENABLE ROW LEVEL SECURITY; REVOKE ALL ON bc_state FROM PUBLIC; DO $$ BEGIN IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='anon') THEN REVOKE ALL ON bc_state FROM anon; END IF; IF EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN REVOKE ALL ON bc_state FROM authenticated; END IF; END $$;`;
 let local: Promise<PGlite> | undefined;
 let sql: ReturnType<typeof postgres> | undefined;

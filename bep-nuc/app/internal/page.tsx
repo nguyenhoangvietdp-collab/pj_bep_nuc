@@ -1,4 +1,6 @@
 "use client";
+import ListingForm from "../components/lot-form";
+import TradingAdmin from "../components/trading-admin";
 import { useEffect, useState, useRef } from "react";
 import { SiteHeader, ProductHero, HowItWorks } from "../components/brand";
 import { SiteFooter } from "../components/site-frame";
@@ -30,8 +32,10 @@ const labels: Record<string, string> = {
   deliveryFeesCollected: "Phí giao đã thu",
   deliveryCostPaid: "Chi phí giao đã chi",
   deliveryCostsUnconfirmed: "Đơn chưa ghi chi phí giao",
-  cash: "Tiền mặt còn giữ",
-  unallocated: "Chưa phân bổ (không phải lợi nhuận)",
+  cash: "Dòng tiền đơn hàng còn giữ (chưa vốn đội)",
+  unallocated: "Sau nghĩa vụ (chưa vốn đội/chi phí chung)",
+  heldCustomerFunds:"Tiền đơn đã trả, chưa bàn giao",
+  deliveryReserve:"Dự giữ phí giao chưa có chứng từ",
   name: "Tên món",
   storage: "Bảo quản / hướng dẫn dùng",
   allergens: "Dị ứng",
@@ -426,7 +430,7 @@ export default function Page() {
             )}
             <p>{o.fulfillment==="delivery"?"Giao tận nơi":"Tự đến lấy"}</p>
             {role==="ops" && o.delivery && <div className="delivery-contact"><p>{o.delivery.recipient} · {o.delivery.phone}</p><p>{o.delivery.address}</p><p>Tiền món {money(o.foodTotal)} · Phí giao {o.deliveryFee===undefined?"chưa báo":money(o.deliveryFee)}{o.delivery.acceptedAt!==undefined?" · Khách đã đồng ý":" · Chưa đồng ý phí"}</p></div>}
-            {role==="ops" && o.status==="awaiting_delivery_fee" && <form onSubmit={e=>{e.preventDefault();action("delivery_fee",{orderId:o.id,fee:Number(new FormData(e.currentTarget).get("fee"))});}}><label>Phí giao báo khách (đ)<input name="fee" type="number" min="0" max="1000000" step="1" defaultValue={o.deliveryFee??""} required/></label><p>Hạn giữ {time(o.expires)}; phí mới cần khách đồng ý trước khi chuyển khoản.</p><button disabled={busy}>Báo phí và chờ khách xác nhận</button></form>}
+            {role==="ops" && o.status==="awaiting_delivery_fee" && <form onSubmit={e=>{e.preventDefault();action("delivery_fee",{orderId:o.id,fee:Number(new FormData(e.currentTarget).get("fee"))});}}><label>Phí vận chuyển gốc, trước hỗ trợ (đ)<input name="fee" type="number" min="0" max="1000000" step="1" defaultValue={o.grossDeliveryFee??o.deliveryFee??""} required/></label><p>Hạn giữ {time(o.expires)}; phí mới cần khách đồng ý trước khi chuyển khoản.</p><button disabled={busy}>Báo phí và chờ khách xác nhận</button></form>}
             {role==="ops" && o.status==="out_for_delivery" && <form onSubmit={e=>{e.preventDefault();action("delivery_complete",{orderId:o.id,confirmation:String(new FormData(e.currentTarget).get("confirmation"))});}}><label>Căn cứ xác nhận khách nhận hàng<input name="confirmation" minLength={3} maxLength={250} placeholder="Ví dụ: khách xác nhận đã nhận qua điện thoại" required/></label><button disabled={busy}>Xác nhận khách đã nhận hàng</button></form>}
             {role==="ops" && o.fulfillment==="delivery" && data.payments?.some((p:any)=>p.orderId===o.id&&p.valid) && !data.deliveryCosts?.some((c:any)=>c.orderId===o.id) && <form onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);action("delivery_cost",{orderId:o.id,amount:Number(f.get("amount")),reference:String(f.get("reference"))});}}><h4>Chi phí người giao đã thực trả</h4><label>Số tiền (đ)<input name="amount" type="number" min="0" max="1000000" step="1" required/></label><label>Mã chứng từ / xác nhận chi<input name="reference" minLength={3} maxLength={128} required/></label><button disabled={busy}>Ghi nhận khoản đã chi</button></form>}
             {o.code && (
@@ -512,6 +516,7 @@ export default function Page() {
         <>
           <section className="panel" id="operations">
             <h2>Sổ tiền & điều kiện mở</h2>
+            <TradingAdmin data={data} busy={busy} submit={action}/>
             <div className="grid">
               {Object.entries(data.ledger).map(([k, v]) => (
                 <div key={k}>
@@ -744,64 +749,6 @@ function RefForm({ submit }: { submit: (r: string) => unknown }) {
       />
       <button>Xác nhận đã chuyển</button>
     </form>
-  );
-}
-function ListingForm({ shopId, submit }: any) {
-  const [revenueShare, setRevenueShare] = useState(true);
-  return (
-    <section className="panel">
-      <h2>Đăng lô dư</h2>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const f = new FormData(e.currentTarget);
-          const a: any = { shopId };
-          for (const k of ["name", "storage", "allergens", "category", "image"])
-            a[k] = f.get(k);
-          for (const k of ["price", "floor", "cost", "margin", "stock"])
-            a[k] = Number(f.get(k));
-          if (revenueShare) { a.payoutShare=.9; a.floor=0; }
-          for (const k of ["start", "end"])
-            a[k] = new Date(String(f.get(k))).getTime();
-          submit(a);
-        }}
-      >
-        <label>Điền nhanh từ ảnh món có sẵn<select defaultValue="" onChange={e=>{const item=productAssets.find(p=>p.image===e.target.value),form=e.currentTarget.form;if(!item||!form)return;for(const [name,value] of Object.entries({name:item.name,price:item.referencePrice,image:item.image,category:item.category})){const field=form.elements.namedItem(name) as HTMLInputElement|HTMLSelectElement|null;if(field)field.value=String(value);}}}><option value="">Chọn món để điền tên, giá và ảnh</option>{productAssets.map(p=><option key={p.image} value={p.image}>{p.name} · {money(p.referencePrice)}</option>)}</select></label>
-        {["name", "storage", "allergens"].map((k) => (
-          <label key={k}>
-            {labels[k]}
-            <input name={k} required />
-          </label>
-        ))}
-        <label>
-          Loại món
-          <select name="category">
-            {["Cơm", "Bún/mì", "Bánh", "Đồ uống", "Món khác"].map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Ảnh có sẵn trong website (tùy chọn)
-          <input name="image" placeholder="/food-images/ten-mon.jpg" />
-        </label>
-        <label>Cách đối soát<select value={revenueShare ? "share" : "fixed"} onChange={e=>setRevenueShare(e.target.value==="share")}><option value="share">Quán 90% / Bếp Núc 10% tiền món thực thu</option><option value="fixed">Khoản cố định mỗi suất (hợp đồng cũ)</option></select></label>
-        <p>Phí giao không chia cho quán. Phần 10% còn lại phải đủ chi phí và biên tối thiểu bạn nhập.</p>
-        {["price", ...(!revenueShare ? ["floor"] : []), "cost", "margin", "stock"].map((k) => (
-          <label key={k}>
-            {labels[k]}
-            <input name={k} type="number" min="0" required />
-          </label>
-        ))}
-        {["start", "end"].map((k) => (
-          <label key={k}>
-            {labels[k]}
-            <input name={k} type="datetime-local" required />
-          </label>
-        ))}
-        <button>Đăng lô</button>
-      </form>
-    </section>
   );
 }
 function OperationsForms({ data, submit }: any) {

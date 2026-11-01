@@ -6,11 +6,11 @@ Khảo sát70 sinh viên: cụm trường, thời gian về, ngân sách bữa t
 
 Phỏng vấn10–20 quán: menu và bằng chứng giá gốc (ảnh menu/hóa đơn), lượng dư theo từng ca trong ít nhất một tuần, khoản muốn nhận F, cửa sổ nhận, quy trình bảo quản, trách nhiệm chất lượng, công đăng lô/giao, cách giảm/tặng/xử lý hiện tại. Ghi cả trường hợp không có dư. So sánh số quán thật đủ điều kiện trong2km từng cụm; ngang nhau dùng số sinh viên đăng ký. Tọa độ quán xác minh thực tế.
 
-Cho từng món: T=P×0,95×(1-v), vmax=1-(F+C+m)/(0,95P); dùng C3.000/m2.000 mỗi suất chỉ để sàng lọc. Giá menu30.000 với F19.500 không đủ voucher20%;50.000 với F32.500 đủ;100.000 với F65.000 đủ. Không giảm voucher gốc âm thầm; món không đủ bị chặn. Thưởng8 điểm%/km, tối đa2km và vmax.
+Cho từng lô mới: T=B−voucher−hỗ trợ tự nhận; kiểm T−F−chi phí nền tảng−hỗ trợ ship≥biên tối thiểu và tổng chương trình không vượt cap tuần. B là giá lô, không tự nhân0,95. Voucher9k là giảm cố định, không mặc định nhẹ hơn15%. Không mở ưu đãi chưa có nguồn tài trợ. Vùng xa được hỗ trợ hơn trong cap; thiếu tuyến thì không hỗ trợ khoảng cách. Quy tắc hiện hành: [cập nhật01/11](trading-update-20261101.md).
 
 ## Điều khoản ký pilot (mẫu để hoàn thiện)
 
-Điền pháp nhân/người chịu trách nhiệm, địa chỉ, thời hạn; danh sách món, bằng chứng giá P, số tiền F mỗi suất, C thực tế; quán đồng ý nền tảng giữ phần chênh lệch thu-F và chịu chi phí đã thống nhất. Lịch trả tiền cụ thể, tài khoản nhận và cách xử lý đối soát sai. Chỉ trả F cho đơn giao thành công. Quán hủy hoàn khách và phục hồi voucher trong tối; no-show hoàn khách trong pilot nhưng không phục hồi voucher. Thống nhất trách nhiệm bảo quản, dị ứng, chất lượng, thời điểm giao, khiếu nại và nguồn tiền hoàn. Đính kèm chữ ký hai bên, phiên bản, ngày ký. Mẫu này không phải hợp đồng đã ký.
+Điền pháp nhân/người chịu trách nhiệm, địa chỉ, thời hạn; thông tin đồ ăn/hoa, ảnh lô, giờ kiểm, B và khoản thực nhậnF, chi phí/công thực, lịch trả tiền và xử lý sai lệch. Tiệm có nghĩa vụ payout khi đã bàn giao cho khách hoặc người giao; giao lỗi/hoàn sau bàn giao không tự xóa khoản này. Quán hủy phục hồi voucher còn trong tuần; no-show theo chính sách pilot không trả lượt. Ký rõ trách nhiệm chất lượng, hoàn tiền và nguồn chịu chi; mẫu không phải hợp đồng đã ký.
 
 ## Chạy bằng tiền giả
 
@@ -29,4 +29,4 @@ Theo dõi hàng dư theo ca, tỷ lệ giao, no-show/hoàn, voucher mix, số kh
 
 ## Dừng/mở rộng
 
-Chỉ mở rộng khi đối soát chính xác, quán muốn tiếp tục và contribution có căn cứ đo thực. Nếu không đủ dư hay20% không khả thi: báo lý do, P/F/C/m cần thương lượng; không sửa quy tắc gốc lặng lẽ. Hồ sơ chất lượng thực phẩm và các yêu cầu pháp lý triển khai thật cần được đối tác xác nhận trước mở.
+Chỉ mở rộng khi đối soát đúng, tiệm tiếp tục, khách tiết kiệm so lựa chọn thật, đóng góp sau toàn bộ ưu đãi/CAC/công dương và có đủ nguồn cung. Không dùng voucher20% hay thưởng8điểm%/km làm quy tắc mới. Hồ sơ chất lượng và điều kiện triển khai thực phải được xác nhận trước mở.

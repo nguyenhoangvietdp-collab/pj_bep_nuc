@@ -38,7 +38,7 @@ if(result.status===0&&target==="mvp-site"){
  }
  const api=process.env.NEXT_PUBLIC_SUPABASE_URL;
  const connect=api?new URL(api).origin:"";
- const csp=`default-src 'self'; script-src 'self' ${[...hashes].join(" ")}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' ${connect}; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'`;
+ const csp=`default-src 'self'; script-src 'self' ${[...hashes].join(" ")}; style-src 'self' 'unsafe-inline'; img-src 'self' data: ${connect}; font-src 'self'; connect-src 'self' ${connect}; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'`;
  if(csp.length>1800)throw new Error("CSP exceeds the static hosting header budget");
  await writeFile(path.join(output,"_headers"),`/*\n  Content-Security-Policy: ${csp}\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Content-Type-Options: nosniff\n  X-Frame-Options: DENY\n  Permissions-Policy: geolocation=(), camera=(), microphone=()\n`);
 }

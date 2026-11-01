@@ -1,5 +1,6 @@
 import { act, catalogue, issue, readiness, view, type State, type RuntimePolicy } from "./domain.ts";
 import { GeocodingError, type AddressCandidate } from "./geocoding.ts";
+import {receiveLotImage} from "./lot-images.ts";
 export type VerifiedIdentity = { id: string; email?: string; emailVerified?: boolean };
 export type EdgeConfig = { origin: string; policy: RuntimePolicy; bank?: { name: string; account: string; holder: string }; supportEmail?: string; bootstrapOpsEmail?: string; acceptingOrders: boolean };
 export type EdgeDependencies = {
@@ -8,6 +9,8 @@ export type EdgeDependencies = {
   transaction: <T>(fn: (state: State) => T) => Promise<T>;
   now?: () => number;
   geocode?: (address: string) => Promise<AddressCandidate[]>;
+  routeDistance?: (origin:{lat:number;lng:number}, destination:{lat:number|null;lng:number|null})=>Promise<number|null>;
+  uploadImage?: (bytes:Uint8Array,mime:string)=>Promise<string>;
 };
 class ClientError extends Error { constructor(message: string, public status = 400) { super(message); } }
 export function createEdgeHandler(deps: EdgeDependencies) {
@@ -51,8 +54,8 @@ export function createEdgeHandler(deps: EdgeDependencies) {
         });
         return response({candidates:await deps.geocode(address),provider:"Photon / OpenStreetMap"});
       }
-      if (req.method === "GET" && route === "catalogue") return response(await run(s => ({ ...catalogue(s,now,true), demo:false, mapsEnabled:false, pilotOpen:deps.config.acceptingOrders && deps.config.policy.pilotEnabled && deps.config.policy.bankReady && readiness(s).ready })));
-      if (!["auth","pilot","export"].includes(route)) return response({error:"Không tìm thấy API"},404);
+      if (req.method === "GET" && route === "catalogue") return response(await run(s => ({ ...catalogue(s,now,true), demo:false, mapsEnabled:!!deps.routeDistance, pilotOpen:deps.config.acceptingOrders && deps.config.policy.pilotEnabled && deps.config.policy.bankReady && readiness(s,now).ready })));
+      if (!["auth","pilot","export","image"].includes(route)) return response({error:"Không tìm thấy API"},404);
       const token = req.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
       const identity = token ? await deps.authenticate(token) : null;
       if (!identity) return route === "auth" && req.method === "GET" && !token ? response({user:null,supportEmail:deps.config.supportEmail}) : response({error:"Phiên đăng nhập không hợp lệ hoặc đã hết hạn"},401);
@@ -68,6 +71,12 @@ export function createEdgeHandler(deps: EdgeDependencies) {
       });
       if (req.method === "GET" && route === "auth") return response({user,supportEmail:deps.config.supportEmail});
       if (!user.approved && route !== "pilot") return response({error:"Tài khoản đang chờ vận hành duyệt"},403);
+      if(route==="image"){
+        if(req.method!=="POST")return response({error:"Phương thức không hỗ trợ"},405);
+        if(origin!==deps.config.origin||!["ops","merchant"].includes(user.role))return response({error:"Không có quyền tải ảnh"},403);
+        if(!deps.uploadImage)return response({error:"Chưa cấu hình nơi lưu ảnh lô"},503);
+        try{return response(await receiveLotImage(req,user.id,run,deps.uploadImage));}catch(e){return response({error:(e as Error).message},400);}
+      }
       if (req.method === "GET" && route === "export") {
         if (user.role !== "ops") return response({error:"Chỉ vận hành được xuất đối soát"},403);
         return response(await run(s => {
@@ -90,12 +99,27 @@ export function createEdgeHandler(deps: EdgeDependencies) {
       if (!body || typeof body.action!=="string" || !body.args || typeof body.args!=="object" || Array.isArray(body.args)) return response({error:"Sai yêu cầu"},400);
       if(!/^[a-z_]{1,32}$/.test(body.action) || typeof body.args.key!=="string" || body.args.key.length<8 || body.args.key.length>128) return response({error:"Khóa hoặc thao tác không hợp lệ"},400);
       if (["quote","confirm_meal_request","accept_meal_request"].includes(body.action) && !deps.config.acceptingOrders) return response({error:"Tạm dừng nhận đơn mới. Bạn vẫn có thể theo dõi đơn hiện tại."},409);
+      let distance:number|null=null,placeId:string|undefined;
+      if(body.action==="quote"&&body.args.fulfillment!=="delivery"){
+        const context=await run(s=>{
+          const current=s.users.find(u=>u.id===user.id)!;
+          const l=s.listings.find(l=>l.id===body.args.listingId),shop=l&&s.shops.find(x=>x.id===l.shopId);
+          if(!current.approved||!current.place||!shop)return {place:current.place,shop:undefined};
+          const today=new Date(now).toISOString().slice(0,10);
+          const permitted=!!deps.routeDistance&&!!s.tradingRules?.enabled&&s.tradingRules.pickupBands.length>0&&(!body.args.voucherId||s.tradingRules.stackReceiving)&&s.audit.filter(x=>x.action==="route_request"&&new Date(x.at).toISOString().startsWith(today)).length<20;
+          if(permitted)s.audit.push({id:crypto.randomUUID(),at:now,actor:current.id,action:"route_request",detail:{listingId:l!.id}});
+          return {place:current.place,shop:permitted?shop:undefined};
+        });
+        placeId=context.place?.id;
+        if(context.place&&context.shop&&deps.routeDistance)try{distance=await deps.routeDistance(context.place,context.shop);}catch{distance=null;}
+      }
       return response(await run(s => {
         const current=s.users.find(u=>u.id===user.id)!; if(current.approved) issue(s,current,now);
+        if(body.action==="quote"&&body.args.fulfillment!=="delivery"&&s.tradingRules?.version!==1&&current.place?.id!==placeId)throw new ClientError("Vị trí đã đổi; kiểm tra lại báo giá",409);
         // Maps intentionally disabled on the zero-budget deployment.
         if(!current.approved && body.action!=="meal_request")throw new ClientError("Tài khoản đang chờ vận hành duyệt",403);
         const args={...body.args}; delete args.location;
-        return act(s,current,body.action,args,now,null,deps.config.policy);
+        return act(s,current,body.action,args,now,distance,deps.config.policy);
       }));
     } catch (e) {
       if (e instanceof GeocodingError) return response({error:e.message},e.status);

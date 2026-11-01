@@ -3,7 +3,7 @@ import "./commerce.css";
 import "./frame.css";
 export const metadata = {
   title: "Bếp Núc · Pilot Hà Nội",
-  description: "Chốt bữa cuối ngày, nhận tại quán.",
+  description: "Đồ ăn và hoa còn dùng tốt, có lý do giảm và khung nhận rõ ràng.",
 };
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (

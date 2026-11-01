@@ -21,6 +21,7 @@ test("PostgreSQL transactions serialize last-stock race and rollback failed muta
       approved: true,
     });
     issue(s, s.users[3], clock());
+    for(const u of s.users.filter(u=>u.role==="student"))u.place={id:"place-"+u.id,label:"Điểm thử",address:"Hồ Hoàn Kiếm, Hà Nội",lat:21.0285,lng:105.8542,savedAt:clock()};
   });
   const results = await Promise.allSettled(
     ["student", "second"].map((id) =>
@@ -33,7 +34,7 @@ test("PostgreSQL transactions serialize last-stock race and rollback failed muta
             listingId: "meal",
             qty: 1,
             voucherId: s.vouchers.find(
-              (v) => v.userId === id && v.rate === 0.2,
+              (v) => v.userId === id && v.rate === 0.15,
             )!.id,
             key: "race-key-" + id,
           },
@@ -45,6 +46,7 @@ test("PostgreSQL transactions serialize last-stock race and rollback failed muta
   assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
   assert.equal(await transaction((s) => s.listings[0].stock), 0);
   await transaction((s) => {
+    for(const q of s.quotes.filter(q=>q.state==="held"))act(s,s.users.find(u=>u.id===q.userId)!,"release_quote",{key:"release-before-voucher-race-"+q.id,quoteId:q.id},clock());
     s.listings[0].stock = 2;
   });
   const voucherRace = await Promise.allSettled(
@@ -58,7 +60,7 @@ test("PostgreSQL transactions serialize last-stock race and rollback failed muta
             listingId: "meal",
             qty: 1,
             voucherId: s.vouchers.find(
-              (v) => v.userId === "student" && v.rate === 0.07,
+              (v) => v.userId === "student" && v.rate === 0.1,
             )!.id,
             key: "same-voucher-race-" + n,
           },
@@ -76,5 +78,9 @@ test("PostgreSQL transactions serialize last-stock race and rollback failed muta
     }),
   );
   assert.equal(await transaction((s) => s.listings[0].stock), 1);
+  await transaction(s=>{for(const q of s.quotes.filter(q=>q.state==="held"))act(s,s.users.find(u=>u.id===q.userId)!,"release_quote",{quoteId:q.id,key:"release-budget-test-"+q.id},clock());s.listings[0].stock=8;s.tradingRules!.weeklyBudget=7500;});
+  const budgetRace=await Promise.allSettled(["student","second"].map(id=>transaction(s=>act(s,s.users.find(u=>u.id===id)!,"quote",{listingId:"meal",qty:1,voucherId:s.vouchers.find(v=>v.userId===id&&v.rate===.15&&v.state==="available")!.id,key:"weekly-budget-race-"+id},clock()))));
+  assert.equal(budgetRace.filter(r=>r.status==="fulfilled").length,1);
+  assert.equal(await transaction(s=>s.listings[0].stock),7);
   await closeStore();
 });

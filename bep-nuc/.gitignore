@@ -22,3 +22,17 @@ supabase/functions/.env
 .env.mvp.local
 
 .env.*.local
+
+# Private local inputs and non-public research material
+/*.pdf
+/*.docx
+/*.xlsx
+/*.zip
+/gemini_generated_video_*.mp4
+/*wordmark*.png
+/docs/proposal-2026/
+/docs/research/east-asia-discount-20261101/sources/
+/docs/research/east-asia-discount-20261101/ledger.jsonl
+/docs/research/east-asia-discount-20261101/claims-input.jsonl
+/docs/research/east-asia-discount-20261101/fidelity-*.jsonl
+/docs/research/east-asia-discount-20261101/*.py

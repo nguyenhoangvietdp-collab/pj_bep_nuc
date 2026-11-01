@@ -1,5 +1,5 @@
 import { transaction, closeStore, clock, demo } from "../lib/store";
-import { demoState } from "../lib/domain";
+import { modernDemoState as demoState } from "../lib/domain";
 if (
   !demo() ||
   process.env.DATABASE_URL ||
@@ -15,6 +15,7 @@ async function main() {
         "Dùng database demo mới; không ghi đè đơn hoặc tiền đã có.",
       );
     const base = demoState(clock());
+    s.tradingRules=base.tradingRules;
     const shop = base.shops[0],
       meal = base.listings[0];
     s.shops = [
@@ -88,10 +89,11 @@ async function main() {
         start: clock() + 1800000,
         image: undefined,
       },
-    ];
+    ].map(l=>({...l,approved:true,image:l.image||"/food-images/demo-meal.svg",lot:{...meal.lot!,contents:"Một lô "+l.name+" — chỉ minh họa, không có hàng thật"}}));
+    s.listings.push(base.listings[1]);
   });
   console.log(
-    "Đã tạo catalogue giả: 3 quán, 6 món. Không dùng cho số liệu pilot.",
+    "Đã tạo catalogue giả: 3 quán, 6 món và một lô hoa. Không dùng cho số liệu pilot.",
   );
 }
 main()

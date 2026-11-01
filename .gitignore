@@ -13,3 +13,19 @@ private-fixtures/
 artifacts/
 repository/.venv/
 repository/__pycache__/
+
+# Publication excludes credentials and generated runtime data.
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.mvp.example
+**/.next-*/
+**/__pycache__/
+outputs/*
+!outputs/bep-nuc-strategy-20261101/
+!outputs/bep-nuc-finance-20261031/
+outputs/bep-nuc-strategy-20261101/*
+!outputs/bep-nuc-strategy-20261101/*.md
+!outputs/bep-nuc-strategy-20261101/*.xlsx
+outputs/bep-nuc-finance-20261031/*
+!outputs/bep-nuc-finance-20261031/*.xlsx

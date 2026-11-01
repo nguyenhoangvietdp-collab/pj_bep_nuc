@@ -31,7 +31,7 @@ export default function MvpApp(){
   const frame=requestAnimationFrame(()=>{
    document.getElementById("content")?.focus({preventScroll:true});
    window.scrollTo(0,0);
-   document.title=({"/":"Bếp Núc — Bữa cuối ngày","/meals":"Chọn bữa — Bếp Núc","/offers":"Ưu đãi — Bếp Núc","/checkout":"Kiểm tra bữa — Bếp Núc","/orders":"Đơn hàng — Bếp Núc","/login":"Đăng nhập — Bếp Núc"} as Record<string,string>)[route.pathname] || "Chi tiết — Bếp Núc";
+   document.title=({"/":"Bếp Núc — Đồ ăn và hoa đúng lúc","/meals":"Đồ ăn & hoa — Bếp Núc","/offers":"Ưu đãi — Bếp Núc","/checkout":"Kiểm tra lô — Bếp Núc","/orders":"Đơn hàng — Bếp Núc","/login":"Đăng nhập — Bếp Núc"} as Record<string,string>)[route.pathname] || "Chi tiết — Bếp Núc";
   });return()=>cancelAnimationFrame(frame);
  },[ready,route.pathname]);
  if(!ready)return <div className="site-frame commerce"><SiteHeader/><main id="content" tabIndex={-1}><LoadingScreen/></main><SiteFooter/></div>;

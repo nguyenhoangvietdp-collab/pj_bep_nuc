@@ -1,4 +1,5 @@
-export const foodCategories = ["Cơm", "Bún/mì", "Bánh", "Đồ uống", "Món khác"];
+import {voucherCurrent,voucherDiscount,type Lot,type VoucherValue} from "./trading";
+export const foodCategories = ["Cơm", "Bún/mì", "Bánh", "Đồ uống", "Món khác", "Hoa cắm nhà"];
 export const money = (n: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
     n,
@@ -30,6 +31,9 @@ export function estimate(menuTotal: number, rate = 0) {
   };
 }
 export type Food = {
+  lot?:Lot;
+  pricingVersion?:number;
+  eligibleFixed?:boolean;
   id: string;
   shopId: string;
   name: string;
@@ -49,15 +53,26 @@ export type PublicShop = {
   address: string;
   image?: string;
 };
-export type DisplayVoucher = { rate: number; state: string; day: string };
+export type DisplayVoucher = VoucherValue & { id?:string; state: string; day: string };
+export function lotEstimate(food:Food,qty=1,v?:DisplayVoucher){
+  if(food.pricingVersion!==2)return estimate(food.price*qty,v?.rate||0);
+  const base=food.price*qty,discount=voucherDiscount(base,v);
+  return {pricingVersion:2,menuTotal:base,baseDiscount:0,voucherDiscount:discount,bonusDiscount:0,total:base-discount,saved:discount};
+}
 export function displayPrice(food: Food, vouchers: DisplayVoucher[], now: number, qty = 1) {
+  if(food.pricingVersion===2){
+    const available=vouchers.filter(v=>v.period==="week"&&voucherCurrent(v,now)&&v.state==="available"&&(v.amount?food.eligibleFixed:food.eligible.includes(v.rate)));
+    const best=available.sort((a,b)=>voucherDiscount(food.price*qty,b)-voucherDiscount(food.price*qty,a))[0];
+    return {...lotEstimate(food,qty,best),rate:best?.rate??0,voucher:best};
+  }
   const local = new Date(now + 7 * 60 * 60 * 1000).toISOString();
   const rate = Number(local.slice(11, 13)) >= 18 && local.slice(11, 16) < "23:59"
     ? Math.max(0, ...vouchers.filter(v => v.state === "available" && v.day === local.slice(0, 10) && food.eligible.includes(v.rate)).map(v => v.rate))
     : 0;
-  return { ...estimate(food.price * qty, rate), rate };
+  return { ...estimate(food.price * qty, rate), rate, voucher:undefined as DisplayVoucher|undefined };
 }
 export function voucherHint(food: Food, vouchers: DisplayVoucher[], now: number) {
+  if(food.pricingVersion===2)return "Có thể mua theo giá lô không voucher. Lưu vị trí trước khi chọn ưu đãi; giá cuối được kiểm tra khi giữ lô.";
   const local = new Date(now + 7 * 3600000).toISOString();
   if (local.slice(11, 16) < "18:00") return "Voucher mở từ 18:00. Bạn có thể xem món trước.";
   if (local.slice(11, 16) >= "23:59") return "Voucher tối nay đã hết hạn. Quay lại từ 18:00 ngày mai.";
