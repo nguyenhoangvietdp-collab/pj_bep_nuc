@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "./navigation";
+import PaymentSummary from "./payment-summary";
 import SalePrice from "./sale-price";
 import ShopPicture from "./shop-picture";
 import {productAssets} from "../../lib/product-assets";
@@ -716,7 +717,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                   </section>
                 );
               })()}
-            {view === "checkout" && referenceName && <section className="reference-checkout"><Link href={browseHref}>Quay lại chọn sản phẩm</Link><h1>Kiểm tra lựa chọn của bạn</h1>{referenceMeal ? <><img className="reference-meal-photo" src={referenceMeal.image} alt={referenceMeal.name} width="600" height="450"/><h2>{referenceMeal.name}</h2><ReferencePrice product={referenceMeal}/><p>Mỗi đơn vị: {requestUnit(referenceMeal)}. {referenceMeal.note}</p><p>Chưa giữ hàng hoặc xác nhận nhà bán, tình trạng và giờ nhận.</p><MealRequests name={referenceMeal.name} product={referenceMeal}/></> : <p>Sản phẩm tham khảo không tồn tại. Vui lòng quay lại danh mục.</p>}</section>}
+            {view === "checkout" && referenceName && <section className="reference-checkout"><Link href={browseHref}>Quay lại chọn sản phẩm</Link><h1>Kiểm tra lựa chọn của bạn</h1>{referenceMeal ? <><img className="reference-meal-photo" src={referenceMeal.image} alt={referenceMeal.name} width="600" height="450"/><h2>{referenceMeal.name}</h2><ReferencePrice product={referenceMeal}/><p>Mỗi đơn vị: {requestUnit(referenceMeal)}. {referenceMeal.note}</p><p>Chưa giữ hàng hoặc xác nhận nhà bán, tình trạng và giờ nhận.</p><MealRequests name={referenceMeal.name} product={referenceMeal} rules={catalog.tradingRules}/></> : <p>Sản phẩm tham khảo không tồn tại. Vui lòng quay lại danh mục.</p>}</section>}
             {view === "checkout" && !referenceName && (
               <>
                 <Link href={browseHref}>Tiếp tục tìm món</Link>
@@ -875,7 +876,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                     <aside className="checkout-summary" ref={summary} tabIndex={-1}>
                       <h2>Tóm tắt thanh toán</h2>
                       {receiveMethod==="delivery" && user?.approved && !deliveryValid && <p className="fine">Điền đủ tên người nhận, số điện thoại hợp lệ và địa chỉ để giữ suất.</p>}{receiveMethod==="delivery" && <p className="delivery-fee-pending">Phí giao hàng: chờ vận hành báo. Số tiền bên dưới chỉ là tiền hàng.</p>}
-                      {amounts && <details className="price-help"><summary>Chi tiết giảm giá</summary><PriceLines a={amounts} hideTotal /></details>}
+                      {amounts && <PaymentSummary amounts={amounts} qty={count} unit={item.lot?.kind==="flowers"?"đơn vị mua":"suất"} method={receiveMethod} mode={held?"confirmed":"estimate"} voucher={held?.voucherId?(profile?.vouchers?.find((v:any)=>v.id===held.voucherId)?voucherLabel(profile.vouchers.find((v:any)=>v.id===held.voucherId)):"Đã xác nhận"):activeVoucher?voucherLabel(activeVoucher):"Không dùng voucher"}/>}{voucher&&!activeVoucher&&!held&&<p role="status">Voucher đã chọn chưa đủ điều kiện; chưa trừ vào số tiền bên trên.</p>}
                       <p className="price-type">
                         {held
                           ? receiveMethod==="delivery"?"Tiền hàng đã xác nhận; phí giao báo sau":"Giá xác nhận từ Bếp Núc"

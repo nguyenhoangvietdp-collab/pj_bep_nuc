@@ -41,6 +41,6 @@ test("sale and collection windows stay separate and inventory remains authoritat
 test("flower inquiry quotes use actual sale snapshot, expire at sale end and still need explicit customer consent",()=>{
  const f=setup("flowers"),p=requestProduct("flower-ly-kep-trang")!;Object.assign(f.l.lot!,{species:p.name,catalogueProductId:p.id,quantity:p.quantity});
  const r=f.call("student","meal_request",{name:p.name,productId:p.id,qty:1,rate:0,fulfillment:"pickup"});assert.equal(f.s.quotes.length,0);
- f.call("ops","confirm_meal_request",{requestId:r.id,listingId:f.l.id,fee:0,appliedRate:0,sourceConfirmed:true});const req=view(f.s,f.s.users[0],now).mealRequests[0];assert.equal(req.quote!.unitPrice,69300);assert.equal(req.quote!.saleVerified,true);assert.equal(req.quote!.expires,now+300000);assert.equal(f.s.orders.length,0);
+ f.call("ops","confirm_meal_request",{requestId:r.id,listingId:f.l.id,fee:0,appliedRate:0,sourceConfirmed:true});const req=view(f.s,f.s.users[0],now).mealRequests[0];assert.equal(req.quote!.unitPrice,69300);assert.equal(req.quote!.priceBreakdown.total,69300);assert.equal(req.quote!.saleVerified,true);assert.equal(req.quote!.expires,now+300000);assert.equal(f.s.orders.length,0);
  assert.throws(()=>f.call("student","accept_meal_request",{requestId:r.id,revision:0}),/đã đổi/);f.call("student","accept_meal_request",{requestId:r.id,revision:1});assert.equal(f.s.orders[0].status,"awaiting_payment");assert.equal(f.s.payments.length,0);
 });
