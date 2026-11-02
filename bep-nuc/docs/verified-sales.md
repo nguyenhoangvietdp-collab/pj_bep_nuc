@@ -14,6 +14,6 @@ Các trường tùy chọn trong `Lot`: `referenceKind: store_regular`, `referen
 
 Catalogue trả `saleVerified` chỉ khi tiệm thật và lô đã duyệt. Frontend dùng chung SalePrice ở thẻ, chi tiết, checkout và báo giá yêu cầu. Phần trăm giảm lấy phần nguyên, tiền giữ đến đồng. Tiết kiệm từ giá thường sang giá lô tách khỏi voucher và phí giao; không tự thêm giảm 30% hoặc nền 5% cho lô hiện hành.
 
-Trước phiên hiển thị Sắp mở sale, trong phiên Đang sale, sau phiên Đã kết thúc. Dưới một giờ hiển thị số phút còn lại tính từ đồng hồ máy chủ, không tạo/reset thời hạn. Báo giá mới chỉ được tạo trong phiên; hết hạn không muộn hơn cuối phiên hoặc giới hạn đang có. Snapshot báo giá/đơn giữ nguyên giá và nghĩa vụ trả tiệm sau chấp nhận.
+Trước phiên hiển thị Sắp mở sale, trong phiên Đang sale, sau phiên Đã kết thúc. Khách chỉ thấy đếm ngược giờ/phút/giây đến hết sale hoặc đến lúc mở, tính từ đồng hồ máy chủ; không hiển thị ngày, khung giờ tuyệt đối hay chữ giờ Việt Nam trong khối sale. Không tạo/reset thời hạn. Báo giá mới chỉ được tạo trong phiên; hết hạn không muộn hơn cuối phiên hoặc giới hạn đang có. Snapshot báo giá/đơn giữ nguyên giá và nghĩa vụ trả tiệm sau chấp nhận.
 
 Các sản phẩm chưa có nguồn giữ giá mục tiêu/tham khảo và luồng gửi yêu cầu. Không seed giá, lịch sale hoặc hồ sơ tiệm giả lên production. QA tương tác có dữ liệu sale sử dụng fixture/mock cục bộ; kiểm tra production chỉ đọc.
