@@ -45,6 +45,7 @@ Không đưa vào danh mục đặt hàng: tuyết mai; CTC (chưa giải nghĩa
 - Kiểm tra biên, ngân sách, tồn và lượt voucher trước khi giữ hàng. Hướng dương 20.300đ/đơn vị không đủ biên cho voucher 9.000đ khi mua một đơn vị.
 - Không tạo hỗ trợ đi lại từ tọa độ tiệm hư cấu. Tiệm mới không có tọa độ và không gọi dịch vụ định tuyến.
 - Ứng dụng chính/MVP dùng quy tắc giao dịch trên máy chủ hiện có. Pages dùng mô phỏng một trình duyệt, không xác thực tài khoản hoặc xác nhận tiền ngân hàng; không thay thế backend khi bán thật.
+- Với MVP đã kết nối Supabase, vào `/#/flowers` hoặc nút “Hoa DEMO” để thử danh mục này. Luồng DEMO chạy trên thiết bị và không tạo request đến Supabase; không thay thế danh mục/đơn thật tại `/#/meals`.
 - Sau bàn giao, hoàn tiền khách không tự xóa khoản phải trả tiệm. Hết hạn giữ/hủy trước thanh toán giải phóng tồn và voucher.
 
 Không triển khai migration/backend, không bật chương trình voucher thật, không dùng giao dịch DEMO làm traction.

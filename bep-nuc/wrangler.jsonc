@@ -1,0 +1,10 @@
+{
+  "name": "pj-bep-nuc",
+  "account_id": "a31110943c26448c09c5cc46ff4c2a31",
+  "compatibility_date": "2026-10-23",
+  "workers_dev": true,
+  "keep_vars": true,
+  "assets": {
+    "directory": "./mvp-site/out"
+  }
+}

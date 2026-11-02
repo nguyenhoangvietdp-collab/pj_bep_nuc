@@ -90,6 +90,8 @@ test("Public config rejects privileged keys and navigation cannot leave the appl
  assert.equal(validatePublicConfig("https://project.supabase.co",jwt("anon")),true);
  for(const path of ["//evil.test","https://evil.test","/orders/../../evil","/\\evil.test","/internal\n","//["])assert.equal(safeAppPath(path),"/meals");
  assert.equal(safeAppPath("/orders/123"),"/orders/123");
+ assert.equal(safeAppPath("/flowers"),"/flowers");
+ assert.equal(safeAppPath("/flowers/../../private"),"/meals");
 });
 
 test("address lookup has a durable shared daily cap and stores no address or coordinates", async () => {
