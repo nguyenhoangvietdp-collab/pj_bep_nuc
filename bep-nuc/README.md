@@ -84,4 +84,4 @@ Tài liệu nghiệm thu kế thừa mô tả kiểm tra trước khi tách thư
 
 Đọc [hướng dẫn tạo tài khoản và triển khai](docs/zero-budget-setup.md). `npm run build:mvp` tạo frontend Cloudflare tại `mvp-site/out`; API nằm trong `supabase/functions/bep-nuc`, migration trong `supabase/migrations`. Google login và giao dịch chỉ hoạt động sau khi kết nối project thật. Không seed hồ sơ giả định vào production.
 
-`npm run build:pages` hiện chỉ xuất trang giới thiệu GitHub Pages, thay bản đặt hàng giả trước đây. Đặt repository variable `MVP_APP_URL` sau khi có URL Cloudflare đã kiểm tra. Code demo cũ vẫn giữ làm tham chiếu, không được nhập trong entrypoint public mới.
+`npm run build:pages` xuất trang giới thiệu GitHub Pages cùng danh mục 12 loại hoa và luồng đặt hàng DEMO trên thiết bị; không nhận đơn, đăng nhập hoặc thanh toán thật. Xem [đối chiếu ảnh và giới hạn DEMO](docs/flower-catalogue-20261102.md). Đặt repository variable `MVP_APP_URL` sau khi có URL Cloudflare đã kiểm tra. Bản demo món ăn cũ chỉ giữ làm tham chiếu, không được nhập trong entrypoint public mới.

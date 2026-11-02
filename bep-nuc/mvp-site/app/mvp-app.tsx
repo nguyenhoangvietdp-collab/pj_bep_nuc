@@ -8,6 +8,7 @@ import LoadingScreen from "../../app/components/loading-screen";
 import { readAppLocation } from "../../lib/app-navigation";
 import { finishGoogleLogin, mvpAuth, mvpConfigured } from "../../lib/mvp-client";
 import CustomerHome from "../../app/components/customer-home";
+import FlowerShowcase from "../../app/components/flower-showcase";
 const Internal=dynamic(()=>import("../../app/internal/page"),{ssr:false,loading:()=> <LoadingScreen/>});
 export default function MvpApp(){
  const [route,setRoute]=useState({pathname:"/",search:""}),[ready,setReady]=useState(false),[authError,setAuthError]=useState(""),[user,setUser]=useState("guest");
@@ -40,5 +41,6 @@ export default function MvpApp(){
  const key=route.pathname+route.search+":"+user;
  if(mvpConfigured()&&route.pathname==="/internal")return <Internal key={key}/>;
  if(mvpConfigured()&&view)return <>{authError&&<p className="error" role="alert">{authError}</p>}<Market key={key} view={view} id={match?.[2]}/></>;
+ if(!mvpConfigured()&&route.pathname==="/meals")return <div className="site-frame commerce"><SiteHeader/><main id="content" tabIndex={-1}><div className="market-content"><FlowerShowcase/></div></main><SiteFooter/></div>;
  return <CustomerHome configured={mvpConfigured()} authError={authError} authenticated={user!=="guest"}/>;
 }

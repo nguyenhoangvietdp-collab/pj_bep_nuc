@@ -4,6 +4,7 @@ export type Lot = {
   reason: string; contents: string; condition: string; checkedAt: number;
   referencePrice?: number; referenceEvidence?: string;
   stems?: number; species?: string; packaging?: string;
+  quantity?: {amount:number;unit:"cành"|"bông"|"bó"};
 };
 export type TradingRules = {
   version: 1 | 2; enabled: boolean; cap15: number; cap10: number; fixedWeekly: number;
@@ -29,12 +30,16 @@ export function voucherDiscount(base: number, v?: VoucherValue) {
   return Math.min(base, Math.floor(base * v.rate), v.cap ?? Number.MAX_SAFE_INTEGER);
 }
 export const voucherCurrent = (v: VoucherValue, now: number) => v.day === (v.period === "week" ? weekStart(now) : vietnamDay(now));
-export function validLot(lot: Lot | undefined, now: number, end: number) {
+export function flowerQuantityLabel(lot:Lot){
+  return lot.quantity ? `${lot.quantity.amount} ${lot.quantity.unit}${lot.quantity.unit==="bó"&&lot.stems===undefined?" · chưa xác định số cành":""}` : `${lot.stems} cành dùng được`;
+}
+export function validLot(lot: Lot | undefined, now: number, end: number, allowDemoQuantity=false) {
   return !!lot && ["food","flowers"].includes(lot.kind) && ["surplus","promotion"].includes(lot.offer) &&
+    (lot.quantity===undefined || !!lot.quantity && typeof lot.quantity==="object" && Number.isSafeInteger(lot.quantity.amount)&&lot.quantity.amount>0&&lot.quantity.amount<=1000&&["cành","bông","bó"].includes(lot.quantity.unit)&&(lot.quantity.unit!=="cành"||lot.stems===lot.quantity.amount)) &&
     [lot.reason,lot.contents,lot.condition].every(v => typeof v === "string" && v.trim().length >= 3 && v.length <= 1000) &&
     Number.isFinite(lot.checkedAt) && lot.checkedAt <= now && lot.checkedAt > 0 && lot.checkedAt < end &&
     (lot.referencePrice === undefined || (Number.isSafeInteger(lot.referencePrice) && lot.referencePrice > 0 && typeof lot.referenceEvidence === "string" && lot.referenceEvidence.trim().length >= 3)) &&
-    (lot.kind !== "flowers" || (Number.isSafeInteger(lot.stems) && lot.stems! > 0 && typeof lot.species === "string" && lot.species.trim().length >= 2 && typeof lot.packaging === "string" && lot.packaging.trim().length >= 3));
+    (lot.kind !== "flowers" || ((Number.isSafeInteger(lot.stems) && lot.stems! > 0 || allowDemoQuantity && lot.stems===undefined && !!lot.quantity && Number.isSafeInteger(lot.quantity.amount) && lot.quantity.amount>0 && lot.quantity.amount<=1000 && ["cành","bông","bó"].includes(lot.quantity.unit)) && typeof lot.species === "string" && lot.species.trim().length >= 2 && typeof lot.packaging === "string" && lot.packaging.trim().length >= 3));
 }
 export function validateRules(r: TradingRules) {
   if(!r||typeof r!=="object")throw new Error("Cấu hình ưu đãi không hợp lệ");

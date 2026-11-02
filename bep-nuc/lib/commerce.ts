@@ -48,6 +48,8 @@ export type Food = {
   eligible: number[];
 };
 export type PublicShop = {
+  mock?: boolean;
+  story?: string;
   id: string;
   name: string;
   address: string;

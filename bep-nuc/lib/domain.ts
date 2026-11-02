@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import {flowerListings,flowerShops,flowerDemoVersion} from "./flower-demo.ts";
 import { defaultTradingRules, demoTradingRules, publicTradingRules, weekStart, voucherCurrent, voucherDiscount, pickupSupport, validLot, validateRules, type TradingRules, type SavedPlace, type Lot } from "./trading.ts";
 export type Role = "student" | "merchant" | "ops";
 export type User = {
@@ -10,6 +11,7 @@ export type User = {
   place?: SavedPlace;
 };
 export type Shop = {
+  story?: string;
   id: string;
   name: string;
   address: string;
@@ -120,6 +122,7 @@ export type Settlement = {
 };
 export type MealRequest = { id:string; userId:string; name:string; qty:number; rate:number; fulfillment:"pickup"|"delivery"; delivery?:Order["delivery"]; status:"pending"|"confirmed"|"rejected"|"ordered"; revision:number; created:number; quoteId?:string; fee?:number; grossFee?:number; orderId?:string; reason?:string };
 export type State = {
+  flowerDemoVersion?: number;
   tradingRules?: TradingRules;
   issues?: { id:string; orderId:string; userId:string; description:string; created:number; status:"open"|"resolved"; resolution?:string }[];
   mealRequests?: MealRequest[];
@@ -251,7 +254,9 @@ function quoteModern(s:State,u:User,a:Record<string,any>,now:number,distance:num
   requireThat(!s.quotes.some(q=>q.userId===u.id&&q.state==="held"&&q.expires>now)&&!s.orders.some(o=>o.userId===u.id&&["awaiting_payment","awaiting_delivery_fee"].includes(o.status)&&s.quotes.some(q=>q.id===o.quoteId&&q.expires>now)),"Hoàn tất hoặc hủy lô đang giữ/chờ thanh toán trước khi chọn thêm");
   const l=s.listings.find(l=>l.id===a.listingId),r=rulesFor(s);
   requireThat(l && now<l.end && s.shops.some(x=>x.id===l.shopId&&x.approved&&(!production||!x.mock)),"Lô không còn nhận đơn");
-  requireThat(l.approved===true&&!!l.image&&validLot(l.lot,now,l.end) && l.storage.trim().length>=3 && (l.lot!.kind==="flowers" || l.allergens.trim().length>=3),"Lô chưa được duyệt hoặc chưa có đủ thông tin chất lượng");
+  const shop=s.shops.find(x=>x.id===l.shopId)!;
+  if(shop.lat===null||shop.lng===null)distance=null;
+  requireThat(l.approved===true&&!!l.image&&validLot(l.lot,now,l.end,!production&&shop.mock) && l.storage.trim().length>=3 && (l.lot!.kind==="flowers" || l.allergens.trim().length>=3),"Lô chưa được duyệt hoặc chưa có đủ thông tin chất lượng");
   requireThat(l.payoutShare===undefined,"Lô mới cần khoản thực nhận cố định được tiệm đồng ý");
   requireThat(Number.isInteger(a.qty)&&a.qty>=1&&a.qty<=3&&l.stock>=a.qty,"Số lượng không hợp lệ hoặc không đủ tồn");
   requireThat(["pickup","delivery"].includes(a.fulfillment??"pickup"),"Cách nhận không hợp lệ");
@@ -404,7 +409,7 @@ export function view(s: State, u: User, now: number) {
     mealRequests: (s.mealRequests || []).filter(r=>u.role==="ops" || (u.role==="student" && r.userId===u.id)).map(r=>({...r,status:r.status==="confirmed" && (s.quotes.find(q=>q.id===r.quoteId)?.expires||0)<=now?"expired":r.status, quote:r.quoteId?(()=>{const q=s.quotes.find(q=>q.id===r.quoteId);const l=q&&s.listings.find(l=>l.id===q.listingId);const shop=l&&s.shops.find(x=>x.id===l.shopId);return q?{total:q.price,expires:q.expires,name:l?.name,address:shop?.address,start:l?.start,end:l?.end}:undefined;})():undefined})),
     now,
     listings,
-    shops: s.shops.map(({ id, name, address }) => ({ id, name, address })),
+    shops: s.shops.map(({ id, name, address, mock, story }) => ({ id, name, address, mock, story })),
     orders,
     tradingRules: u.role==="ops"?rulesFor(s):publicTradingRules(rulesFor(s)),
     issues:(s.issues??[]).filter(x=>u.role==="ops"||x.userId===u.id),
@@ -1049,13 +1054,22 @@ export function demoState(now: number) {
   return s;
 }
 
-export function modernDemoState(now:number){
+// Retained as the pre-catalogue fixture for regression checks of existing orders.
+export function tradingDemoState(now:number){
   const s=demoState(now);s.tradingRules=demoTradingRules();
   s.listings[0].approved=true;s.listings[0].lot={kind:"food",offer:"surplus",reason:"Phần còn lại cuối phiên — lô minh họa",contents:"Một phần cơm gà và rau theo mô tả minh họa",condition:"Dữ liệu demo, không có hàng thật",checkedAt:now,referencePrice:55000,referenceEvidence:"Giá minh họa, không phải menu đã xác minh"};
   s.listings.push({id:"flowers",shopId:"shop1",name:"Hoa cắm nhà · lô minh họa",price:59000,floor:40000,cost:4000,margin:2000,stock:2,start:now-3600000,end:now+3*3600000,storage:"Cắt gốc, dùng bình sạch và thay nước. Chỉ minh họa, không cam kết số ngày tươi.",allergens:"",category:"Hoa cắm nhà",image:"/food-images/flowers-demo.svg",lot:{kind:"flowers",offer:"surplus",reason:"Hoa còn lại tại tiệm — dữ liệu demo",contents:"5 cành hoa cắm nhà minh họa; không phải bó tặng",condition:"Chưa có hoa thật để kiểm; đây là lô demo",checkedAt:now,stems:5,species:"Hoa theo lô minh họa",packaging:"Gói giấy cơ bản, không phụ kiện quà tặng"}});
   for(const l of s.listings)l.approved=true;
   return s;
 }
+export function seedFlowerDemo(s:State,now:number,production=false){
+  if(production || s.tradingRules?.version!==2 || (s.flowerDemoVersion??0)>=flowerDemoVersion)return;
+  for(const shop of flowerShops)if(!s.shops.some(x=>x.id===shop.id))s.shops.push({...shop});
+  for(const lot of flowerListings(now))if(!s.listings.some(x=>x.id===lot.id))s.listings.push(lot);
+  if(!s.orders.some(o=>s.quotes.find(q=>q.id===o.quoteId)?.listingId==="flowers")&&!s.quotes.some(q=>q.listingId==="flowers"))s.listings=s.listings.filter(l=>l.id!=="flowers");
+  s.flowerDemoVersion=flowerDemoVersion;
+}
+export function modernDemoState(now:number){const s=tradingDemoState(now);seedFlowerDemo(s,now);return s;}
 export const categories = ["Cơm", "Bún/mì", "Bánh", "Đồ uống", "Món khác", "Hoa cắm nhà"];
 export function localImage(value: unknown): string | undefined {
   if (value === undefined || value === "") return undefined;
@@ -1096,14 +1110,16 @@ export function catalogue(s: State, now: number, production = false) {
   const shops = s.shops.filter((x) => x.approved && (!production || !x.mock));
   return {
     now,
-    shops: shops.map(({ id, name, address, image }) => ({
+    shops: shops.map(({ id, name, address, image, mock, story }) => ({
       id,
       name,
       address,
       image,
+      mock,
+      story,
     })),
     listings: s.listings
-      .filter((l) => shops.some((x) => x.id === l.shopId) && l.end > now && (rulesFor(s).version!==2||l.approved===true&&!!l.image&&validLot(l.lot,now,l.end)))
+      .filter((l) => !(s.flowerDemoVersion&&l.id==="flowers") && shops.some((x) => x.id === l.shopId) && l.end > now && (rulesFor(s).version!==2||l.approved===true&&!!l.image&&validLot(l.lot,now,l.end,!production&&!!shops.find(x=>x.id===l.shopId)?.mock)))
       .map(l=>publicListing(l,rulesFor(s))),
     tradingRules:publicTradingRules(rulesFor(s)),
   };

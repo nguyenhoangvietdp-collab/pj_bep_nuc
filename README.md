@@ -4,6 +4,7 @@
 
 - [Ứng dụng và cách chạy](bep-nuc/README.md)
 - [Quy tắc giao dịch và triển khai ngày01/11/2026](bep-nuc/docs/trading-update-20261101.md)
+- [Danh mục 12 loại hoa DEMO và đối chiếu ảnh ngày02/11/2026](bep-nuc/docs/flower-catalogue-20261102.md)
 - [Báo cáo chiến lược](outputs/bep-nuc-strategy-20261101/Bao-cao-chien-luoc.md)
 - [Case Nhật, Hàn và Trung Quốc](outputs/bep-nuc-strategy-20261101/Doi-chieu-case-va-nguon.md)
 - [Đặc tả website và pilot](outputs/bep-nuc-strategy-20261101/Dac-ta-website-va-pilot.md)

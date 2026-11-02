@@ -1,0 +1,194 @@
+[
+  {
+    "id": "flower-ken-hong",
+    "name": "Kèn hồng 1T",
+    "shopId": "flower-khuc-ban-chieu",
+    "quantity": {
+      "amount": 10,
+      "unit": "cành"
+    },
+    "referencePrice": 99000,
+    "price": 69300,
+    "image": "/food-images/flower-ken-hong.webp",
+    "sourceFile": "1793582528066_3342672108544124101_g2800038984583468157_d789e79d72da5a3dfd80f32b14823048.jpg",
+    "sourceSha256": "00f2d58f2d237eb866e4c78771b18b9b9cff47d4aa3da682338c7d104d1aec1c",
+    "note": "",
+    "identification": "reviewed-demo"
+  },
+  {
+    "id": "flower-ly-kep-trang",
+    "name": "Ly kép trắng",
+    "shopId": "flower-a-flower",
+    "quantity": {
+      "amount": 5,
+      "unit": "cành"
+    },
+    "referencePrice": 129000,
+    "price": 90300,
+    "image": "/food-images/flower-ly-kep-trang.webp",
+    "sourceFile": "1793582528114_3342672108544124101_g2800038984583468157_35a6e0458169aaac376788e4e8b28810.jpg",
+    "sourceSha256": "47aa3034e1485e875e892f9a74d7a93631ebae54112348cfdeaac9f5036426a4",
+    "note": "3–4 tai theo bảng cung cấp; chưa kiểm đếm từ ảnh",
+    "identification": "reviewed-demo"
+  },
+  {
+    "id": "flower-ly-kep-hong",
+    "name": "Ly kép hồng",
+    "shopId": "flower-a-flower",
+    "quantity": {
+      "amount": 5,
+      "unit": "cành"
+    },
+    "referencePrice": 159000,
+    "price": 111300,
+    "image": "/food-images/flower-ly-kep-hong.webp",
+    "sourceFile": "1793582528176_3342672108544124101_g2800038984583468157_2bec7f1aece426030e97d944b9ef5570.jpg",
+    "sourceSha256": "970eef9d1ace8ac51f95c506106aeb9b067c8d40d0e59f99b1e9484f2be2d024",
+    "note": "4–5 tai theo bảng cung cấp; chưa kiểm đếm từ ảnh",
+    "identification": "reviewed-demo"
+  },
+  {
+    "id": "flower-chuoi-dieu",
+    "name": "Chuối điểu",
+    "shopId": "flower-khuc-ban-chieu",
+    "quantity": {
+      "amount": 30,
+      "unit": "bông"
+    },
+    "referencePrice": 75000,
+    "price": 52500,
+    "image": "/food-images/flower-chuoi-dieu.webp",
+    "sourceFile": "1793582528415_3342672108544124101_g2800038984583468157_5a0bcd3e82c75f2119636c31bf2a7ea1.jpg",
+    "sourceSha256": "07c9f969e9fd45fce56e04dfec32df4497a922f1299e054bfeff50946af20ffe",
+    "note": "",
+    "identification": "reviewed-demo"
+  },
+  {
+    "id": "flower-huong-duong",
+    "name": "Hướng dương",
+    "shopId": "flower-khuc-ban-chieu",
+    "quantity": {
+      "amount": 5,
+      "unit": "bông"
+    },
+    "referencePrice": 29000,
+    "price": 20300,
+    "image": "/food-images/flower-huong-duong.webp",
+    "sourceFile": "1793582528490_3342672108544124101_g2800038984583468157_f0ff192ccbc9922851bf83a401350aaf.jpg",
+    "sourceSha256": "9388284a52a5237b76cffaf671f724ebecbc2602ecfeacc510934aa6ed4a41d0",
+    "note": "",
+    "identification": "reviewed-demo"
+  },
+  {
+    "id": "flower-hoa-chuong",
+    "name": "Hoa chuông",
+    "shopId": "flower-a-flower",
+    "quantity": {
+      "amount": 1,
+      "unit": "bó"
+    },
+    "referencePrice": 49000,
+    "price": 34300,
+    "image": "/food-images/flower-hoa-chuong.webp",
+    "sourceFile": "1793582528618_3342672108544124101_g2800038984583468157_33a707b5dcb396e20eb163503e5a9f2c.jpg",
+    "sourceSha256": "b5d29d92f4bf3754dff9d94bf0c144ddc95b44e63f0ae9b44708d6025f857bd2",
+    "note": "Chưa xác định số cành trong bó",
+    "identification": "reviewed-demo"
+  },
+  {
+    "id": "flower-mao-luong-mix",
+    "name": "Mao lương mix",
+    "shopId": "flower-a-flower",
+    "quantity": {
+      "amount": 10,
+      "unit": "bông"
+    },
+    "referencePrice": 49000,
+    "price": 34300,
+    "image": "/food-images/flower-mao-luong-mix.webp",
+    "sourceFile": "1793582528919_3342672108544124101_g2800038984583468157_578db96b46044ab09a7031337c5b7019.jpg",
+    "sourceSha256": "37d5042fa355a1745b7fb3b69f2d47f4b2ae9359d7fc1a64130cbede38c7d0f7",
+    "note": "",
+    "identification": "reviewed-demo"
+  },
+  {
+    "id": "flower-mao-luong-canh-buom",
+    "name": "Mao lương cánh bướm",
+    "shopId": "flower-a-flower",
+    "quantity": {
+      "amount": 1,
+      "unit": "bó"
+    },
+    "referencePrice": 59000,
+    "price": 41300,
+    "image": "/food-images/flower-mao-luong-canh-buom.webp",
+    "sourceFile": "1793582528972_3342672108544124101_g2800038984583468157_2121ee7076946f24f7102e6f113211af.jpg",
+    "sourceSha256": "f364e5e7dd7f9dff9aeb1eee70efc1b39b76c5d08a36d7d5a546f3f3d68ae66d",
+    "note": "Chưa xác định số cành trong bó",
+    "identification": "reviewed-demo"
+  },
+  {
+    "id": "flower-scabiosa",
+    "name": "Scabiosa",
+    "shopId": "flower-khuc-ban-chieu",
+    "quantity": {
+      "amount": 1,
+      "unit": "bó"
+    },
+    "referencePrice": 49000,
+    "price": 34300,
+    "image": "/food-images/flower-scabiosa.webp",
+    "sourceFile": "1793582529033_3342672108544124101_g2800038984583468157_537afdf1060d67848384038de4ad10b3.jpg",
+    "sourceSha256": "4cb05a8859bf7db2739ccef5ec5c723c73ee6e4af72488c0dd7bca27a4e3c0ed",
+    "note": "Chưa xác định số cành trong bó",
+    "identification": "reviewed-demo"
+  },
+  {
+    "id": "flower-phang-tim-vien",
+    "name": "Phăng tím viền",
+    "shopId": "flower-khuc-ban-chieu",
+    "quantity": {
+      "amount": 20,
+      "unit": "bông"
+    },
+    "referencePrice": 59000,
+    "price": 41300,
+    "image": "/food-images/flower-phang-tim-vien.webp",
+    "sourceFile": "1793582529086_3342672108544124101_g2800038984583468157_e79e951f750f10b62985cb82bbbdf197.jpg",
+    "sourceSha256": "445c2e05ff527e902c9697274cc7ce15996c3452afd084000c8ca7a86ebe6199",
+    "note": "",
+    "identification": "reviewed-demo"
+  },
+  {
+    "id": "flower-phang-do-nhung",
+    "name": "Phăng đỏ nhung",
+    "shopId": "flower-khuc-ban-chieu",
+    "quantity": {
+      "amount": 20,
+      "unit": "bông"
+    },
+    "referencePrice": 59000,
+    "price": 41300,
+    "image": "/food-images/flower-phang-do-nhung.webp",
+    "sourceFile": "1793582529279_3342672108544124101_g2800038984583468157_47259b7eba01ff12138396a6b645cfed.jpg",
+    "sourceSha256": "208917a7dfd6ee1bf62754c9725eba2a619cfe86b3f1d709a6dc0afd9ea13aa8",
+    "note": "",
+    "identification": "reviewed-demo"
+  },
+  {
+    "id": "flower-phang-xanh-trang",
+    "name": "Phăng mix xanh–trắng",
+    "shopId": "flower-a-flower",
+    "quantity": {
+      "amount": 20,
+      "unit": "bông"
+    },
+    "referencePrice": 59000,
+    "price": 41300,
+    "image": "/food-images/flower-phang-xanh-trang.webp",
+    "sourceFile": "1793582529335_3342672108544124101_g2800038984583468157_b1e69a8345be6b85a37b1b9abe943323.jpg",
+    "sourceSha256": "639ab8b228552ae810c06c0c81d6bf7fe4b5cc3f837359bae6dc63b13fa1650c",
+    "note": "",
+    "identification": "reviewed-demo"
+  }
+]

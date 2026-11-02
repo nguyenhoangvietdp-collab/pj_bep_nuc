@@ -13,7 +13,8 @@ import { filterLaunchMenu, menuShops } from "../../lib/launch-menu";
 import Offers from "./offers";
 import FulfillmentChoice from "./fulfillment-choice";
 import SavedPlace from "./saved-place";
-import {voucherLabel,voucherCurrent,type PublicTradingRules} from "../../lib/trading";
+import {flowerImageCaption} from "../../lib/flower-demo";
+import {voucherLabel,voucherCurrent,flowerQuantityLabel,type PublicTradingRules} from "../../lib/trading";
 import {
   estimate,
   lotEstimate,
@@ -429,7 +430,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
       </fieldset>
       {!!catalog?.listings.length && <fieldset className="facet-group"><legend>Giờ nhận & tình trạng</legend>
         <label className="facet-option"><input type="checkbox" checked={values.receiving} onChange={e => change({ ...values, receiving: e.target.checked })} /><span>Đang trong giờ nhận</span></label>
-        <label className="facet-option"><input type="checkbox" checked={values.stock} onChange={e => change({ ...values, stock: e.target.checked })} /><span>Chỉ món còn suất</span></label>
+        <label className="facet-option"><input type="checkbox" checked={values.stock} onChange={e => change({ ...values, stock: e.target.checked })} /><span>Chỉ lô còn hàng</span></label>
       </fieldset>}
       {view === "browse" && !!catalog?.shops.length && <fieldset className="facet-group"><legend>Quán</legend><label>Chọn quán<select value={values.shop} onChange={e => change({ ...values, shop: e.target.value })}><option value="">Tất cả quán</option>{catalog?.shops.map(shop => <option key={shop.id} value={shop.id}>{shop.name}</option>)}</select></label></fieldset>}
     </>;
@@ -480,20 +481,20 @@ export default function Market({ view, id }: { view: string; id?: string }) {
             <Heading>{l.name}</Heading>
             <Link href={`/shops/${l.shopId}`}>{s?.name}</Link>
           </div>
-          {l.lot&&<section className="lot-proof"><p className="lot-reason">{l.lot.offer==="surplus"?"Còn lại cuối phiên":"Ưu đãi cửa hàng"} · {l.lot.kind==="flowers"?"Hoa cắm nhà":"Đồ ăn"}</p><h3>Vì sao giá giảm?</h3><p>{l.lot.reason}</p><p><b>Bạn nhận:</b> {l.lot.contents}</p><p><b>Tình trạng:</b> {l.lot.condition}</p><p>Tiệm cập nhật lúc {time(l.lot.checkedAt)}</p>{l.lot.kind==="flowers"&&<p>{l.lot.stems} cành dùng được · {l.lot.species} · {l.lot.packaging}</p>}{l.lot.referencePrice&&<details><summary>Giá tham chiếu {money(l.lot.referencePrice)}</summary><p>{l.lot.referenceEvidence}</p><p>Mốc tham chiếu chưa bao gồm công đi lại hoặc lựa chọn thay thế của bạn.</p></details>}</section>}
+          {l.lot&&<section className="lot-proof"><p className="lot-reason">{l.lot.offer==="surplus"?"Còn lại cuối phiên":"Ưu đãi cửa hàng"} · {l.lot.kind==="flowers"?"Hoa cắm nhà":"Đồ ăn"}</p><h3>Vì sao giá giảm?</h3><p>{l.lot.reason}</p><p><b>Bạn nhận:</b> {l.lot.contents}</p><p><b>Tình trạng:</b> {l.lot.condition}</p><p>{s?.mock?"Dữ liệu mô phỏng tạo lúc":"Tiệm cập nhật lúc"} {time(l.lot.checkedAt)}</p>{l.lot.kind==="flowers"&&<p>{flowerQuantityLabel(l.lot)} · {l.lot.species} · {l.lot.packaging}</p>}{l.lot.referencePrice&&<details><summary>Giá tham chiếu {money(l.lot.referencePrice)}</summary><p>{l.lot.referenceEvidence}</p><p>Mốc tham chiếu chưa bao gồm công đi lại hoặc lựa chọn thay thế của bạn.</p></details>}</section>}
           <section className="meal-collection" aria-label="Nơi và giờ nhận">
             <h3>Quán và khung giờ bàn giao</h3>
             <p className="meal-address">{s?.address || "Chưa có địa chỉ nhận"}</p>
-            <p className="meal-pickup"><b>{time(l.start)}–{time(l.end)}</b> · Còn {l.stock} suất</p>
+            <p className="meal-pickup"><b>{time(l.start)}–{time(l.end)}</b> · Còn {l.stock} {l.lot?.kind==="flowers"?"đơn vị mua":"suất"}</p>
             {l.lot?.kind!=="flowers"&&<p className="meal-allergens"><b>Dị ứng:</b> {l.allergens || "Chưa có thông tin. Hỏi quán trước khi đặt."}</p>}
           </section>
           <section className="meal-purchase" aria-label="Chọn số suất và kiểm tra giá">
             <div className="meal-price"><strong>{money(displayed.total)} <small>/ {l.lot?"lô":"suất"}</small></strong><span>{l.lot?"Giá lô trước voucher":"Giá menu"} {money(l.price)}</span></div>
             <p className="fine">{displayed.voucher ? `Ước tính với voucher ${voucherLabel(displayed.voucher)}` : displayed.rate ? `Ước tính với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}</p>
             <Quantity n={n} max={Math.min(3, l.stock)} disabled={false} change={change} />
-            <p className="detail-total" aria-live="polite">Tổng {n} suất <strong>{money(total.total)}</strong></p>
+            <p className="detail-total" aria-live="polite">Tổng {n} {l.lot?.kind==="flowers"?"đơn vị mua":"suất"} <strong>{money(total.total)}</strong></p>
             <button disabled={l.stock < n || now >= l.end} onClick={() => saveDraft(l, n)}>Kiểm tra lô đã chọn</button>
-            <p className="fine">Tối đa 3 suất · Chọn tự lấy hoặc giao ở bước tiếp theo</p>
+            <p className="fine">Tối đa 3 đơn vị mua · Chọn tự lấy hoặc giao ở bước tiếp theo</p>
           </section>
         </div>
       </div>
@@ -558,7 +559,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                   <section className="shop-intro">
                     <Link href="/meals">Tất cả món</Link>
                     <h1>{shop.name}</h1>
-                    <p>{shop.address}</p>
+                    <p>{shop.address}</p>{shop.mock&&<p className="demo-disclosure">Hồ sơ minh họa · không có điểm nhận hoặc giao dịch thật.</p>}{shop.story&&<p>{shop.story}</p>}
                     <p>
                       Tự đến lấy hoặc giao tận nơi · Kiểm tra giờ nhận và phí giao trước khi thanh toán.
                     </p>
@@ -596,7 +597,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                   </aside>
                   <section className="catalogue-results" aria-label="Kết quả tìm món">
                     <div className="catalogue-toolbar">
-                      <div><h2>{query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : !catalog.listings.length ? "Khám phá thực đơn" : "Lô đang có"}</h2><p role="status" aria-live="polite">{catalog.listings.length ? `${shown.length} món${stockOnly ? " còn suất" : ""}` : "Chưa có suất mở bán · Tham khảo món bên dưới"}</p></div>
+                      <div><h2>{query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : !catalog.listings.length ? "Khám phá thực đơn" : "Lô đang có"}</h2><p role="status" aria-live="polite">{catalog.listings.length ? `${shown.length} lô${stockOnly ? " còn hàng" : ""}` : "Chưa có suất mở bán · Tham khảo món bên dưới"}</p></div>
                       <button className="secondary mobile-filter-toggle" ref={filterOpener} onClick={() => { setMobileFilters(currentFilters); filterDialog.current?.showModal(); }}>Bộ lọc{filterCount > 0 ? ` (${filterCount})` : ""}</button>
                       {(catalog.listings.length > 0 || sort === "price") && <label className="catalogue-sort"><span>Sắp xếp</span><select value={sort} onChange={e => setSort(e.target.value)}><option value="end">{catalog.listings.length ? "Giờ nhận kết thúc sớm" : "Thứ tự thực đơn"}</option><option value="price">Giá thấp đến cao</option></select></label>}
                     </div>
@@ -646,7 +647,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                         </div>
                         <div className="food-card-purchase">
                           <div className="food-price-row"><strong className="food-price">{money(displayed.total)}</strong><span className="food-menu-price">{l.lot?"Giá lô":"Giá menu"} {money(l.price)}</span></div>
-                          {l.lot&&<p className="fine">{l.lot.offer==="surplus"?"Lô còn lại cuối phiên":"Khuyến mãi cửa hàng"} · {l.lot.kind==="flowers"?`${l.lot.stems} cành · gói cơ bản`:l.lot.contents}</p>}
+                          {l.id.startsWith("flower-")&&<p className="fine">{flowerImageCaption}</p>}{l.lot&&<p className="fine">{l.lot.offer==="surplus"?"Lô còn lại cuối phiên":"Khuyến mãi cửa hàng"} · {l.lot.kind==="flowers"?`${flowerQuantityLabel(l.lot)} · gói cơ bản`:l.lot.contents}</p>}
                           <p className="price-condition">{displayed.voucher ? `Với voucher ${voucherLabel(displayed.voucher)}` : displayed.rate ? `Với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}{fulfillment === "delivery" && " · Chưa gồm phí giao"}</p>
                           <button disabled={!l.stock || now >= l.end} onClick={() => openFood(l)}>Xem lô này</button>
                         </div>
@@ -740,7 +741,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                           <Link href={`/shops/${item.shopId}`}>
                             {shop?.name}
                           </Link>
-                          <p>{shop?.address}</p>
+                          <p>{shop?.address}</p>{item.lot?.quantity&&<p className="demo-disclosure">DEMO · {flowerQuantityLabel(item.lot)} mỗi đơn vị mua. {flowerImageCaption}; không kèm bình hoặc bó tặng.</p>}
                           <b>
                             Nhận {time(item.start)}–{time(item.end)}
                           </b>
@@ -1143,7 +1144,7 @@ function FoodImage({ l }: { l: Food }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [l.image]);
   return (
-    <div className="food-image">
+    <div className={`food-image ${l.lot?.kind==="flowers"?"flower-image":""}`}>
       {l.image && !failed ? (
         <img
           src={l.image}
@@ -1154,8 +1155,8 @@ function FoodImage({ l }: { l: Food }) {
       ) : (
         <span>Chưa có ảnh lô</span>
       )}
-      {l.image?.includes("demo-") && (
-        <span className="demo-image-label">Ảnh minh họa · DEMO</span>
+      {(l.image?.includes("demo-") || l.id.startsWith("flower-")) && (
+        <span className="demo-image-label">{l.id.startsWith("flower-")?"Ảnh tham khảo · DEMO":"Ảnh minh họa · DEMO"}</span>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {act,modernDemoState,issue,expire,view,catalogue,ledger,promotionUsed,orderTotal,empty} from "../lib/domain";
+import {act,tradingDemoState as modernDemoState,issue,expire,view,catalogue,ledger,promotionUsed,orderTotal,empty} from "../lib/domain";
 import {weekStart,voucherDiscount,validateRules,defaultTradingRules} from "../lib/trading";
 const now=Date.parse("2026-11-02T18:30:00+07:00");
 function fixture(){const s=modernDemoState(now);issue(s,s.users[0],now);return s;}

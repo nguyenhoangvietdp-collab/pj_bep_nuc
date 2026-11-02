@@ -106,7 +106,7 @@ export function createEdgeHandler(deps: EdgeDependencies) {
           const l=s.listings.find(l=>l.id===body.args.listingId),shop=l&&s.shops.find(x=>x.id===l.shopId);
           if(!current.approved||!current.place||!shop)return {place:current.place,shop:undefined};
           const today=new Date(now).toISOString().slice(0,10);
-          const permitted=!!deps.routeDistance&&!!s.tradingRules?.enabled&&s.tradingRules.pickupBands.length>0&&(!body.args.voucherId||s.tradingRules.stackReceiving)&&s.audit.filter(x=>x.action==="route_request"&&new Date(x.at).toISOString().startsWith(today)).length<20;
+          const permitted=shop.lat!==null&&shop.lng!==null&&!!deps.routeDistance&&!!s.tradingRules?.enabled&&s.tradingRules.pickupBands.length>0&&(!body.args.voucherId||s.tradingRules.stackReceiving)&&s.audit.filter(x=>x.action==="route_request"&&new Date(x.at).toISOString().startsWith(today)).length<20;
           if(permitted)s.audit.push({id:crypto.randomUUID(),at:now,actor:current.id,action:"route_request",detail:{listingId:l!.id}});
           return {place:current.place,shop:permitted?shop:undefined};
         });

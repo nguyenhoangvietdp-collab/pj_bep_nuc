@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createEdgeHandler} from "../lib/edge-api";
-import {modernDemoState,type State} from "../lib/domain";
+import {tradingDemoState as modernDemoState,type State} from "../lib/domain";
 const now=Date.parse("2026-11-02T18:30:00+07:00");
 function setup(){
  let state=modernDemoState(now);state.shops[0]={...state.shops[0],mock:false,signed:true,recurring:true};
