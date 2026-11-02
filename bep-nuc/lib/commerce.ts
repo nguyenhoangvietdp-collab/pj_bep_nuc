@@ -1,4 +1,4 @@
-import {voucherCurrent,voucherDiscount,type Lot,type VoucherValue} from "./trading";
+import {voucherCurrent,voucherDiscount,type Lot,type VoucherValue} from "./trading.ts";
 export const foodCategories = ["Cơm", "Bún/mì", "Bánh", "Đồ uống", "Món khác", "Hoa cắm nhà"];
 export const mealCategories = foodCategories.filter(c=>c!=="Hoa cắm nhà");
 export const money = (n: number) =>

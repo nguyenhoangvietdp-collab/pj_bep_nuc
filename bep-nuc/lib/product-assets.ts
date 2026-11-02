@@ -1,4 +1,4 @@
-import { normalize } from "./commerce";
+import { normalize } from "./commerce.ts";
 // Team-provided menu references; these are not stock or approved partner listings.
 export const productAssets = [
   {

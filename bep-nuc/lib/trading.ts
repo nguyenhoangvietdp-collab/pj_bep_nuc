@@ -5,6 +5,7 @@ export type Lot = {
   referencePrice?: number; referenceEvidence?: string;
   stems?: number; species?: string; packaging?: string;
   quantity?: {amount:number;unit:"cành"|"bông"|"bó"};
+  catalogueProductId?:string;
 };
 export type TradingRules = {
   version: 1 | 2; enabled: boolean; cap15: number; cap10: number; fixedWeekly: number;

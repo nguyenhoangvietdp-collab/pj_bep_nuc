@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import {flowerListings,flowerShops,flowerDemoVersion} from "./flower-demo.ts";
+import {requestProduct,type RequestProduct} from "./request-catalogue.ts";
 import { defaultTradingRules, demoTradingRules, publicTradingRules, weekStart, voucherCurrent, voucherDiscount, pickupSupport, validLot, validateRules, type TradingRules, type SavedPlace, type Lot } from "./trading.ts";
 export type Role = "student" | "merchant" | "ops";
 export type User = {
@@ -120,7 +121,7 @@ export type Settlement = {
   paid: boolean;
   reference?: string;
 };
-export type MealRequest = { id:string; userId:string; name:string; qty:number; rate:number; fulfillment:"pickup"|"delivery"; delivery?:Order["delivery"]; status:"pending"|"confirmed"|"rejected"|"ordered"; revision:number; created:number; quoteId?:string; fee?:number; grossFee?:number; orderId?:string; reason?:string };
+export type MealRequest = { id:string; userId:string; name:string; product?:RequestProduct; appliedRate?:number; qty:number; rate:number; fulfillment:"pickup"|"delivery"; delivery?:Order["delivery"]; status:"pending"|"confirmed"|"rejected"|"ordered"; revision:number; created:number; quoteId?:string; fee?:number; grossFee?:number; orderId?:string; reason?:string };
 export type State = {
   flowerDemoVersion?: number;
   tradingRules?: TradingRules;
@@ -406,7 +407,7 @@ export function view(s: State, u: User, now: number) {
     });
   return {
     user: u,
-    mealRequests: (s.mealRequests || []).filter(r=>u.role==="ops" || (u.role==="student" && r.userId===u.id)).map(r=>({...r,status:r.status==="confirmed" && (s.quotes.find(q=>q.id===r.quoteId)?.expires||0)<=now?"expired":r.status, quote:r.quoteId?(()=>{const q=s.quotes.find(q=>q.id===r.quoteId);const l=q&&s.listings.find(l=>l.id===q.listingId);const shop=l&&s.shops.find(x=>x.id===l.shopId);return q?{total:q.price,expires:q.expires,name:l?.name,address:shop?.address,start:l?.start,end:l?.end}:undefined;})():undefined})),
+    mealRequests: (s.mealRequests || []).filter(r=>u.role==="ops" || (u.role==="student" && r.userId===u.id)).map(r=>({...r,status:r.status==="confirmed" && (s.quotes.find(q=>q.id===r.quoteId)?.expires||0)<=now?"expired":r.status, quote:r.quoteId?(()=>{const q=s.quotes.find(q=>q.id===r.quoteId);const l=q&&s.listings.find(l=>l.id===q.listingId);const shop=l&&s.shops.find(x=>x.id===l.shopId);return q?{total:q.price,expires:q.expires,name:l?.name,address:shop?.address,start:l?.start,end:l?.end,lot:q.lotSnapshot,appliedRate:r.appliedRate??r.rate,voucherDiscount:q.promotion?.voucher??0,shippingSupport:(r.grossFee??r.fee??0)-(r.fee??0)}:undefined;})():undefined})),
     now,
     listings,
     shops: s.shops.map(({ id, name, address, mock, story }) => ({ id, name, address, mock, story })),
@@ -523,18 +524,20 @@ export function act(
     issue.status="resolved";issue.resolution=a.resolution.trim();
   } else if(action === "meal_request") {
     requireThat(u.role==="student","Chỉ sinh viên gửi yêu cầu");
+    const product=requestProduct(a.productId,a.name);
+    requireThat(a.productId===undefined||typeof a.productId==="string"&&!!product,"Mã sản phẩm không hợp lệ");
     requireThat(typeof a.name==="string"&&a.name.trim().length>=2&&a.name.length<=100,"Tên món không hợp lệ");
-    requireThat(Number.isInteger(a.qty)&&a.qty>=1&&a.qty<=3&&(rulesFor(s).version===2?[0,.15,.1,9000]:[0.07,0.1,0.2]).includes(a.rate),"Số suất hoặc voucher không hợp lệ");
+    requireThat(Number.isInteger(a.qty)&&a.qty>=1&&a.qty<=3&&(product?.kind==="flowers"||rulesFor(s).version===2?[0,.15,.1,9000]:[0.07,0.1,0.2]).includes(a.rate),"Số suất hoặc voucher không hợp lệ");
     requireThat(["pickup","delivery"].includes(a.fulfillment),"Cách nhận không hợp lệ");
     if(a.fulfillment==="delivery") requireThat(a.delivery&&typeof a.delivery.recipient==="string"&&a.delivery.recipient.trim().length>=2&&a.delivery.recipient.length<=100&&typeof a.delivery.phone==="string"&&/^(0\d{9}|\+84\d{9})$/.test(a.delivery.phone)&&typeof a.delivery.address==="string"&&a.delivery.address.length>=10&&a.delivery.address.length<=250,"Cần tên, số điện thoại và địa chỉ nhận hợp lệ");
     const list=s.mealRequests??=[];
     requireThat(list.filter(x=>x.userId===u.id&&["pending","confirmed"].includes(x.status)).length<5,"Bạn có tối đa 5 yêu cầu đang xử lý");
-    const request:MealRequest={id:randomUUID(),userId:u.id,name:a.name.trim(),qty:a.qty,rate:a.rate,fulfillment:a.fulfillment,delivery:a.fulfillment==="delivery"?{recipient:a.delivery.recipient,phone:a.delivery.phone,address:a.delivery.address,revision:0}:undefined,status:"pending",revision:0,created:now};
+    const request:MealRequest={id:randomUUID(),userId:u.id,name:product?.name??a.name.trim(),...(product?{product:structuredClone(product)}:{}),qty:a.qty,rate:a.rate,fulfillment:a.fulfillment,delivery:a.fulfillment==="delivery"?{recipient:a.delivery.recipient,phone:a.delivery.phone,address:a.delivery.address,revision:0}:undefined,status:"pending",revision:0,created:now};
     list.push(request);result={id:request.id};
   } else if(["confirm_meal_request","reject_meal_request","accept_meal_request"].includes(action)) {
     const request=s.mealRequests?.find(x=>x.id===a.requestId);requireThat(request,"Không có yêu cầu");
     requireThat(!["ordered","rejected"].includes(request.status),"Yêu cầu đã kết thúc");
-    const student=s.users.find(x=>x.id===request.userId);requireThat(student?.approved&&student.role==="student","Tài khoản chưa đủ điều kiện");
+    const student=s.users.find(x=>x.id===request.userId);requireThat(student?.role==="student"&&(action==="reject_meal_request"||student.approved),"Tài khoản chưa đủ điều kiện");
     if(action==="accept_meal_request") {
       requireThat(u.id===request.userId&&request.status==="confirmed"&&a.revision===request.revision,"Báo giá đã đổi hoặc chưa xác nhận");
       const q=s.quotes.find(q=>q.id===request.quoteId);requireThat(q&&q.expires>now&&q.state==="held","Báo giá hết hạn");
@@ -549,17 +552,29 @@ export function act(
       if(action==="confirm_meal_request") {
         requireThat(a.sourceConfirmed===true,"Xác nhận nguồn món và giờ thực hiện trước khi báo giá");
         requireThat(Number.isSafeInteger(a.fee)&&a.fee>=0&&a.fee<=1000000&&(request.fulfillment==="delivery"||a.fee===0),"Phí giao không hợp lệ");
+        if(request.product){
+          const l=s.listings.find(x=>x.id===a.listingId),shop=l&&s.shops.find(x=>x.id===l.shopId);
+          requireThat(l&&shop?.approved&&!shop.mock,"Cần lô và nhà bán thật đã xác minh");
+          requireThat((l.lot?.kind??"food")===request.product.kind,"Lô không đúng ngành hàng yêu cầu");
+          if(request.product.kind==="flowers"){
+            const lot=l.lot,p=request.product;
+            requireThat(rulesFor(s).version===2&&l.approved===true&&!!l.image&&validLot(lot,now,l.end)&&l.storage.trim().length>=3,"Lô hoa chưa đủ thông tin chất lượng hoặc chưa duyệt");
+            requireThat(lot!.catalogueProductId===p.id&&lot!.species===p.name&&lot!.quantity?.amount===p.quantity.amount&&lot!.quantity?.unit===p.quantity.unit,"Loại hoa hoặc quy cách lô không khớp yêu cầu");
+          }
+        }
       }
       if(request.quoteId){const old=s.quotes.find(q=>q.id===request.quoteId);if(old?.state==="held")act(s,student,"release_quote",{key:a.key+":release",quoteId:old.id},now,null,policy);}
       if(action==="reject_meal_request"){
         requireThat(typeof a.reason==="string"&&a.reason.trim().length>=3&&a.reason.length<=250,"Ghi lý do từ chối");request.status="rejected";request.reason=a.reason.trim();
       } else {
-        const v=s.vouchers.find(v=>v.userId===student.id&&(request.rate===9000?v.amount===9000:v.rate===request.rate&&!v.amount)&&voucherCurrent(v,now)&&v.state==="available");requireThat(request.rate===0||v,"Voucher khách chọn không còn dùng được");
+        const appliedRate=a.appliedRate??request.rate;
+        requireThat((rulesFor(s).version===2?[0,.15,.1,9000]:[.07,.1,.2]).includes(appliedRate),"Ưu đãi báo giá không hợp lệ");
+        const v=appliedRate===0?undefined:s.vouchers.find(v=>v.userId===student.id&&(appliedRate===9000?v.amount===9000:v.rate===appliedRate&&!v.amount)&&voucherCurrent(v,now)&&v.state==="available");requireThat(appliedRate===0||v,"Voucher báo giá không còn dùng được");
         const q=act(s,student,"quote",{key:a.key+":quote",listingId:a.listingId,voucherId:v?.id,qty:request.qty,fulfillment:request.fulfillment},now,null,policy) as {id:string};
         const internal=s.quotes.find(x=>x.id===q.id)!;
         const support=request.fulfillment==="delivery"&&internal.promotion&&(!internal.promotion.voucher||internal.promotion.stackReceiving)?Math.min(Math.floor(a.fee*.3),internal.promotion.shippingCap):0;
         reservePromotion(s,internal,support);
-        request.quoteId=q.id;request.grossFee=a.fee;request.fee=a.fee-support;request.revision++;request.status="confirmed";
+        request.quoteId=q.id;request.appliedRate=appliedRate;request.grossFee=a.fee;request.fee=a.fee-support;request.revision++;request.status="confirmed";
       }
     }
   } else if (action === "quote") {
@@ -953,6 +968,7 @@ export function act(
     if(a.lot&&rulesFor(s).version===2)a.lot.checkedAt=now;
     if(rulesFor(s).version===2){requireThat(validLot(a.lot,now,a.end),"Cần đủ thông tin lô, tình trạng và bằng chứng giá");requireThat(a.payoutShare===undefined,"Lô mới cần khoản tiệm thực nhận cố định");requireThat(typeof a.storage==="string"&&a.storage.trim().length>=3&&a.storage.length<=500&&(a.lot.kind==="flowers"||typeof a.allergens==="string"&&a.allergens.trim().length>=3&&a.allergens.length<=500),"Thiếu bảo quản/dị ứng hoặc vượt500ký tự");}
     if(rulesFor(s).version===2)requireThat(typeof a.image==="string"&&a.image.length>0,"Cần ảnh đúng lô trước khi mở bán");
+    if(a.lot?.catalogueProductId){const p=requestProduct(a.lot.catalogueProductId);requireThat(p?.kind==="flowers"&&a.lot.kind==="flowers"&&a.lot.species===p.name&&a.lot.quantity?.amount===p.quantity.amount&&a.lot.quantity?.unit===p.quantity.unit,"Liên kết danh mục hoa không đúng loại hoặc quy cách");}
     requireThat(
       u.role === "ops" || (u.role === "merchant" && u.shopId === a.shopId),
       "Không có quyền",

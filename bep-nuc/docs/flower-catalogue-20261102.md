@@ -1,55 +1,43 @@
-# Danh mục hoa DEMO — 02/11/2026
+# Hoa tham khảo và yêu cầu đặt hàng thật — 02/11/2026
 
-Danh mục gồm 12 sản phẩm và hai hồ sơ sáng tạo tại Hà Nội. Đây không phải đối tác, tồn kho hoặc hoạt động kinh doanh đã xác minh. Giá bán mô phỏng bằng 70% bảng giá người dùng cung cấp; không có căn cứ gọi bảng đó là giá thị trường hoặc giá thường của tiệm.
+Website chính: https://pj-bep-nuc.nguyenhoangvietdp.workers.dev/#/meals . Nhóm hàng gồm Đồ ăn và Hoa; hoa dùng cùng renderer thẻ sản phẩm, trang chi tiết, checkout yêu cầu, báo giá và Đơn hàng của đồ ăn.
 
-## Ảnh và quy cách
+## Danh mục được cung cấp
 
-Nguồn dữ liệu duy nhất là [flower-catalogue.json](../lib/flower-catalogue.json). Mỗi mục lưu tên tệp gốc, SHA-256, ảnh web, quy cách, ghi chú và cặp giá. Script [prepare-flower-demo.py](../scripts/prepare-flower-demo.py) chỉ tạo bản WebP tối đa 1.200px, không thay đổi ảnh trong thư mục nguồn `hoa`.
+12 ảnh đã được đối chiếu theo nhóm/màu; chưa xác minh được lô, độ tươi, số cành từ ảnh hoặc khả năng cung cấp thực tế. Mức tham khảo do người dùng cung cấp; giá mục tiêu bằng 70% mức đó, không phải giá bán hoặc ưu đãi đã cam kết. Không gồm bình hay thiết kế bó tặng.
 
-| Tên | Quy cách cung cấp | Tiền tố ảnh | Tham chiếu | DEMO |
-|---|---|---|---:|---:|
-| Kèn hồng 1T | 10 cành | 1793582528066 | 99.000 | 69.300 |
-| Ly kép trắng | 5 cành; 3–4 tai theo bảng | 1793582528114 | 129.000 | 90.300 |
-| Ly kép hồng | 5 cành; 4–5 tai theo bảng | 1793582528176 | 159.000 | 111.300 |
-| Chuối điểu | 30 bông | 1793582528415 | 75.000 | 52.500 |
-| Hướng dương | 5 bông | 1793582528490 | 29.000 | 20.300 |
-| Hoa chuông | 1 bó, chưa rõ số cành | 1793582528618 | 49.000 | 34.300 |
-| Mao lương mix | 10 bông | 1793582528919 | 49.000 | 34.300 |
-| Mao lương cánh bướm | 1 bó, chưa rõ số cành | 1793582528972 | 59.000 | 41.300 |
-| Scabiosa | 1 bó, chưa rõ số cành | 1793582529033 | 49.000 | 34.300 |
-| Phăng tím viền | 20 bông | 1793582529086 | 59.000 | 41.300 |
-| Phăng đỏ nhung | 20 bông | 1793582529279 | 59.000 | 41.300 |
-| Phăng xanh–trắng | 20 bông | 1793582529335 | 59.000 | 41.300 |
+| Sản phẩm | Quy cách mỗi đơn vị mua | Mức tham khảo | Giá mục tiêu |
+|---|---|---:|---:|
+| Kèn hồng 1T | 10 cành | 99,000đ | 69,300đ |
+| Ly kép trắng | 5 cành; 3–4 tai theo bảng cung cấp; chưa kiểm đếm từ ảnh | 129,000đ | 90,300đ |
+| Ly kép hồng | 5 cành; 4–5 tai theo bảng cung cấp; chưa kiểm đếm từ ảnh | 159,000đ | 111,300đ |
+| Chuối điểu | 30 bông | 75,000đ | 52,500đ |
+| Hướng dương | 5 bông | 29,000đ | 20,300đ |
+| Hoa chuông | 1 bó; Chưa xác định số cành trong bó | 49,000đ | 34,300đ |
+| Mao lương mix | 10 bông | 49,000đ | 34,300đ |
+| Mao lương cánh bướm | 1 bó; Chưa xác định số cành trong bó | 59,000đ | 41,300đ |
+| Scabiosa | 1 bó; Chưa xác định số cành trong bó | 49,000đ | 34,300đ |
+| Phăng tím viền | 20 bông | 59,000đ | 41,300đ |
+| Phăng đỏ nhung | 20 bông | 59,000đ | 41,300đ |
+| Phăng mix xanh–trắng | 20 bông | 59,000đ | 41,300đ |
 
-Đơn vị tiền: VNĐ. Ảnh được rà bằng hình thái nhóm/màu, chưa phải xác minh giống hoặc chất lượng hàng thật. Không suy ra số cành từ số bông; không dùng toàn bộ bình/bó lớn trong ảnh làm cam kết lượng nhận. Không bao gồm bình, phụ kiện hoặc thiết kế bó tặng.
+Nguồn ảnh, tên tệp và SHA-256 lưu trong [flower-catalogue.json](../lib/flower-catalogue.json); ảnh gốc giữ nguyên. Danh mục chung cho frontend và máy chủ ở [request-catalogue.ts](../lib/request-catalogue.ts). Không gán hai tiệm sáng tạo của DEMO trước đây cho yêu cầu thật.
 
-## Phân bổ hồ sơ sáng tạo
+## Hành trình chung
 
-- À Flower & More: ly kép, hoa chuông, mao lương và phăng xanh–trắng; phong cách tối giản/pastel, khu vực Cầu Giấy.
-- Khúc Ban Chiều Florist: kèn hồng, chuối điểu, hướng dương, scabiosa và phăng tím/đỏ; cảm hứng cổ điển, khu vực Hoàn Kiếm.
+1. Danh mục → chi tiết → kiểm tra lựa chọn; không có tồn hoặc giờ nhận giả.
+2. Đăng nhập, chọn số đơn vị, voucher mong muốn và cách nhận; tài khoản chờ duyệt vẫn gửi được yêu cầu.
+3. Gửi yêu cầu thật vào cùng hàng đợi vận hành và Đơn hàng. Chưa giữ hàng, chưa tiêu voucher và chưa thu tiền.
+4. Vận hành chọn lô/tiệm thật đã xác minh, đúng mã loại hoa và quy cách. Lô hoa phải có ảnh, kiểm đếm số cành, tình trạng, bảo quản, giá, khoản trả tiệm và khung nhận thực tế. Bó chưa biết số cành chỉ dùng ở giai đoạn nhu cầu; báo giá cần số cành thực tế.
+5. Vận hành đề xuất giá và ưu đãi thực tế; có thể báo không voucher khi chương trình chưa đủ điều kiện. Khách nhìn thấy giá, quy cách, voucher, phí giao/hỗ trợ và tổng tiền để đồng ý đúng phiên bản báo giá.
+6. Sau chấp nhận, dùng luồng đơn hàng/thanh toán/nhận hàng/hỗ trợ hiện hành. Giữ các cổng pilot, tài khoản, ngân sách và xác nhận tiền hiện có.
 
-Không dựng tiểu sử chủ tiệm, số điện thoại, địa chỉ nhận, tọa độ, chứng nhận hoặc đánh giá khách hàng. Trường `mock` luôn bật; production không hiển thị hoặc nhận đơn cho các tiệm này.
+Không tự áp dụng giảm 30% hoặc 5% vào báo giá. Không seed tiệm hoặc lô giả vào production. Không chuyển dữ liệu `bep-nuc-flowers-demo-v1` trên trình duyệt thành yêu cầu thật và không xóa dữ liệu đó. Widget mua hoa cũ ngừng được nhập vào website; GitHub Pages chỉ dẫn sang website Workers.
 
-## Chờ xác nhận
+## API và tương thích
 
-Không đưa vào danh mục đặt hàng: tuyết mai; CTC (chưa giải nghĩa tên viết tắt); phi yến; hoàng kim; lan tường; đồng tiền nhí; bí ngô; phăng hồng dâu/hồng cam/chùm 500gr; hồng lạc thần, Sofia, sao hồng, Fairy Kiss, HC chiết xạ, HC Plume. Ảnh có nhóm gần giống không chứng minh được tên hàng, giống thương mại, khối lượng hoặc quy cách dòng bị cắt.
+Giữ action `meal_request`, `confirm_meal_request`, `accept_meal_request` và `reject_meal_request`. `productId` tùy chọn được máy chủ đối chiếu; snapshot quy cách/giá mục tiêu do máy chủ tạo, không lấy từ dữ liệu giá của trình duyệt. `appliedRate` là ưu đãi báo giá, độc lập với `rate` mong muốn. Yêu cầu đồ ăn cũ tiếp tục hoạt động. Các trường tùy chọn trong JSON không cần migration SQL.
 
-Ảnh ứng viên phi yến có dáng gần stock; đó là suy luận cần xác nhận, không phải định danh chắc chắn. Mô tả hình thái đối chiếu: [RHS — Matthiola incana](https://www.rhs.org.uk/plants/48284/matthiola-incana/details). Nguồn này không xác nhận tên người bán hoặc giá của ảnh được cung cấp.
+Các mục chưa xác nhận (CTC, các giống hồng, phi yến, hoàng kim, đồng tiền nhí và những tên/quy cách còn thiếu) chưa được tự thêm vào danh mục hoặc gán giá từ ảnh gần giống.
 
-## Giới hạn giao dịch
-
-- Seed phiên bản 1 chỉ chạy trong DEMO: 3 đơn vị tồn/mục, khung nhận từ lúc seed đến 3 giờ sau; không làm mới tồn khi tải lại. Lô cũ có đơn/quote tham chiếu được giữ để không phá đơn đã tạo.
-- Không tự nâng quy tắc giao dịch của dữ liệu DEMO v1 cũ: dùng vùng dữ liệu DEMO v2 mới để tránh áp nhầm cách giảm giá cũ cho sản phẩm mới.
-- Giả định mỗi đơn vị: khoản tiệm nhận 60% giá DEMO; chi phí 3.000đ; đóng góp tối thiểu 1.000đ. Các số này phục vụ kiểm tra luồng, chưa chứng minh mô hình có lãi.
-- Voucher: 2 lượt 15%, 2 lượt 10%, 4 lượt 9.000đ mỗi tuần Việt Nam; trần phần trăm 9.000đ và ngân sách tuần 500.000đ trong cấu hình DEMO. Giảm 30% đã nằm trong giá trước voucher, không giảm thêm 5%.
-- Kiểm tra biên, ngân sách, tồn và lượt voucher trước khi giữ hàng. Hướng dương 20.300đ/đơn vị không đủ biên cho voucher 9.000đ khi mua một đơn vị.
-- Không tạo hỗ trợ đi lại từ tọa độ tiệm hư cấu. Tiệm mới không có tọa độ và không gọi dịch vụ định tuyến.
-- Ứng dụng chính/MVP dùng quy tắc giao dịch trên máy chủ hiện có. Pages dùng mô phỏng một trình duyệt, không xác thực tài khoản hoặc xác nhận tiền ngân hàng; không thay thế backend khi bán thật.
-- Vào “Đồ ăn & hoa” → Nhóm hàng → “Hoa” để thử danh mục này trong cùng trang. “Đồ ăn” là nhóm ngang cấp, có các loại món và lựa chọn “Tất cả món” riêng; không đặt hoa trong “Tất cả món”. Không còn tab Hoa DEMO trên thanh chính. `/#/flowers` cũ tự chuyển về nhóm Hoa. Danh mục chung vẫn đọc dữ liệu Supabase hiện có; thao tác đặt hoa DEMO chỉ lưu trên thiết bị, không ghi đơn vào Supabase hoặc thay đổi đơn thật.
-- Sau bàn giao, hoàn tiền khách không tự xóa khoản phải trả tiệm. Hết hạn giữ/hủy trước thanh toán giải phóng tồn và voucher.
-
-Không triển khai migration/backend, không bật chương trình voucher thật, không dùng giao dịch DEMO làm traction.
-
-## Kiểm tra bản triển khai
-
-Đã chạy 93 kiểm thử; TypeScript, Deno check, build Next/MVP/Pages và kiểm tra CSP/static đều đạt. Trình duyệt đã kiểm tra 17 trường hợp, gồm các giao diện ở 390/768/1440px và luồng giữ–thanh toán–nhận–phản ánh–hoàn tiền. Không ghi nhận lỗi JavaScript hoặc tràn ngang trong lượt kiểm tra đó. Đây là kiểm tra DEMO, chưa kiểm chứng thanh toán, chất lượng hoa hoặc vận hành tiệm thật.
+Kiểm thử nghiệp vụ, tài khoản, xác minh nguồn, báo giá và đồng ý khách chạy trong fixtures/môi trường kiểm thử. Kiểm tra production chỉ đọc danh mục và đường vào đăng nhập; không tạo yêu cầu/đơn giả trên database thật.

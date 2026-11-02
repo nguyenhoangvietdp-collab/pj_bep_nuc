@@ -14,7 +14,8 @@ import Offers from "./offers";
 import FulfillmentChoice from "./fulfillment-choice";
 import SavedPlace from "./saved-place";
 import {flowerImageCaption} from "../../lib/flower-demo";
-import FlowerShowcase from "./flower-showcase";
+import {ReferenceCard,ReferenceDetails,ReferencePrice} from "./reference-product";
+import {filterRequestFlowers,requestProduct,requestUnit} from "../../lib/request-catalogue";
 import {voucherLabel,voucherCurrent,flowerQuantityLabel,type PublicTradingRules} from "../../lib/trading";
 import {
   estimate,
@@ -51,7 +52,7 @@ const states: Record<string, string> = {
   out_for_delivery: "Đang giao tận nơi",
   delivered: "Đã giao tận nơi",
   paid: "Đã thanh toán · đến quán nhận",
-  picked_up: "Đã nhận bữa",
+  picked_up: "Đã nhận hàng",
   expired: "Hết hạn thanh toán",
   cancelled: "Quán đã hủy",
   no_show: "Đã quá khung nhận",
@@ -431,7 +432,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
         {["",...mealCategories].map(value=><label key={value} className="facet-option"><input type="radio" name={`${prefix}-category`} checked={values.category===value} onChange={()=>change({...values,category:value})}/><span>{value||"Tất cả món"}</span></label>)}
       </fieldset>}
       <fieldset className="facet-group"><legend>Giá mỗi lô</legend>
-        <p className="facet-hint">{values.category==="Hoa cắm nhà"?"Giá lô hoa trước voucher; chưa gồm phí giao.":"Theo giá món đang hiển thị; chưa gồm phí giao."}</p>
+        <p className="facet-hint">{values.category==="Hoa cắm nhà"?"Lọc theo giá mục tiêu; giá bán cần xác nhận, chưa gồm phí giao.":"Theo giá món đang hiển thị; chưa gồm phí giao."}</p>
         {[0, 30000, 40000, 50000].map(value => <label key={value} className="facet-option"><input type="radio" name={`${prefix}-budget`} checked={values.budget === value} onChange={() => change({ ...values, budget: value })} /><span>{value ? `Không quá ${money(value)}` : "Không giới hạn"}</span></label>)}
         <label className="custom-budget">Ngân sách khác (đ)<input type="number" min="0" step="1" inputMode="numeric" placeholder="Ví dụ: 35000" value={values.budget || ""} onChange={e => { const n = Number(e.target.value); if(Number.isSafeInteger(n) && n >= 0) change({ ...values, budget: n }); }} /></label>
       </fieldset>
@@ -470,7 +471,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
     : [];
   const browseShops = [...(catalog?.shops || []), ...(isCloudMvp ? menuShops.filter(p=>!catalog?.shops.some(s=>s.id===p.id)) : [])];
   const upcoming = isCloudMvp && view === "browse" && !receiving
-    ? filterLaunchMenu(query, category, budget, sort).filter(p => (!shopFilter || p.shop.id===shopFilter) && !catalog?.listings.some(l => l.image === p.image))
+    ? (flowerGroup?filterRequestFlowers(query,budget,sort).map(p=>({...p,shop:undefined})):filterLaunchMenu(query,category,budget,sort).map(p=>({...requestProduct(undefined,p.name)!,shop:p.shop}))).filter(p=>(!shopFilter||p.shop?.id===shopFilter)&&!catalog?.listings.some(l=>l.stock>0&&(l.image===p.image||l.lot?.catalogueProductId===p.id)))
     : [];
   function foodDetails(l: Food, n: number, change: (n: number) => void) {
     const Heading = view === "meal" ? "h1" : "h2";
@@ -508,8 +509,9 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
     );
   }
 
-  const referenceName = new URLSearchParams(typeof window === "undefined" ? "" : readAppLocation().search).get("menu");
-  const referenceMeal = productAssets.find(p=>p.name===referenceName);
+  const referenceParams=new URLSearchParams(typeof window === "undefined"?"":readAppLocation().search);
+  const referenceName=referenceParams.get("product")||referenceParams.get("menu");
+  const referenceMeal=requestProduct(referenceParams.get("product")||undefined,referenceParams.get("menu")||undefined);
   return (
     <div className={`site-frame commerce commerce-${view}`} id="top">
       <SiteHeader role={user?.role} name={user?.name} approved={user?.approved} />
@@ -604,11 +606,11 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                   </aside>
                   <section className="catalogue-results" aria-label="Kết quả tìm món">
                     <div className="catalogue-toolbar">
-                      <div><h2>{flowerGroup?"Hoa cắm nhà":query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : !catalog.listings.length ? "Khám phá thực đơn" : "Lô đang có"}</h2><p role="status" aria-live="polite">{flowerGroup?"Chọn hoa để tự cắm · danh mục và giao dịch DEMO":catalog.listings.length ? `${shown.length} lô${stockOnly ? " còn hàng" : ""}` : "Chưa có suất mở bán · Tham khảo món bên dưới"}</p></div>
+                      <div><h2>{flowerGroup?"Hoa cắm nhà":query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : !catalog.listings.length ? "Khám phá thực đơn" : "Lô đang có"}</h2><p role="status" aria-live="polite">{flowerGroup?"Gửi yêu cầu để Bếp Núc xác nhận nguồn hoa và báo giá":catalog.listings.length ? `${shown.length} lô${stockOnly ? " còn hàng" : ""}` : "Chưa có suất mở bán · Tham khảo món bên dưới"}</p></div>
                       <button className="secondary mobile-filter-toggle" ref={filterOpener} onClick={() => { setMobileFilters(currentFilters); filterDialog.current?.showModal(); }}>Bộ lọc{filterCount > 0 ? ` (${filterCount})` : ""}</button>
                       {(flowerGroup || catalog.listings.length > 0 || sort === "price") && <label className="catalogue-sort"><span>Sắp xếp</span><select value={sort} onChange={e => setSort(e.target.value)}><option value="end">{flowerGroup?"Thứ tự danh mục":catalog.listings.length ? "Giờ nhận kết thúc sớm" : "Thứ tự thực đơn"}</option><option value="price">Giá thấp đến cao</option></select></label>}
                     </div>
-                  {flowerGroup ? <FlowerShowcase compact query={query} budget={budget} sort={sort}/> : <>
+                  <>
                   <div className="filter-chips" role="group" aria-label="Bộ lọc đang áp dụng">
                     {query && <button className="secondary" onClick={() => setQuery("")}>Từ khóa: {query} ×</button>}
                     {!!budget && <button className="secondary" onClick={() => setBudget(0)}>Đến {money(budget)} / suất ×</button>}
@@ -665,18 +667,13 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                 </section>
                 {!!upcoming.length && (
                   <section className="menu-preview" aria-labelledby="menu-preview-title">
-                    <header><h2 id="menu-preview-title">Thực đơn giới thiệu</h2><p>Thực đơn và giá tham khảo đang được xác nhận với cửa hàng. Gửi yêu cầu để Bếp Núc kiểm tra khả năng phục vụ.</p></header>
+                    <header><h2 id="menu-preview-title">{flowerGroup?"Hoa tham khảo":"Thực đơn giới thiệu"}</h2><p>{flowerGroup?"Giá mục tiêu chưa phải giá bán đã xác nhận. Gửi nhu cầu để Bếp Núc tìm nguồn, kiểm tra quy cách và báo giá.":"Thực đơn và giá tham khảo đang được xác nhận với cửa hàng. Gửi yêu cầu để Bếp Núc kiểm tra khả năng phục vụ."}</p></header>
                     <ul className="menu-preview-grid">
-                      {upcoming.map(p => (
-                        <li key={p.image}>
-                          <img src={p.image} alt={p.name} width="600" height="450" loading="lazy"/>
-                          <div className="menu-preview-info"><p className="menu-availability">Chờ xác nhận khả năng phục vụ</p><h3><Link href={`/checkout?menu=${encodeURIComponent(p.name)}`}>{p.name}</Link></h3><p className="menu-preview-price">{money(p.referencePrice)} <span>Giá tham khảo / suất</span></p><p><b>{p.shop.name}</b><br/>{p.shop.address}</p><p className="fine">Chưa gồm voucher và phí giao</p></div>
-                        </li>
-                      ))}
+                      {upcoming.map(p=><ReferenceCard key={p.id} product={p} shop={p.shop}/>)}
                     </ul>
                   </section>
                 )}
-                  </>}
+                  </>
                   </section>
                 </div>
                 <dialog className="filter-drawer" ref={filterDialog} aria-labelledby="filter-title" onClose={() => filterOpener.current?.focus()}>
@@ -712,13 +709,13 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                     <Link href={browseHref}>Quay lại tìm món</Link>
                     {l ? (
                       foodDetails(l, qty, setQty)
-                    ) : (
+                    ) : requestProduct(id) ? <ReferenceDetails product={requestProduct(id)!}/> : (
                       <h1>Món đã kết thúc hoặc chưa được công bố.</h1>
                     )}
                   </section>
                 );
               })()}
-            {view === "checkout" && referenceName && <section className="reference-checkout"><Link href={browseHref}>Quay lại chọn món</Link><h1>Kiểm tra bữa của bạn</h1>{referenceMeal ? <><img className="reference-meal-photo" src={referenceMeal.image} alt={referenceMeal.name} width="600" height="450"/><p>Giá tham khảo {money(referenceMeal.referencePrice)} / suất. Nguồn món và giá cuối cùng cần được xác nhận.</p><MealRequests name={referenceMeal.name}/></> : <p>Món tham khảo không tồn tại. Vui lòng quay lại chọn món.</p>}</section>}
+            {view === "checkout" && referenceName && <section className="reference-checkout"><Link href={browseHref}>Quay lại chọn sản phẩm</Link><h1>Kiểm tra lựa chọn của bạn</h1>{referenceMeal ? <><img className="reference-meal-photo" src={referenceMeal.image} alt={referenceMeal.name} width="600" height="450"/><h2>{referenceMeal.name}</h2><ReferencePrice product={referenceMeal}/><p>Mỗi đơn vị: {requestUnit(referenceMeal)}. {referenceMeal.note}</p><p>Chưa giữ hàng hoặc xác nhận nhà bán, tình trạng và giờ nhận.</p><MealRequests name={referenceMeal.name} product={referenceMeal}/></> : <p>Sản phẩm tham khảo không tồn tại. Vui lòng quay lại danh mục.</p>}</section>}
             {view === "checkout" && !referenceName && (
               <>
                 <Link href={browseHref}>Tiếp tục tìm món</Link>
@@ -972,7 +969,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                     </Link>
                   </section>
                 ) : !user.approved ? (
-                  <section className="market-empty"><p>Chưa có đơn thanh toán. Bạn vẫn có thể gửi yêu cầu đặt món trong lúc chờ duyệt.</p><Link className="button-link" href="/meals">Chọn món</Link></section>
+                  <section className="market-empty"><p>Chưa có đơn thanh toán. Bạn vẫn có thể gửi yêu cầu đặt hàng trong lúc chờ duyệt.</p><Link className="button-link" href="/meals">Chọn món</Link></section>
                 ) : user.role !== "student" ? (
                   <Link href="/internal">Xem đơn trong khu vực nội bộ</Link>
                 ) : (
@@ -1267,7 +1264,7 @@ function CustomerOrder({
         <b>{o.fulfillment==="delivery"&&o.status==="paid"?"Đã thanh toán · chờ người giao nhận món":states[o.status]}</b>
       </div>
       <p>
-        {o.qty} suất · {o.status==="awaiting_delivery_fee"?"Tiền hàng ":""}{money(o.total)} · {s?.name}
+        {o.qty} {o.lotSnapshot?.kind==="flowers"?"đơn vị mua":"suất"} · {o.status==="awaiting_delivery_fee"?"Tiền hàng ":""}{money(o.total)} · {s?.name}
       </p>
       {!detail ? (
         <Link className="button-link" href={`/orders/${o.id}`}>
