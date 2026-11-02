@@ -750,7 +750,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                             {shop?.name}
                           </Link>
                           <p>{shop?.address}</p>{item.lot?.quantity&&<p className="demo-disclosure">{flowerQuantityLabel(item.lot)} mỗi đơn vị mua; không kèm bình hoặc bó tặng.</p>}
-                          <SalePrice item={held?.lotSnapshot?{price:held.menuTotal/held.qty,lot:held.lotSnapshot,saleVerified:!!held.lotSnapshot.saleStart}:item} now={now}/><b>
+                          <SalePrice item={held?.lotSnapshot?{price:held.menuTotal/held.qty,lot:held.lotSnapshot,saleVerified:!!held.lotSnapshot.saleStart}:item} now={now} afterVoucher={amounts?.total} qty={count} voucherName={held?.voucherId?(profile?.vouchers?.find((v:any)=>v.id===held.voucherId)?voucherLabel(profile.vouchers.find((v:any)=>v.id===held.voucherId)):"đã chọn"):activeVoucher?voucherLabel(activeVoucher):undefined} confirmed={!!held}/><b>
                             Nhận {time(item.start)}–{time(item.end)}
                           </b>
                         </div>
