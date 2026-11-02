@@ -2,12 +2,12 @@
 import {useEffect,useRef,useState} from "react";
 import {flowerCatalogue,flowerShops,flowerLot,flowerCare,flowerImageCaption,flowerAssumptions} from "../../lib/flower-demo";
 import {flowerQuantityLabel} from "../../lib/trading";
-import {money,time} from "../../lib/commerce";
+import {money,time,normalize} from "../../lib/commerce";
 import {newFlowerSession,restoreFlowerSession,flowerStock,flowerVoucherRemaining,flowerDemoPrice,flowerQuoteError,reserveFlower,progressFlower,flowerOrderExpired,type FlowerDemoSession,type FlowerVoucher} from "../../lib/flower-pages-demo";
 
 const key="bep-nuc-flowers-demo-v1";
 const statusLabels={held:"Đang giữ",paid:"Đã thanh toán mô phỏng",received:"Đã nhận mô phỏng",issue:"Đã gửi phản ánh",refunded:"Đã hoàn tiền mô phỏng",cancelled:"Đã hủy"};
-export default function FlowerShowcase({base=""}:{base?:string}){
+export default function FlowerShowcase({base="",compact=false,query="",budget=0,sort="end"}:{base?:string;compact?:boolean;query?:string;budget?:number;sort?:string}){
   const [session,setSession]=useState<FlowerDemoSession>();
   const [now,setNow]=useState(0),[shopId,setShopId]=useState(""),[selected,setSelected]=useState(""),[qty,setQty]=useState(1),[voucher,setVoucher]=useState<FlowerVoucher>("none"),[place,setPlace]=useState(""),[message,setMessage]=useState("");
   const checkout=useRef<HTMLElement>(null),intent=useRef("");
@@ -21,16 +21,18 @@ export default function FlowerShowcase({base=""}:{base?:string}){
   const item=flowerCatalogue.find(x=>x.id===selected),shop=flowerShops.find(x=>x.id===item?.shopId);
   const preview=item?flowerDemoPrice(item.id,qty,voucher):undefined;
   const options:FlowerVoucher[]=["none","15","10","9k"];
-  return <section id="flowers" className="flower-showcase" aria-labelledby="flower-title">
-    <h2 id="flower-title">Một góc nhà, một chút hoa.</h2>
-    <p className="home-lead">Chọn hoa để tự cắm, xem đúng quy cách và thử đặt hàng.</p>
+  const visible=flowerCatalogue.filter(p=>(!shopId||p.shopId===shopId)&&(!budget||p.price<=budget)&&normalize(`${p.name} ${flowerShops.find(s=>s.id===p.shopId)?.name||""} ${flowerShops.find(s=>s.id===p.shopId)?.address||""}`).includes(normalize(query))).sort((a,b)=>sort==="price"?a.price-b.price:0);
+  return <section id="flowers" className={`flower-showcase ${compact?"flower-showcase-embedded":""}`} aria-label="Danh mục hoa cắm nhà DEMO">
+    {!compact&&<><h2 id="flower-title">Một góc nhà, một chút hoa.</h2>
+    <p className="home-lead">Chọn hoa để tự cắm, xem đúng quy cách và thử đặt hàng.</p></>}
     <aside className="demo-disclosure"><strong>DEMO · KHÔNG CHUYỂN TIỀN</strong><p>Hai tiệm là hồ sơ sáng tạo. Ảnh tham khảo; tồn kho, voucher và giao dịch đều mô phỏng. Giá DEMO bằng 70% bảng tham chiếu bạn cung cấp, chưa phải giá thị trường đã xác minh.</p></aside>
-    <div className="flower-shop-stories">{flowerShops.map(s=><article key={s.id}><h3>{s.name}</h3><p>{s.story}</p><p className="fine">{s.address}</p></article>)}</div>
+    {compact?<details className="flower-shop-details"><summary>Về hai tiệm minh họa</summary>{flowerShops.map(s=><article key={s.id}><h3>{s.name}</h3><p>{s.story}</p><p className="fine">{s.address}</p></article>)}</details>:<div className="flower-shop-stories">{flowerShops.map(s=><article key={s.id}><h3>{s.name}</h3><p>{s.story}</p><p className="fine">{s.address}</p></article>)}</div>}
     <label>Chọn tiệm minh họa<select value={shopId} onChange={e=>setShopId(e.target.value)}><option value="">Cả hai tiệm</option>{flowerShops.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
     {message&&<p className="market-notice" role="status">{message}</p>}
     {!session?<p role="status">Đang mở danh mục DEMO…</p>:<>
       <p className="fine">Khung nhận giả lập {time(session.startedAt)}–{time(session.startedAt+10800000)} · 3 đơn vị tồn ban đầu/mục. Không có địa điểm hoặc chỉ đường thật.</p>
-      <div className="food-grid">{flowerCatalogue.filter(x=>!shopId||x.shopId===shopId).map(p=><article className="food-card" key={p.id}>
+      <p role="status">{visible.length} lựa chọn hoa{!visible.length?" · Hãy bỏ bớt điều kiện tìm kiếm hoặc ngân sách.":""}</p>
+      <div className="food-grid">{visible.map(p=><article className="food-card" key={p.id}>
         <div className="food-image flower-image"><img src={base+p.image} alt={p.name} loading="lazy" width="600" height="600"/><span className="demo-image-label">Ảnh tham khảo · DEMO</span></div>
         <div className="food-card-body"><h3>{p.name}</h3><p>{flowerQuantityLabel(flowerLot(p,session.startedAt))}</p><p>{flowerShops.find(s=>s.id===p.shopId)?.name}</p><p className="flower-price"><strong>{money(p.price)}</strong> / đơn vị mua</p><p className="fine">Tham chiếu được cung cấp: {money(p.referencePrice)} · giảm mô phỏng 30%</p><p className="fine">{flowerImageCaption}. Không kèm bình hoặc bó tặng.</p><button disabled={flowerStock(session,p.id,now)<1||now>=session.startedAt+10800000} onClick={()=>{setSelected(p.id);setQty(1);setVoucher("none");intent.current="FLOWER-"+crypto.randomUUID();requestAnimationFrame(()=>{checkout.current?.scrollIntoView({behavior:"auto",block:"start"});checkout.current?.focus();});}}>Xem & đặt DEMO</button></div>
       </article>)}</div>

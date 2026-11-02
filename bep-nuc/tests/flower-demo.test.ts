@@ -4,10 +4,19 @@ import {readFileSync} from "node:fs";
 import {flowerCatalogue,flowerListings,flowerShops,pendingFlowerMatches} from "../lib/flower-demo";
 import {modernDemoState,tradingDemoState,seedFlowerDemo,catalogue,act,issue,orderTotal,ledger,type State} from "../lib/domain";
 import {validLot,flowerQuantityLabel} from "../lib/trading";
+import {filterFood,mealCategories} from "../lib/commerce";
 import {createEdgeHandler} from "../lib/edge-api";
 import {newFlowerSession,reserveFlower,progressFlower,flowerStock,flowerVoucherRemaining,flowerQuoteError,restoreFlowerSession,flowerDemoPrice} from "../lib/flower-pages-demo";
 
 const now=Date.parse("2026-11-02T18:30:00+07:00");
+test("all meals includes only food while flowers remain a peer group",()=>{
+ const c=catalogue(modernDemoState(now),now);
+ assert.ok(!mealCategories.includes("Hoa cắm nhà"));
+ const food=filterFood(c.listings,c.shops,"","","",true,false,"end",now);
+ assert.equal(food.length,1);assert.ok(food.every(x=>x.lot?.kind!=="flowers"));
+ const flowers=filterFood(c.listings,c.shops,"","Hoa cắm nhà","",true,false,"end",now);
+ assert.equal(flowers.length,12);assert.ok(flowers.every(x=>x.lot?.kind==="flowers"));
+});
 function call(s:State,who:string,action:string,args:any={},at=now){return act(s,s.users.find(u=>u.id===who)!,action,{key:crypto.randomUUID(),...args},at,3,{production:false,pilotEnabled:false,bankReady:false}) as any;}
 test("reviewed catalogue has twelve unique local images, exact prices and no pending variants",()=>{
   assert.equal(flowerCatalogue.length,12);assert.equal(new Set(flowerCatalogue.map(x=>x.id)).size,12);

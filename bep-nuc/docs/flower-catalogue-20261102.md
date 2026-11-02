@@ -45,11 +45,11 @@ Không đưa vào danh mục đặt hàng: tuyết mai; CTC (chưa giải nghĩa
 - Kiểm tra biên, ngân sách, tồn và lượt voucher trước khi giữ hàng. Hướng dương 20.300đ/đơn vị không đủ biên cho voucher 9.000đ khi mua một đơn vị.
 - Không tạo hỗ trợ đi lại từ tọa độ tiệm hư cấu. Tiệm mới không có tọa độ và không gọi dịch vụ định tuyến.
 - Ứng dụng chính/MVP dùng quy tắc giao dịch trên máy chủ hiện có. Pages dùng mô phỏng một trình duyệt, không xác thực tài khoản hoặc xác nhận tiền ngân hàng; không thay thế backend khi bán thật.
-- Với MVP đã kết nối Supabase, vào `/#/flowers` hoặc nút “Hoa DEMO” để thử danh mục này. Luồng DEMO chạy trên thiết bị và không tạo request đến Supabase; không thay thế danh mục/đơn thật tại `/#/meals`.
+- Vào “Đồ ăn & hoa” → Nhóm hàng → “Hoa” để thử danh mục này trong cùng trang. “Đồ ăn” là nhóm ngang cấp, có các loại món và lựa chọn “Tất cả món” riêng; không đặt hoa trong “Tất cả món”. Không còn tab Hoa DEMO trên thanh chính. `/#/flowers` cũ tự chuyển về nhóm Hoa. Danh mục chung vẫn đọc dữ liệu Supabase hiện có; thao tác đặt hoa DEMO chỉ lưu trên thiết bị, không ghi đơn vào Supabase hoặc thay đổi đơn thật.
 - Sau bàn giao, hoàn tiền khách không tự xóa khoản phải trả tiệm. Hết hạn giữ/hủy trước thanh toán giải phóng tồn và voucher.
 
 Không triển khai migration/backend, không bật chương trình voucher thật, không dùng giao dịch DEMO làm traction.
 
 ## Kiểm tra bản triển khai
 
-Đã chạy 92 kiểm thử; TypeScript, Deno check, build Next/MVP/Pages và kiểm tra CSP/static đều đạt. Trình duyệt đã kiểm tra 17 trường hợp, gồm các giao diện ở 390/768/1440px và luồng giữ–thanh toán–nhận–phản ánh–hoàn tiền. Không ghi nhận lỗi JavaScript hoặc tràn ngang trong lượt kiểm tra đó. Đây là kiểm tra DEMO, chưa kiểm chứng thanh toán, chất lượng hoa hoặc vận hành tiệm thật.
+Đã chạy 93 kiểm thử; TypeScript, Deno check, build Next/MVP/Pages và kiểm tra CSP/static đều đạt. Trình duyệt đã kiểm tra 17 trường hợp, gồm các giao diện ở 390/768/1440px và luồng giữ–thanh toán–nhận–phản ánh–hoàn tiền. Không ghi nhận lỗi JavaScript hoặc tràn ngang trong lượt kiểm tra đó. Đây là kiểm tra DEMO, chưa kiểm chứng thanh toán, chất lượng hoa hoặc vận hành tiệm thật.

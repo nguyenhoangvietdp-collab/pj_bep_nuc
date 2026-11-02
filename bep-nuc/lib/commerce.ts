@@ -1,5 +1,6 @@
 import {voucherCurrent,voucherDiscount,type Lot,type VoucherValue} from "./trading";
 export const foodCategories = ["Cơm", "Bún/mì", "Bánh", "Đồ uống", "Món khác", "Hoa cắm nhà"];
+export const mealCategories = foodCategories.filter(c=>c!=="Hoa cắm nhà");
 export const money = (n: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
     n,
@@ -108,6 +109,7 @@ export function filterFood(
       const shop = shops.find((s) => s.id === l.shopId);
       return (
         l.end > now &&
+        (category!=="" || l.lot?.kind!=="flowers"&&l.category!=="Hoa cắm nhà") &&
         (!budget || displayPrice(l, vouchers, now).total <= budget) &&
         (!category || l.category === category) &&
         (!shopId || l.shopId === shopId) &&

@@ -14,6 +14,7 @@ import Offers from "./offers";
 import FulfillmentChoice from "./fulfillment-choice";
 import SavedPlace from "./saved-place";
 import {flowerImageCaption} from "../../lib/flower-demo";
+import FlowerShowcase from "./flower-showcase";
 import {voucherLabel,voucherCurrent,flowerQuantityLabel,type PublicTradingRules} from "../../lib/trading";
 import {
   estimate,
@@ -24,7 +25,7 @@ import {
   supportLink,
   voucherHint,
   filterFood,
-  foodCategories,
+  mealCategories,
   money,
   time,
   Food,
@@ -61,7 +62,7 @@ const safeReturn = (value: string | null) =>
   !value.includes("\\")
     ? value
     : "/checkout";
-export default function Market({ view, id }: { view: string; id?: string }) {
+export default function Market({ view, id, offline=false }: { view: string; id?: string; offline?:boolean }) {
   const router = useRouter();
   const [catalog, setCatalog] = useState<Catalog>(),
     [profile, setProfile] = useState<any>(),
@@ -107,6 +108,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
     filterDialog = useRef<HTMLDialogElement>(null),
     filterOpener = useRef<HTMLButtonElement>(null);
   async function load(_initial = false) {
+    if(offline){setCatalog({now:Date.now(),demo:false,pilotOpen:false,shops:[],listings:[]});setLoading(false);return;}
     const version = ++loadVersion.current;
     try {
       const [c, a] = await Promise.all([
@@ -413,26 +415,31 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           ? `/orders/${id}`
           : "/checkout",
     );
+  const flowerGroup=category==="Hoa cắm nhà";
   const currentFilters: Filters = { category, budget, shop: shopFilter, stock: stockOnly, receiving };
   function applyFilters(next: Filters) {
+    if((next.category==="Hoa cắm nhà")!==flowerGroup){setQuery("");setSort("end");}
     setCategory(next.category); setBudget(next.budget); setShopFilter(next.shop);
     setStockOnly(next.stock); setReceiving(next.receiving);
   }
   function filterFields(values: Filters, change: (next: Filters) => void, prefix: string) {
     return <>
       <fieldset className="facet-group"><legend>Nhóm hàng</legend>
-        {["", ...foodCategories].map(value => <label key={value} className="facet-option"><input type="radio" name={`${prefix}-category`} checked={values.category === value} onChange={() => change({ ...values, category: value })} /><span>{value || "Tất cả món"}</span></label>)}
+        {[{value:"",label:"Đồ ăn"},{value:"Hoa cắm nhà",label:"Hoa"}].map(group=><label key={group.label} className="facet-option"><input type="radio" name={`${prefix}-group`} checked={group.value?values.category===group.value:values.category!=="Hoa cắm nhà"} onChange={()=>change({...defaultFilters,category:group.value})}/><span>{group.label}</span></label>)}
       </fieldset>
+      {values.category!=="Hoa cắm nhà"&&<fieldset className="facet-group"><legend>Loại món</legend>
+        {["",...mealCategories].map(value=><label key={value} className="facet-option"><input type="radio" name={`${prefix}-category`} checked={values.category===value} onChange={()=>change({...values,category:value})}/><span>{value||"Tất cả món"}</span></label>)}
+      </fieldset>}
       <fieldset className="facet-group"><legend>Giá mỗi lô</legend>
-        <p className="facet-hint">Theo giá món đang hiển thị; chưa gồm phí giao.</p>
+        <p className="facet-hint">{values.category==="Hoa cắm nhà"?"Giá lô hoa trước voucher; chưa gồm phí giao.":"Theo giá món đang hiển thị; chưa gồm phí giao."}</p>
         {[0, 30000, 40000, 50000].map(value => <label key={value} className="facet-option"><input type="radio" name={`${prefix}-budget`} checked={values.budget === value} onChange={() => change({ ...values, budget: value })} /><span>{value ? `Không quá ${money(value)}` : "Không giới hạn"}</span></label>)}
         <label className="custom-budget">Ngân sách khác (đ)<input type="number" min="0" step="1" inputMode="numeric" placeholder="Ví dụ: 35000" value={values.budget || ""} onChange={e => { const n = Number(e.target.value); if(Number.isSafeInteger(n) && n >= 0) change({ ...values, budget: n }); }} /></label>
       </fieldset>
-      {!!catalog?.listings.length && <fieldset className="facet-group"><legend>Giờ nhận & tình trạng</legend>
+      {values.category!=="Hoa cắm nhà"&&!!catalog?.listings.length && <fieldset className="facet-group"><legend>Giờ nhận & tình trạng</legend>
         <label className="facet-option"><input type="checkbox" checked={values.receiving} onChange={e => change({ ...values, receiving: e.target.checked })} /><span>Đang trong giờ nhận</span></label>
         <label className="facet-option"><input type="checkbox" checked={values.stock} onChange={e => change({ ...values, stock: e.target.checked })} /><span>Chỉ lô còn hàng</span></label>
       </fieldset>}
-      {view === "browse" && !!catalog?.shops.length && <fieldset className="facet-group"><legend>Quán</legend><label>Chọn quán<select value={values.shop} onChange={e => change({ ...values, shop: e.target.value })}><option value="">Tất cả quán</option>{catalog?.shops.map(shop => <option key={shop.id} value={shop.id}>{shop.name}</option>)}</select></label></fieldset>}
+      {values.category!=="Hoa cắm nhà"&&view === "browse" && !!catalog?.shops.length && <fieldset className="facet-group"><legend>Quán</legend><label>Chọn quán<select value={values.shop} onChange={e => change({ ...values, shop: e.target.value })}><option value="">Tất cả quán</option>{catalog?.shops.map(shop => <option key={shop.id} value={shop.id}>{shop.name}</option>)}</select></label></fieldset>}
     </>;
   }
   function reset() {
@@ -571,7 +578,7 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                   </section>
                 )}
                 {pendingOrder && <aside className="resume-order"><p>Bạn có bữa đang chờ thanh toán. Nếu đã chuyển tiền, tiếp tục theo dõi đơn này.</p><Link className="button-link" href={`/orders/${pendingOrder.id}`}>Tiếp tục đơn đang chờ</Link></aside>}
-                <section className="catalogue-search" aria-label="Tìm món hoặc quán">
+                <section className="catalogue-search" aria-label="Tìm sản phẩm hoặc cửa hàng">
         <form
           className="header-search" role="search"
           onSubmit={(e) => {
@@ -582,8 +589,8 @@ export default function Market({ view, id }: { view: string; id?: string }) {
           }}
         >
           <input
-            aria-label="Tìm món hoặc quán"
-            placeholder="Tên món, quán hoặc khu vực"
+            aria-label="Tìm sản phẩm hoặc cửa hàng"
+            placeholder="Tên món, hoa, cửa hàng hoặc khu vực"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -597,10 +604,11 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                   </aside>
                   <section className="catalogue-results" aria-label="Kết quả tìm món">
                     <div className="catalogue-toolbar">
-                      <div><h2>{query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : !catalog.listings.length ? "Khám phá thực đơn" : "Lô đang có"}</h2><p role="status" aria-live="polite">{catalog.listings.length ? `${shown.length} lô${stockOnly ? " còn hàng" : ""}` : "Chưa có suất mở bán · Tham khảo món bên dưới"}</p></div>
+                      <div><h2>{flowerGroup?"Hoa cắm nhà":query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : !catalog.listings.length ? "Khám phá thực đơn" : "Lô đang có"}</h2><p role="status" aria-live="polite">{flowerGroup?"Chọn hoa để tự cắm · danh mục và giao dịch DEMO":catalog.listings.length ? `${shown.length} lô${stockOnly ? " còn hàng" : ""}` : "Chưa có suất mở bán · Tham khảo món bên dưới"}</p></div>
                       <button className="secondary mobile-filter-toggle" ref={filterOpener} onClick={() => { setMobileFilters(currentFilters); filterDialog.current?.showModal(); }}>Bộ lọc{filterCount > 0 ? ` (${filterCount})` : ""}</button>
-                      {(catalog.listings.length > 0 || sort === "price") && <label className="catalogue-sort"><span>Sắp xếp</span><select value={sort} onChange={e => setSort(e.target.value)}><option value="end">{catalog.listings.length ? "Giờ nhận kết thúc sớm" : "Thứ tự thực đơn"}</option><option value="price">Giá thấp đến cao</option></select></label>}
+                      {(flowerGroup || catalog.listings.length > 0 || sort === "price") && <label className="catalogue-sort"><span>Sắp xếp</span><select value={sort} onChange={e => setSort(e.target.value)}><option value="end">{flowerGroup?"Thứ tự danh mục":catalog.listings.length ? "Giờ nhận kết thúc sớm" : "Thứ tự thực đơn"}</option><option value="price">Giá thấp đến cao</option></select></label>}
                     </div>
+                  {flowerGroup ? <FlowerShowcase compact query={query} budget={budget} sort={sort}/> : <>
                   <div className="filter-chips" role="group" aria-label="Bộ lọc đang áp dụng">
                     {query && <button className="secondary" onClick={() => setQuery("")}>Từ khóa: {query} ×</button>}
                     {!!budget && <button className="secondary" onClick={() => setBudget(0)}>Đến {money(budget)} / suất ×</button>}
@@ -668,14 +676,15 @@ export default function Market({ view, id }: { view: string; id?: string }) {
                     </ul>
                   </section>
                 )}
+                  </>}
                   </section>
                 </div>
                 <dialog className="filter-drawer" ref={filterDialog} aria-labelledby="filter-title" onClose={() => filterOpener.current?.focus()}>
-                  <header><h2 id="filter-title">Lọc món theo nhu cầu</h2><button className="secondary" onClick={() => { filterDialog.current?.close(); filterOpener.current?.focus(); }}>Đóng</button></header>
+                  <header><h2 id="filter-title">Lọc hàng theo nhu cầu</h2><button className="secondary" onClick={() => { filterDialog.current?.close(); filterOpener.current?.focus(); }}>Đóng</button></header>
                   <div className="drawer-fields">{filterFields(mobileFilters, setMobileFilters, "mobile")}</div>
                   <footer><button className="secondary" onClick={() => setMobileFilters(defaultFilters)}>Xóa bộ lọc</button><button onClick={() => { applyFilters(mobileFilters); filterDialog.current?.close(); filterOpener.current?.focus(); }}>Áp dụng bộ lọc</button></footer>
                 </dialog>
-                {view === "browse" && !!browseShops.length && (
+                {!flowerGroup&&view === "browse" && !!browseShops.length && (
                   <section className="shop-list">
                     <h2>Khám phá các quán</h2>
                     <div>

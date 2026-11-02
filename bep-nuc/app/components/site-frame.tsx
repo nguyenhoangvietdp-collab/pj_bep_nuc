@@ -21,7 +21,6 @@ export function SiteHeader({ role, name, approved }: HeaderProps) {
       ]
     : [
         { href: "/meals", label: "Đồ ăn & hoa" },
-        { href: "/flowers", label: "Hoa DEMO" },
         { href: "/offers", label: "Ưu đãi" },
         { href: "/orders", label: "Đơn hàng" },
       ];

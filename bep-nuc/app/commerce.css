@@ -1275,3 +1275,5 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 .commerce .flower-showcase .food-card-body button{margin-top:auto}
 .commerce .catalogue-results .flower-image{max-width:none;max-height:none}
 .commerce .food-card .flower-image .demo-image-label{position:absolute;bottom:10px;left:10px;max-width:calc(100% - 20px)}
+
+.flower-showcase-embedded{padding:0}.flower-shop-details{margin:20px 0}.flower-shop-details article{margin:20px 0}
