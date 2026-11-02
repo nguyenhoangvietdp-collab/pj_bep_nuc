@@ -32,6 +32,7 @@ export function estimate(menuTotal: number, rate = 0) {
   };
 }
 export type Food = {
+  saleVerified?:boolean;
   lot?:Lot;
   pricingVersion?:number;
   eligibleFixed?:boolean;

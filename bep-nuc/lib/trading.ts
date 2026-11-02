@@ -3,6 +3,7 @@ export type Lot = {
   kind: "food" | "flowers"; offer: "surplus" | "promotion";
   reason: string; contents: string; condition: string; checkedAt: number;
   referencePrice?: number; referenceEvidence?: string;
+  referenceKind?: "store_regular"; referenceConfirmedAt?: number; saleStart?: number; saleEnd?: number;
   stems?: number; species?: string; packaging?: string;
   quantity?: {amount:number;unit:"cành"|"bông"|"bó"};
   catalogueProductId?:string;
@@ -60,3 +61,17 @@ export function pickupSupport(r: TradingRules, distance: number | null) {
   if (!r.enabled || distance === null || !Number.isFinite(distance) || distance < 0) return 0;
   return r.pickupBands.find(b=>distance <= b.maxKm)?.amount ?? 0;
 }
+
+// Sale hours are independent of the collection window; omitted fields preserve legacy lots.
+export const hasSale = (lot?:Lot) => !!lot && [lot.referenceKind,lot.referenceConfirmedAt,lot.saleStart,lot.saleEnd].some(v=>v!==undefined);
+export function validSale(lot:Lot|undefined, price:number, now:number, collectionEnd:number){
+  return !hasSale(lot) || !!lot && lot.referenceKind==="store_regular" && Number.isSafeInteger(lot.referencePrice) && lot.referencePrice!>price && Number.isSafeInteger(price) && price>0 && typeof lot.referenceEvidence==="string" && lot.referenceEvidence.trim().length>=3 && lot.referenceEvidence.length<=500 && Number.isSafeInteger(lot.referenceConfirmedAt) && lot.referenceConfirmedAt!>0 && lot.referenceConfirmedAt!<=now && Number.isSafeInteger(lot.saleStart) && Number.isSafeInteger(lot.saleEnd) && lot.saleStart!<lot.saleEnd! && lot.saleEnd!<=collectionEnd;
+}
+export function saleState(item:{price:number;lot?:Lot;saleVerified?:boolean},now:number){
+  const lot=item.lot;
+  if(!item.saleVerified || !hasSale(lot) || !validSale(lot,item.price,now,Number.MAX_SAFE_INTEGER))return null;
+  const saved=lot!.referencePrice!-item.price;
+  return {status:now<lot!.saleStart!?"upcoming":now>=lot!.saleEnd!?"ended":"active",saved,percent:Number(BigInt(saved)*100n/BigInt(lot!.referencePrice!)),regular:lot!.referencePrice!,start:lot!.saleStart!,end:lot!.saleEnd!,confirmedAt:lot!.referenceConfirmedAt!} as const;
+}
+export const saleOrderable=(item:{price:number;lot?:Lot;saleVerified?:boolean},now:number)=>!hasSale(item.lot)||saleState(item,now)?.status==="active";
+export function publicLot(lot?:Lot){if(!lot)return undefined;const {referenceEvidence,...rest}=lot;return {...rest,...(referenceEvidence?{referenceEvidence:lot.referenceKind==="store_regular"?"Giá thường cùng sản phẩm và quy cách do cửa hàng xác nhận":"Giá đối chiếu cần xem phạm vi xác nhận"}:{})};}

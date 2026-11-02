@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import {flowerListings,flowerShops,flowerDemoVersion} from "./flower-demo.ts";
 import {requestProduct,type RequestProduct} from "./request-catalogue.ts";
-import { defaultTradingRules, demoTradingRules, publicTradingRules, weekStart, voucherCurrent, voucherDiscount, pickupSupport, validLot, validateRules, type TradingRules, type SavedPlace, type Lot } from "./trading.ts";
+import { defaultTradingRules, demoTradingRules, publicTradingRules, weekStart, voucherCurrent, voucherDiscount, pickupSupport, validLot, validateRules, type TradingRules, type SavedPlace, type Lot, hasSale, validSale, publicLot } from "./trading.ts";
 export type Role = "student" | "merchant" | "ops";
 export type User = {
   id: string;
@@ -256,6 +256,7 @@ function quoteModern(s:State,u:User,a:Record<string,any>,now:number,distance:num
   const l=s.listings.find(l=>l.id===a.listingId),r=rulesFor(s);
   requireThat(l && now<l.end && s.shops.some(x=>x.id===l.shopId&&x.approved&&(!production||!x.mock)),"Lô không còn nhận đơn");
   const shop=s.shops.find(x=>x.id===l.shopId)!;
+  requireThat(validSale(l.lot,l.price,now,l.end)&&(!hasSale(l.lot)||(shop.approved&&!shop.mock&&now>=l.lot!.saleStart!&&now<l.lot!.saleEnd!)),"Sale chưa mở, đã kết thúc hoặc chưa được xác nhận");
   if(shop.lat===null||shop.lng===null)distance=null;
   requireThat(l.approved===true&&!!l.image&&validLot(l.lot,now,l.end,!production&&shop.mock) && l.storage.trim().length>=3 && (l.lot!.kind==="flowers" || l.allergens.trim().length>=3),"Lô chưa được duyệt hoặc chưa có đủ thông tin chất lượng");
   requireThat(l.payoutShare===undefined,"Lô mới cần khoản thực nhận cố định được tiệm đồng ý");
@@ -272,7 +273,7 @@ function quoteModern(s:State,u:User,a:Record<string,any>,now:number,distance:num
   const total=base-discount-extra, payout=l.floor*a.qty,cost=l.cost*a.qty,margin=l.margin*a.qty;
   requireThat([base,total,payout,cost,margin].every(n=>Number.isSafeInteger(n)&&n>=0),"Giá hoặc chi phí lô không hợp lệ");
   requireThat(total>0 && total-payout-cost>=margin,"Lô không đủ ngân sách cho ưu đãi này");
-  const q:Quote={id:randomUUID(),userId:u.id,listingId:l.id,voucherId:v?.id??"",qty:a.qty,fulfillment,expires:Math.min(now+600000,l.end,Date.parse(weekStart(now)+"T00:00:00+07:00")+7*86400000),state:"held",price:total,payout,cost,margin,baseRate:v?.rate??0,rate:v?.rate??0,distance:km,bonusReason:extra?"Hỗ trợ theo tuyến từ điểm đã lưu; không xác nhận hành trình thực tế":km===null?"Chưa có tuyến xác nhận: không tính hỗ trợ khoảng cách":"Tuyến tham khảo; hỗ trợ theo vùng và điều kiện lô",menuTotal:base,lotSnapshot:structuredClone(l.lot!),placeSnapshot:u.place?{id:u.place.id,label:u.place.label}:undefined,promotion:{week:weekStart(now),voucher:discount,pickup:extra,shipping:0,shippingCap:r.enabled?r.shippingCap:0,stackReceiving:r.stackReceiving,status:"reserved"}};
+  const q:Quote={id:randomUUID(),userId:u.id,listingId:l.id,voucherId:v?.id??"",qty:a.qty,fulfillment,expires:Math.min(now+600000,l.end,l.lot?.saleEnd??Infinity,Date.parse(weekStart(now)+"T00:00:00+07:00")+7*86400000),state:"held",price:total,payout,cost,margin,baseRate:v?.rate??0,rate:v?.rate??0,distance:km,bonusReason:extra?"Hỗ trợ theo tuyến từ điểm đã lưu; không xác nhận hành trình thực tế":km===null?"Chưa có tuyến xác nhận: không tính hỗ trợ khoảng cách":"Tuyến tham khảo; hỗ trợ theo vùng và điều kiện lô",menuTotal:base,lotSnapshot:structuredClone(l.lot!),placeSnapshot:u.place?{id:u.place.id,label:u.place.label}:undefined,promotion:{week:weekStart(now),voucher:discount,pickup:extra,shipping:0,shippingCap:r.enabled?r.shippingCap:0,stackReceiving:r.stackReceiving,status:"reserved"}};
   reservePromotion(s,q,0);s.quotes.push(q);l.stock-=a.qty;
   if(v){v.state="reserved";v.quoteId=q.id;}
   return publicQuote(s,q);
@@ -373,7 +374,7 @@ export function ledger(s: State) {
 export function view(s: State, u: User, now: number) {
   const listings = s.listings
     .filter((l) => (u.role !== "merchant" || l.shopId === u.shopId)&&(u.role!=="student"||!l.lot||l.approved===true))
-    .map((l) => (u.role === "student" ? publicListing(l,rulesFor(s)) : l));
+    .map((l) => (u.role === "student" ? publicListing(l,rulesFor(s),s.shops.some(x=>x.id===l.shopId&&x.approved&&!x.mock),now) : l));
   const orders = s.orders
     .filter(
       (o) =>
@@ -392,7 +393,7 @@ export function view(s: State, u: User, now: number) {
         deliveryFee: o.delivery?.customerFee??o.delivery?.fee,
         grossDeliveryFee:o.delivery?.fee,
         shippingSupport:o.delivery?.support??0,
-        lotSnapshot:q.lotSnapshot,
+        lotSnapshot:publicLot(q.lotSnapshot),
         priceBreakdown:publicQuote(s,q),
         total: orderTotal(s,o),
         expires: q.expires,
@@ -407,7 +408,7 @@ export function view(s: State, u: User, now: number) {
     });
   return {
     user: u,
-    mealRequests: (s.mealRequests || []).filter(r=>u.role==="ops" || (u.role==="student" && r.userId===u.id)).map(r=>({...r,status:r.status==="confirmed" && (s.quotes.find(q=>q.id===r.quoteId)?.expires||0)<=now?"expired":r.status, quote:r.quoteId?(()=>{const q=s.quotes.find(q=>q.id===r.quoteId);const l=q&&s.listings.find(l=>l.id===q.listingId);const shop=l&&s.shops.find(x=>x.id===l.shopId);return q?{total:q.price,expires:q.expires,name:l?.name,address:shop?.address,start:l?.start,end:l?.end,lot:q.lotSnapshot,appliedRate:r.appliedRate??r.rate,voucherDiscount:q.promotion?.voucher??0,shippingSupport:(r.grossFee??r.fee??0)-(r.fee??0)}:undefined;})():undefined})),
+    mealRequests: (s.mealRequests || []).filter(r=>u.role==="ops" || (u.role==="student" && r.userId===u.id)).map(r=>({...r,status:r.status==="confirmed" && (s.quotes.find(q=>q.id===r.quoteId)?.expires||0)<=now?"expired":r.status, quote:r.quoteId?(()=>{const q=s.quotes.find(q=>q.id===r.quoteId);const l=q&&s.listings.find(l=>l.id===q.listingId);const shop=l&&s.shops.find(x=>x.id===l.shopId);return q?{total:q.price,expires:q.expires,name:l?.name,address:shop?.address,start:l?.start,end:l?.end,lot:publicLot(q.lotSnapshot),unitPrice:q.menuTotal!==undefined?q.menuTotal/q.qty:undefined,saleVerified:hasSale(q.lotSnapshot),appliedRate:r.appliedRate??r.rate,voucherDiscount:q.promotion?.voucher??0,shippingSupport:(r.grossFee??r.fee??0)-(r.fee??0)}:undefined;})():undefined})),
     now,
     listings,
     shops: s.shops.map(({ id, name, address, mock, story }) => ({ id, name, address, mock, story })),
@@ -592,6 +593,7 @@ export function act(
       l && s.shops.some(x=>x.id===l.shopId && x.approved && (!policy.production || !x.mock)) && now < l.end,
       "Món không còn nhận đơn",
     );
+    requireThat(!hasSale(l.lot),"Sale cần quy tắc giao dịch hiện hành");
     const v = s.vouchers.find(
       (v) => v.id === a.voucherId && v.userId === u.id && v.day === day(now),
     );
@@ -961,11 +963,12 @@ export function act(
       stock: l.stock,
     });
   } else if(action==="approve_listing") {
-    ops();const l=s.listings.find(l=>l.id===a.id);requireThat(l?.lot&&validLot(l.lot,now,l.end)&&l.end>now,"Lô không đủ điều kiện duyệt");
+    ops();const l=s.listings.find(l=>l.id===a.id);requireThat(l?.lot&&validLot(l.lot,now,l.end)&&validSale(l.lot,l.price,now,l.end)&&l.end>now,"Lô không đủ điều kiện duyệt");
     requireThat(a.confirmed===true&&[a.floor,a.cost,a.margin].every(n=>Number.isSafeInteger(n)&&n>=0)&&a.floor+a.cost+a.margin<=l.price,"Xác nhận khoản tiệm nhận, chi phí đầy đủ và biên hợp lệ");
     l.floor=a.floor;l.cost=a.cost;l.margin=a.margin;l.approved=true;
   } else if (action === "listing") {
     if(a.lot&&rulesFor(s).version===2)a.lot.checkedAt=now;
+    if(hasSale(a.lot)){requireThat(a.saleConfirmed===true,"Cần xác nhận giá thường, quy cách và lịch sale");a.lot.referenceConfirmedAt=now;requireThat(rulesFor(s).version===2&&validSale(a.lot,a.price,now,a.end)&&a.lot.saleEnd>now,"Thông tin giá hoặc lịch sale không hợp lệ");}
     if(rulesFor(s).version===2){requireThat(validLot(a.lot,now,a.end),"Cần đủ thông tin lô, tình trạng và bằng chứng giá");requireThat(a.payoutShare===undefined,"Lô mới cần khoản tiệm thực nhận cố định");requireThat(typeof a.storage==="string"&&a.storage.trim().length>=3&&a.storage.length<=500&&(a.lot.kind==="flowers"||typeof a.allergens==="string"&&a.allergens.trim().length>=3&&a.allergens.length<=500),"Thiếu bảo quản/dị ứng hoặc vượt500ký tự");}
     if(rulesFor(s).version===2)requireThat(typeof a.image==="string"&&a.image.length>0,"Cần ảnh đúng lô trước khi mở bán");
     if(a.lot?.catalogueProductId){const p=requestProduct(a.lot.catalogueProductId);requireThat(p?.kind==="flowers"&&a.lot.kind==="flowers"&&a.lot.species===p.name&&a.lot.quantity?.amount===p.quantity.amount&&a.lot.quantity?.unit===p.quantity.unit,"Liên kết danh mục hoa không đúng loại hoặc quy cách");}
@@ -1096,7 +1099,7 @@ export function localImage(value: unknown): string | undefined {
   );
   return value;
 }
-export function publicListing(l: Listing,rules=defaultTradingRules()) {
+export function publicListing(l: Listing,rules=defaultTradingRules(),realShop=false,now=Date.now()) {
   return {
     id: l.id,
     shopId: l.shopId,
@@ -1109,7 +1112,8 @@ export function publicListing(l: Listing,rules=defaultTradingRules()) {
     allergens: l.allergens,
     category: categories.includes(l.category || "") ? l.category! : "Món khác",
     image: l.image,
-    lot:l.lot,
+    lot:publicLot(l.lot),
+    saleVerified:realShop&&l.approved===true&&hasSale(l.lot)&&validSale(l.lot,l.price,now,l.end),
     pricingVersion:l.lot?2:1,
     eligibleFixed:!!l.lot&&rules.enabled&&l.price>9000&&l.price>=rules.minimumBasket&&l.price-9000>=l.floor+l.cost+l.margin,
     eligible: l.lot?[.15,.1].filter(rate=>{const d=Math.min(Math.floor(l.price*rate),rate===.15?rules.cap15:rules.cap10);return rules.enabled&&d>0&&l.price>=rules.minimumBasket&&l.price-d>=l.floor+l.cost+l.margin;}):[0.07, 0.1, 0.2].filter((v) => {
@@ -1136,7 +1140,7 @@ export function catalogue(s: State, now: number, production = false) {
     })),
     listings: s.listings
       .filter((l) => !(s.flowerDemoVersion&&l.id==="flowers") && shops.some((x) => x.id === l.shopId) && l.end > now && (rulesFor(s).version!==2||l.approved===true&&!!l.image&&validLot(l.lot,now,l.end,!production&&!!shops.find(x=>x.id===l.shopId)?.mock)))
-      .map(l=>publicListing(l,rulesFor(s))),
+      .map(l=>publicListing(l,rulesFor(s),shops.some(x=>x.id===l.shopId&&!x.mock),now)),
     tradingRules:publicTradingRules(rulesFor(s)),
   };
 }
@@ -1145,7 +1149,7 @@ export function publicQuote(s: State, q: Quote) {
     q.menuTotal ?? s.listings.find((l) => l.id === q.listingId)!.price * q.qty;
   const afterBase = Math.ceil(menuTotal * 0.95);
   const afterVoucher = Math.ceil(menuTotal * 0.95 * (1 - q.baseRate));
-  if(q.promotion)return {id:q.id,fulfillment:q.fulfillment||"pickup",listingId:q.listingId,qty:q.qty,voucherId:q.voucherId,total:q.price,expires:q.expires,rate:q.rate,baseRate:q.baseRate,distance:q.distance,bonusReason:q.bonusReason,menuTotal,baseDiscount:0,voucherDiscount:q.promotion.voucher,bonusDiscount:q.promotion.pickup,saved:q.promotion.voucher+q.promotion.pickup,lotSnapshot:q.lotSnapshot,placeSnapshot:q.placeSnapshot,shippingCap:q.promotion.shippingCap,stackReceiving:q.promotion.stackReceiving,pricingVersion:2};
+  if(q.promotion)return {id:q.id,fulfillment:q.fulfillment||"pickup",listingId:q.listingId,qty:q.qty,voucherId:q.voucherId,total:q.price,expires:q.expires,rate:q.rate,baseRate:q.baseRate,distance:q.distance,bonusReason:q.bonusReason,menuTotal,baseDiscount:0,voucherDiscount:q.promotion.voucher,bonusDiscount:q.promotion.pickup,saved:q.promotion.voucher+q.promotion.pickup,lotSnapshot:publicLot(q.lotSnapshot),placeSnapshot:q.placeSnapshot,shippingCap:q.promotion.shippingCap,stackReceiving:q.promotion.stackReceiving,pricingVersion:2};
   return {
     id: q.id,
     fulfillment: q.fulfillment || "pickup",

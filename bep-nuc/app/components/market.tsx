@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "./navigation";
+import SalePrice from "./sale-price";
 import ShopPicture from "./shop-picture";
 import {productAssets} from "../../lib/product-assets";
 import MealRequests from "./meal-requests";
@@ -16,7 +17,7 @@ import SavedPlace from "./saved-place";
 import {flowerImageCaption} from "../../lib/flower-demo";
 import {ReferenceCard,ReferenceDetails,ReferencePrice} from "./reference-product";
 import {filterRequestFlowers,requestProduct,requestUnit} from "../../lib/request-catalogue";
-import {voucherLabel,voucherCurrent,flowerQuantityLabel,type PublicTradingRules} from "../../lib/trading";
+import {voucherLabel,voucherCurrent,flowerQuantityLabel,saleState,saleOrderable,type PublicTradingRules} from "../../lib/trading";
 import {
   estimate,
   lotEstimate,
@@ -252,7 +253,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
     receiving,
   ]);
   const now = catalog
-    ? catalog.now + (catalog.demo ? 0 : tick - fetched.current)
+    ? catalog.now + (catalog.demo ? 0 : Math.max(0, tick - fetched.current))
     : tick;
   const modern=catalog?.tradingRules?.version===2;
   const vouchers = user?.approved && user.role === "student" && (!modern||user.place) ? profile?.vouchers || [] : [];
@@ -471,7 +472,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
     : [];
   const browseShops = [...(catalog?.shops || []), ...(isCloudMvp ? menuShops.filter(p=>!catalog?.shops.some(s=>s.id===p.id)) : [])];
   const upcoming = isCloudMvp && view === "browse" && !receiving
-    ? (flowerGroup?filterRequestFlowers(query,budget,sort).map(p=>({...p,shop:undefined})):filterLaunchMenu(query,category,budget,sort).map(p=>({...requestProduct(undefined,p.name)!,shop:p.shop}))).filter(p=>(!shopFilter||p.shop?.id===shopFilter)&&!catalog?.listings.some(l=>l.stock>0&&(l.image===p.image||l.lot?.catalogueProductId===p.id)))
+    ? (flowerGroup?filterRequestFlowers(query,budget,sort).map(p=>({...p,shop:undefined})):filterLaunchMenu(query,category,budget,sort).map(p=>({...requestProduct(undefined,p.name)!,shop:p.shop}))).filter(p=>(!shopFilter||p.shop?.id===shopFilter)&&!catalog?.listings.some(l=>l.stock>0&&saleOrderable(l,now)&&(l.image===p.image||l.lot?.catalogueProductId===p.id)))
     : [];
   function foodDetails(l: Food, n: number, change: (n: number) => void) {
     const Heading = view === "meal" ? "h1" : "h2";
@@ -497,11 +498,11 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
             {l.lot?.kind!=="flowers"&&<p className="meal-allergens"><b>Dị ứng:</b> {l.allergens || "Chưa có thông tin. Hỏi quán trước khi đặt."}</p>}
           </section>
           <section className="meal-purchase" aria-label="Chọn số suất và kiểm tra giá">
-            <div className="meal-price"><strong>{money(displayed.total)} <small>/ {l.lot?"lô":"suất"}</small></strong><span>{l.lot?"Giá lô trước voucher":"Giá menu"} {money(l.price)}</span></div>
+            {saleState(l,now)?<SalePrice item={l} now={now}/>:<div className="meal-price"><strong>{money(displayed.total)} <small>/ {l.lot?"lô":"suất"}</small></strong><span>{l.lot?"Giá lô trước voucher":"Giá menu"} {money(l.price)}</span></div>}
             <p className="fine">{displayed.voucher ? `Ước tính với voucher ${voucherLabel(displayed.voucher)}` : displayed.rate ? `Ước tính với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}</p>
             <Quantity n={n} max={Math.min(3, l.stock)} disabled={false} change={change} />
             <p className="detail-total" aria-live="polite">Tổng {n} {l.lot?.kind==="flowers"?"đơn vị mua":"suất"} <strong>{money(total.total)}</strong></p>
-            <button disabled={l.stock < n || now >= l.end} onClick={() => saveDraft(l, n)}>Kiểm tra lô đã chọn</button>
+            <button disabled={l.stock < n || now >= l.end || !saleOrderable(l,now)} onClick={() => saveDraft(l, n)}>Kiểm tra lô đã chọn</button>
             <p className="fine">Tối đa 3 đơn vị mua · Chọn tự lấy hoặc giao ở bước tiếp theo</p>
           </section>
         </div>
@@ -656,7 +657,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                           <span className="stock-label">{l.stock ? `Còn ${l.stock} ${l.lot?"lô":"suất"}` : "Hết hàng"}</span>
                         </div>
                         <div className="food-card-purchase">
-                          <div className="food-price-row"><strong className="food-price">{money(displayed.total)}</strong><span className="food-menu-price">{l.lot?"Giá lô":"Giá menu"} {money(l.price)}</span></div>
+                          {saleState(l,now)?<SalePrice item={l} now={now}/>:<div className="food-price-row"><strong className="food-price">{money(displayed.total)}</strong><span className="food-menu-price">{l.lot?"Giá lô":"Giá menu"} {money(l.price)}</span></div>}
                           {l.id.startsWith("flower-")&&<p className="fine">{flowerImageCaption}</p>}{l.lot&&<p className="fine">{l.lot.offer==="surplus"?"Lô còn lại cuối phiên":"Khuyến mãi cửa hàng"} · {l.lot.kind==="flowers"?`${flowerQuantityLabel(l.lot)} · gói cơ bản`:l.lot.contents}</p>}
                           <p className="price-condition">{displayed.voucher ? `Với voucher ${voucherLabel(displayed.voucher)}` : displayed.rate ? `Với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}{fulfillment === "delivery" && " · Chưa gồm phí giao"}</p>
                           <button disabled={!l.stock || now >= l.end} onClick={() => openFood(l)}>Xem lô này</button>
@@ -747,8 +748,8 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                           <Link href={`/shops/${item.shopId}`}>
                             {shop?.name}
                           </Link>
-                          <p>{shop?.address}</p>{item.lot?.quantity&&<p className="demo-disclosure">DEMO · {flowerQuantityLabel(item.lot)} mỗi đơn vị mua. {flowerImageCaption}; không kèm bình hoặc bó tặng.</p>}
-                          <b>
+                          <p>{shop?.address}</p>{item.lot?.quantity&&<p className="demo-disclosure">{flowerQuantityLabel(item.lot)} mỗi đơn vị mua; không kèm bình hoặc bó tặng.</p>}
+                          <SalePrice item={held?.lotSnapshot?{price:held.menuTotal/held.qty,lot:held.lotSnapshot,saleVerified:!!held.lotSnapshot.saleStart}:item} now={now}/><b>
                             Nhận {time(item.start)}–{time(item.end)}
                           </b>
                         </div>
@@ -912,7 +913,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                               (!modern&&!activeVoucher) ||
                               (!!activeVoucher&&activeVoucher.state !== "available") ||
                               item.stock < count ||
-                              now >= item.end
+                              now >= item.end || !saleOrderable(item,now)
                             }
                             onClick={quote}
                           >
@@ -1162,7 +1163,7 @@ function FoodImage({ l }: { l: Food }) {
         <span>Chưa có ảnh lô</span>
       )}
       {(l.image?.includes("demo-") || l.id.startsWith("flower-")) && (
-        <span className="demo-image-label">{l.id.startsWith("flower-")?"Ảnh tham khảo · DEMO":"Ảnh minh họa · DEMO"}</span>
+        <span className="demo-image-label">{l.id.startsWith("flower-")?"Ảnh minh họa · Nhận theo quy cách":"Ảnh minh họa · DEMO"}</span>
       )}
     </div>
   );

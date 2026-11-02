@@ -1277,3 +1277,5 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 .commerce .food-card .flower-image .demo-image-label{position:absolute;bottom:10px;left:10px;max-width:calc(100% - 20px)}
 
 .flower-showcase-embedded{padding:0}.flower-shop-details{margin:20px 0}.flower-shop-details article{margin:20px 0}
+
+.sale-price{margin:12px 0}.sale-price-main{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.sale-price-main strong{font-size:1.6rem;color:var(--green,#0d301a);font-variant-numeric:tabular-nums}.sale-price-main small{font-size:.85rem;font-weight:400}.sale-price p{margin:6px 0}.sale-price del{color:#526056}.sale-badge{background:#163d24;color:#fff;padding:4px 8px;border-radius:4px;font-size:.85rem;font-weight:700}.sale-window{font-size:.9rem}.sale-remaining{font-weight:700;color:#8b3215}.sale-price .fine{font-size:.8rem;max-width:65ch}
