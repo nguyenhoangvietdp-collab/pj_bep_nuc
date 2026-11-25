@@ -1,9 +1,8 @@
+import {publicTradingRules,defaultTradingRules} from "../../../lib/trading";
 import { NextRequest, NextResponse } from "next/server";
 import { identity } from "../../../lib/auth";
 import { clock, transaction, demo } from "../../../lib/store";
-import { act, issue, requireThat, view } from "../../../lib/domain";
-import { walking } from "../../../lib/routes";
-import { randomUUID } from "node:crypto";
+import { act, issue, requireThat, previewReceiving, view } from "../../../lib/domain";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET() {
@@ -12,7 +11,7 @@ export async function GET() {
     const data = await transaction((s) => {
       const u = s.users.find((u) => u.id === id);
       requireThat(u, "Không có tài khoản");
-      if(!u.approved) return {user:u,mealRequests:(s.mealRequests||[]).filter(r=>r.userId===u.id).map(({quoteId,...r})=>r),orders:[],vouchers:[],heldQuotes:[]};
+      if(!u.approved) return {user:u,tradingRules:publicTradingRules(s.tradingRules??defaultTradingRules()),mealRequests:(s.mealRequests||[]).filter(r=>r.userId===u.id).map(({quoteId,...r})=>r),orders:[],vouchers:[],heldQuotes:[]};
       issue(s, u, clock());
       return view(s, u, clock());
     });
@@ -52,67 +51,13 @@ export async function POST(req: NextRequest) {
         typeof body.args === "object",
       "Sai yêu cầu",
     );
-    let distance: number | null = null;
-    let routePlaceId:string|undefined;
-    if (body.action === "quote" && body.args.fulfillment !== "delivery") {
-      const destination = await transaction((s) => {
-        const u = s.users.find((x) => x.id === id);
-        requireThat(u?.approved && u.role === "student", "Không có quyền");
-        if(s.tradingRules?.version!==1)body.args.location=u.place?{lat:u.place.lat,lng:u.place.lng}:undefined;
-        const listing = s.listings.find((l) => l.id === body.args.listingId);
-        requireThat(listing, "Không có món");
-        requireThat(
-          s.audit.filter(
-            (x) =>
-              x.actor === id &&
-              x.action === "quote_attempt" &&
-              x.at > clock() - 60000,
-          ).length < 5,
-          "Tối đa 5 báo giá/phút",
-        );
-        const month = new Date(clock()).toISOString().slice(0, 7);
-        const used = s.audit.filter(
-          (x) =>
-            x.action === "route_request" &&
-            new Date(x.at).toISOString().startsWith(month),
-        ).length;
-        const routeAllowed =
-          !!body.args.location &&
-          !!process.env.GOOGLE_ROUTES_API_KEY &&
-          (s.tradingRules?.version===1||!!s.tradingRules?.enabled&&s.tradingRules.pickupBands.length>0&&(!body.args.voucherId||s.tradingRules.stackReceiving)) &&
-          used < Number(process.env.ROUTES_MONTHLY_REQUEST_LIMIT || 1000);
-        s.audit.push({
-          id: randomUUID(),
-          at: clock(),
-          actor: id,
-          action: "quote_attempt",
-          detail: { listingId: listing.id },
-        });
-        if (routeAllowed)
-          s.audit.push({
-            id: randomUUID(),
-            at: clock(),
-            actor: id,
-            action: "route_request",
-            detail: { listingId: listing.id },
-          });
-        return {
-          shop: s.shops.find((x) => x.id === listing.shopId)!,
-          routeAllowed,
-          placeId:u.place?.id,
-        };
-      });
-      if (destination.routeAllowed)
-        distance = await walking(body.args.location, destination.shop);
-      routePlaceId=destination.placeId;
-      delete body.args.location;
-    }
+    delete body.args.location;delete body.args.distance;
     const data = await transaction((s) => {
       const u = s.users.find((x) => x.id === id);
       requireThat(u, "Không có tài khoản");
-      if(body.action==="quote"&&body.args.fulfillment!=="delivery"&&s.tradingRules?.version!==1)requireThat(u.place?.id===routePlaceId,"Vị trí đã thay đổi; hãy kiểm tra lại báo giá");
-      issue(s, u, clock());
-      return act(s, u, body.action, body.args, clock(), distance);
+      if(body.action==="preview_receiving")return previewReceiving(s,u,body.args,clock(),null,!demo());
+      if(u.approved)issue(s, u, clock());
+      return act(s, u, body.action, body.args, clock(), null);
     });
     return NextResponse.json(data);
   } catch (e) {
