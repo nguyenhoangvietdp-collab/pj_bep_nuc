@@ -582,7 +582,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
         {loading ? (
           <LoadingScreen label={view === "orders" || view === "order" ? "Đang tải trạng thái đơn…" : view === "login" ? "Đang tải tài khoản…" : "Đang tìm bữa cho bạn…"} />
         ) : !catalog ? (
-          <section className={nearDateGroup?"market-empty retail-stock-status":"market-empty"}>
+          <section className="market-empty">
             Chưa kết nối được catalogue.
           </section>
         ) : (
@@ -659,7 +659,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                   </div>
                   {hasFilters && <button className="text-button clear-result-filters" onClick={reset}>Xóa tất cả điều kiện</button>}
                 {!shown.length && (catalog.listings.length > 0 || !upcoming.length) && (
-                  <section className="market-empty">
+                  <section className={nearDateGroup?"market-empty retail-stock-status":"market-empty"}>
                     <h3>
                       {nearDateGroup?"Chưa có lô được xác nhận":catalog.listings.length
                         ? "Chưa tìm thấy món phù hợp"
