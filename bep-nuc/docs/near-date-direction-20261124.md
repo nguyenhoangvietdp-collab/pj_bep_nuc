@@ -57,3 +57,11 @@ Theo dõi: đóng góp sau ưu đãi, tỷ lệ đủ ngưỡng, số đơn vị
 Tên khách hàng thấy là “Hàng gần hạn sử dụng”. Năm loại hàng: thực phẩm đóng gói, đồ uống, chăm sóc cá nhân, đồ dùng gia đình và hàng phi thực phẩm khác. Các loại hiện ngay trong danh mục trên điện thoại; không chỉ nằm trong bộ lọc. Đây là cấu trúc phân loại, không xác nhận rằng đã có nguồn của từng loại. Mã non_food cũ và liên kết “Cận date” tiếp tục được đọc tương thích.
 
 Tham khảo cấu trúc [Kuradashi](https://kuradashi.jp/) (đối chiếu 24/11/2026): loại sản phẩm tách khỏi lý do giảm giá. Bếp Núc áp dụng nguyên tắc này bằng thông tin loại hàng, hạn dùng theo nhãn và lý do ưu đãi riêng; không dùng phong cách Nhật thay cho chứng cứ hàng hóa.
+
+## Giá mẫu đặt thử (28/11/2026)
+
+16 mẫu dùng cùng quy tắc sản phẩm tham chiếu (`menuPricing`): giá niêm yết P, khách trả trước voucher Q = ceil(95% P) và thấy “Giảm 5%”; quán nhận F = floor(P×(100−r)/100), r = `discountPercent` 30/35. r và F không hiển thị cho khách. Voucher, thưởng tự lấy và hỗ trợ giao đi qua `requestPayment`/`launchEstimate` với hạn mức sẵn có, lấy từ phần Q − F sau chi phí 3.000đ và đóng góp 1.000đ/đơn vị.
+
+Sáu mẫu giá nhỏ bằng 0 ở mọi lựa chọn đến 3 đơn vị vì Q − F dưới 4.000đ: mì, bánh mì/bông lan, xúc xích, sữa tươi, trà, sữa hạt. Như sản phẩm tham chiếu, ô voucher vẫn hiện mức mong muốn, hóa đơn ghi “chưa áp dụng”. Khăn giấy và pin không đủ điều kiện voucher ở mọi số lượng, chỉ có thưởng tự lấy hoặc hỗ trợ giao.
+
+Mẫu chỉ tính ở trình duyệt, không gửi yêu cầu hoặc đơn. Bản có cấu hình Supabase vẫn cần tải catalogue và trạng thái đăng nhập (GET) trước khi hiện trang, như sản phẩm tham chiếu; khách chưa đăng nhập xem được.

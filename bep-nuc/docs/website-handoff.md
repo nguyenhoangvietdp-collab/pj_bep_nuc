@@ -12,7 +12,7 @@ Bếp Núc connects Hanoi buyers with end-of-day meals, flowers for home and goo
 | GitHub Pages | [`pages-site/`](../pages-site/) | Introduction and link to Workers. `npm run build:pages` exports to `pages-site/out/`. |
 | Older pilot | [`apps/buachot-pilot/`](../../apps/buachot-pilot/) | Historical BữaChốt implementation. |
 
-Shared components live in [`app/components/`](../app/components/). The Workers CSS build combines `app/style.css`, `app/commerce.css`, `app/frame.css`, `mvp-site/mvp.css` and `app/garden.css` (last). Source product and brand assets live in [`public/`](../public/). Builds copy them into the target exports.
+Shared components live in [`app/components/`](../app/components/). The Workers CSS build combines `app/style.css`, `app/commerce.css`, `app/frame.css`, `app/shop.css`, `mvp-site/mvp.css` and `app/garden.css` (last). Source product and brand assets live in [`public/`](../public/). Builds copy them into the target exports.
 
 ## Illustrated visual direction
 
@@ -82,3 +82,10 @@ The user confirmed that external food prices should be visible beside Bếp Núc
 - The public homepage, meals, flowers, offers and orders rendered in a guest session at 390 px and 1440 px without horizontal overflow. The Edge catalogue and health endpoints returned HTTP 200. Health reported checkout v3, pickup stacking and location estimates for all accounts. Health reports feature versions, and the deployed Git SHA still needs to be matched to the release record.
 - On mobile, acknowledge “Lưu ý trước khi sử dụng” before interacting with the catalogue. Open “Bộ lọc”, select “Hàng gần hạn sử dụng”, and apply the filter. All five retail subcategories appeared. The meal catalogue’s “Tính giá khi tự lấy” link opened the checkout with address and receiving options, a base voucher section and a payment breakdown. One catalogue resource returned a 404 during the first mobile pass. It did not recur in the follow-up capture, so the failing resource was not identified.
 - Live Google login, pending and approved account sessions, payment, refund and settlement were outside this read-only production check. Use staging to verify them before a related release.
+
+## Storefront layout, directory and simulated cart (28 November 2026, local merge)
+
+- Buying pages use a two-level directory (`lib/directory.ts`, `app/components/product-directory.tsx`), one compact card (`product-card.tsx`) and `app/shop.css`; `garden.css` stays the last colour layer. The home page keeps the illustrated version above.
+- Catalogue prices use the menu price: customers see 95% of it before voucher (`menuPricing` in `lib/catalogue-sale.ts`). The external source price stays visible beside it as information only.
+- `/cart` is browser-only (`lib/cart.ts`): reference dishes and the 16 near-date samples, 1–3 units each, one voucher per cart on the line that saves the most. It sends no order, holds no stock and takes no money. Real lots still use the hold flow.
+- Near-date has two separate sections: simulated samples that can go in the cart, and the read-only source-priced retail references.

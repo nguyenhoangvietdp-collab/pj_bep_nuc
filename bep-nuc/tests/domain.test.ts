@@ -51,23 +51,23 @@ test("money rounding, voucher vs total discount and caps at 30k/50k/100k", () =>
   for (const p of [30000, 50000, 100000])
     for (const qty of [1, 2, 3])
       for (const v of [0.07, 0.1, 0.2])
-        for (const d of [null, 0, 0.3, 1, 2, 20]) {
+        for (const pickup of [false, true]) {
           const item = { ...l, price: p, floor: p * 0.65 };
           const max = 1 - (item.floor + item.cost + item.margin) / (0.95 * p);
           if (v > max) {
-            assert.throws(() => price(item, qty, v, d));
+            assert.throws(() => price(item, qty, v, pickup));
             continue;
           }
-          const q = price(item, qty, v, d);
+          const q = price(item, qty, v, pickup);
           assert.ok(q.price >= q.payout + q.cost + q.margin);
           assert.ok(q.rate <= max + 1e-10);
-          assert.equal(q.price, price(item, qty, v, d === 20 ? 2 : d).price);
+          assert.ok(q.price <= price(item, qty, v, false).price);
         }
   assert.equal(
-    price({ ...l, price: 100000, floor: 65000 }, 1, 0.2, 1).price,
-    70000,
+    price({ ...l, price: 100000, floor: 65000 }, 1, 0.2, true).price,
+    71250,
   );
-  assert.equal(price(l, 1, 0.1, null).price, 42750);
+  assert.equal(price(l, 1, 0.1, false).price, 42750);
   assert.notEqual(0.1, 1 - 42750 / 50000);
 });
 test("Vietnam issue window and exactly three vouchers", () => {

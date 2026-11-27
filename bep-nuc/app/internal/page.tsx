@@ -332,7 +332,7 @@ export default function Page() {
                   {(quote.rate * 100).toFixed(2)}%
                 </p>
                 <p>
-                  {quote.bonusReason} · Hết giữ lúc {time(quote.expires)}
+                  {quote.pickupPricing?.method==="haversine"?"Ưu đãi tự lấy theo báo giá đã lưu":quote.bonusReason} · Hết giữ lúc {time(quote.expires)}
                 </p>
                 <button
                   disabled={busy}
@@ -379,6 +379,7 @@ export default function Page() {
           </div>
           <ListingForm
             shopId={data.user.shopId}
+            demo={data.demo===true}
             submit={(a: any) => action("listing", a)}
           />
         </>
@@ -782,7 +783,7 @@ function OperationsForms({ data, submit }: any) {
               Đã xác minh hồ sơ, duyệt đối tác
             </button>
           )}
-          {!p.mock && <details><summary>Đăng món cho quán này</summary><ListingForm shopId={p.id} submit={(args:any)=>submit("listing",args)}/></details>}
+          {!p.mock && <details><summary>Đăng món cho quán này</summary><ListingForm shopId={p.id} demo={data.demo===true} submit={(args:any)=>submit("listing",args)}/></details>}
         </section>
       ))}
       <section className="panel">

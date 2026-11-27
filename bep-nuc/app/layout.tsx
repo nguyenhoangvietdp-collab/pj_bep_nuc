@@ -1,6 +1,7 @@
 import "./style.css";
 import "./commerce.css";
 import "./frame.css";
+import "./shop.css";
 import "./garden.css";
 export const metadata = {
   title: "Bếp Núc · Pilot Hà Nội",

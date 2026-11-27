@@ -26,7 +26,7 @@ test("external menu observations cover the menu without overriding negotiated cu
   const foods=requestProducts.filter(p=>p.kind==="food");
   assert.deepEqual(new Set(references.foodPrices.map(p=>p.productId)),new Set(foods.map(p=>p.id)));
   const chao=foods.find(p=>p.name==="Cháo quẩy")!,source=references.foodPrices.find(p=>p.productId===chao.id)!;
-  assert.equal(source.priceVnd,25000);assert.equal(chao.referencePrice,35000);assert.equal(requestPrice(chao),47500);
+  assert.equal(source.priceVnd,25000);assert.equal(chao.referencePrice,35000);assert.equal(requestPrice(chao),33250);
   for(const p of references.foodPrices){assert.ok(p.unit&&p.note&&p.priceEvidence);assert.equal(p.scope,"external_menu_reference");assert.ok(Number.isSafeInteger(p.priceVnd)&&p.priceVnd>0);}
 });
 

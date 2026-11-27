@@ -38,7 +38,7 @@ test("base and voucher estimates match backend, rounding breakdown sums exactly"
       for (const v of [0.07, 0.1, 0.2]) {
         const l = { ...s.listings[0], price: p, floor: Math.floor(p * 0.55) };
         const a = estimate(p * qty, v),
-          real = price(l, qty, v, null);
+          real = price(l, qty, v, false);
         assert.equal(a.total, real.price);
         assert.equal(
           a.menuTotal - a.baseDiscount - a.voucherDiscount,
@@ -101,7 +101,7 @@ test("held quotes survive reload without private fields; release is owned, idemp
     act(s, u, a, { key: crypto.randomUUID(), ...args }, now) as any;
   const q = call("quote", { listingId: "meal", voucherId: v.id, qty: 2 });
   const resumed = view(s, user, now).heldQuotes[0];
-  assert.equal(resumed.total, 76000);
+  assert.equal(resumed.total, 75000);
   assert.equal(
     resumed.menuTotal -
       resumed.baseDiscount -

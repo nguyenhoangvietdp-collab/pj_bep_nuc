@@ -3,13 +3,15 @@ export type SavedPlace = { id: string; label: string; address: string; lat: numb
 export type Lot = {
   kind: "food" | "flowers" | "goods"; offer: "surplus" | "promotion" | "near_expiry";
   nearDate?:NearDate;
-  reason: string; contents: string; condition: string; checkedAt: number;
+  reason: string; contents: string; condition: string; checkedAt: number; preparedAt?: number;
   referencePrice?: number; referenceEvidence?: string;
   referenceKind?: "store_regular"; referenceConfirmedAt?: number; saleStart?: number; saleEnd?: number;
   stems?: number; species?: string; packaging?: string;
   quantity?: {amount:number;unit:"cành"|"bông"|"bó"};
   catalogueProductId?:string;
 };
+export const isStoredLotImage = (value: unknown): value is string =>
+  typeof value === "string" && /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/bep-nuc-lots\/[a-f0-9-]{36}\.(jpg|png|webp)$/.test(value);
 export type TradingRules = {
   version: 1 | 2; enabled: boolean; cap15: number; cap10: number; fixedWeekly: number;
   minimumBasket: number; weeklyBudget: number; shippingCap: number;
@@ -43,6 +45,7 @@ export function validLot(lot: Lot | undefined, now: number, end: number, allowDe
     (lot.quantity===undefined || !!lot.quantity && typeof lot.quantity==="object" && Number.isSafeInteger(lot.quantity.amount)&&lot.quantity.amount>0&&lot.quantity.amount<=1000&&["cành","bông","bó"].includes(lot.quantity.unit)&&(lot.quantity.unit!=="cành"||lot.stems===lot.quantity.amount)) &&
     [lot.reason,lot.contents,lot.condition].every(v => typeof v === "string" && v.trim().length >= 3 && v.length <= 1000) &&
     Number.isFinite(lot.checkedAt) && lot.checkedAt <= now && lot.checkedAt > 0 && lot.checkedAt < end &&
+    (lot.preparedAt === undefined || Number.isSafeInteger(lot.preparedAt) && lot.preparedAt > 0 && lot.preparedAt <= lot.checkedAt) &&
     (lot.referencePrice === undefined || (Number.isSafeInteger(lot.referencePrice) && lot.referencePrice > 0 && typeof lot.referenceEvidence === "string" && lot.referenceEvidence.trim().length >= 3)) &&
     (lot.kind !== "flowers" || ((Number.isSafeInteger(lot.stems) && lot.stems! > 0 || allowDemoQuantity && lot.stems===undefined && !!lot.quantity && Number.isSafeInteger(lot.quantity.amount) && lot.quantity.amount>0 && lot.quantity.amount<=1000 && ["cành","bông","bó"].includes(lot.quantity.unit)) && typeof lot.species === "string" && lot.species.trim().length >= 2 && typeof lot.packaging === "string" && lot.packaging.trim().length >= 3));
 }

@@ -11,7 +11,7 @@ test("cheap units need a financially viable quantity, not an arbitrary basket pr
  assert.equal(promotionThreshold({...basis,maxQty:2},{rate:0,amount:9000}),null);
 });
 test("preview never applies an unqualified basic voucher and gives the same threshold",()=>{
- const base={unitPrice:27550,supplierUnitPrice:20300,qty:1,rate:9000,method:"pickup" as const,distanceKm:2};
+ const base={unitPrice:27550,supplierUnitPrice:20300,qty:1,rate:9000,method:"pickup" as const};
  const one=launchEstimate(base);assert.equal(one.basicEligible,false);assert.equal(one.amounts.voucherDiscount,0);assert.deepEqual(one.threshold,{qty:3,subtotal:82650});
  const three=launchEstimate({...base,qty:3});assert.equal(three.basicEligible,true);assert.equal(three.amounts.voucherDiscount,9000);assert.ok(three.amounts.total-20300*3-3000*3>=1000*3);
 });

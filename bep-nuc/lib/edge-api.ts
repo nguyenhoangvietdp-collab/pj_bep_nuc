@@ -35,7 +35,7 @@ export function createEdgeHandler(deps: EdgeDependencies) {
       const parts = new URL(req.url).pathname.split("/").filter(Boolean);
       const route = parts[parts.length-1];
       const now = deps.now?.() ?? Date.now();
-      if (req.method === "GET" && route === "health") return response({ok:true,deliveryFeeApproval:true,productRequestsVersion:1,salesVersion:1,paymentSummaryVersion:1,catalogueSaleVersion:2,pickupPreviewVersion:1,checkoutVersion:3,locationEstimatesVersion:1,storeLocationsVersion:1,nearDateVersion:1,promotionThresholdVersion:1,locationEstimatesAllAccounts:true,pickupStacking:true,pickupDistanceMethod:"haversine",pickupRatePerKm:.08,pickupCapKm:2});
+      if (req.method === "GET" && route === "health") return response({ok:true,deliveryFeeApproval:true,productRequestsVersion:1,salesVersion:1,paymentSummaryVersion:1,catalogueSaleVersion:3,pickupPreviewVersion:1,checkoutVersion:3,locationEstimatesVersion:1,storeLocationsVersion:1,nearDateVersion:1,promotionThresholdVersion:1,locationEstimatesAllAccounts:true,pickupStacking:true,pickupMethod:"fixed",pickupRate:.05});
       if (route === "geocode") {
         if (req.method !== "POST") return response({error:"Phương thức không hỗ trợ"},405);
         if (origin !== deps.config.origin) return response({error:"Origin không hợp lệ"},403);
@@ -56,7 +56,7 @@ export function createEdgeHandler(deps: EdgeDependencies) {
         });
         return response({candidates:await deps.geocode(address),provider:"Photon / OpenStreetMap"});
       }
-      if (req.method === "GET" && route === "catalogue") return response(await run(s => ({ ...catalogue(s,now,true), demo:false, mapsEnabled:false,pickupDistanceMethod:"haversine", pilotOpen:deps.config.acceptingOrders && deps.config.policy.pilotEnabled && deps.config.policy.bankReady && readiness(s,now).ready })));
+      if (req.method === "GET" && route === "catalogue") return response(await run(s => ({ ...catalogue(s,now,true), demo:false, mapsEnabled:false,pickupMethod:"fixed", pilotOpen:deps.config.acceptingOrders && deps.config.policy.pilotEnabled && deps.config.policy.bankReady && readiness(s,now).ready })));
       if (!["auth","pilot","export","image"].includes(route)) return response({error:"Không tìm thấy API"},404);
       const token = req.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
       const identity = token ? await deps.authenticate(token) : null;

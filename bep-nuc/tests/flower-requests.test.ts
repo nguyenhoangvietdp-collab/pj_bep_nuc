@@ -17,7 +17,7 @@ test("real flower inquiry snapshots canonical goal/units without reserving inven
  const f=setup(),stock=f.s.listings[1].stock,budget=f.s.quotes.length;
  const args={key:"same-request-key",productId:f.p.id,name:"Client attempts another name",qty:2,rate:9000,fulfillment:"pickup",targetPrice:1,product:{targetPrice:1}};
  const a=f.call("student","meal_request",args);assert.deepEqual(f.call("student","meal_request",args),a);
- const r=f.s.mealRequests![0];assert.equal(r.name,"Ly kép trắng");assert.equal(r.product!.targetPrice,90300);assert.equal(r.product!.catalogueSale!.originalPrice,129000);assert.equal(r.product!.catalogueSale!.discountPercent,5);assert.equal(requestUnit(r.product!),"5 cành");assert.equal(r.qty,2);assert.equal(r.status,"pending");
+ const r=f.s.mealRequests![0];assert.equal(r.name,"Ly kép trắng");assert.equal(r.product!.targetPrice,90300);assert.deepEqual(r.product!.catalogueSale,{version:3,originalPrice:129000,discountPercent:5,negotiatedPrice:90300,negotiatedDiscountPercent:30,salePrice:122550,source:"owner_policy"});assert.equal(requestUnit(r.product!),"5 cành");assert.equal(r.qty,2);assert.equal(r.status,"pending");
  assert.equal(f.s.listings[1].stock,stock);assert.equal(f.s.quotes.length,budget);assert.equal(f.s.orders.length,0);assert.ok(f.s.vouchers.every(v=>v.state==="available"));
  assert.throws(()=>f.call("student","meal_request",{...args,key:crypto.randomUUID(),productId:"unknown"}),/Mã sản phẩm/);
 });
