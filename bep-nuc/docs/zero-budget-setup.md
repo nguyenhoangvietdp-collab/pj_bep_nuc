@@ -1,5 +1,7 @@
 # Xuất bản Bếp Núc MVP với dịch vụ 0đ
 
+Tài liệu này ghi lại đường thiết lập ban đầu. Website chính hiện chạy trên Cloudflare Workers. Dùng [hướng dẫn bàn giao](website-handoff.md) để xác định build, origin và luồng kiểm tra hiện hành.
+
 ## Tình trạng bàn giao
 
 Mã frontend tĩnh, API Edge Functions, migration database và CI đã được chuẩn bị. Chưa có tài khoản Cloudflare/Supabase hoặc cấu hình Google OAuth của chủ dự án, nên chưa thể tạo ứng dụng online, kiểm tra Google login thật hay xác nhận database từ xa. Không có quán thật được nhập tự động và không mở nhận tiền. GitHub Pages chỉ còn là trang giới thiệu.

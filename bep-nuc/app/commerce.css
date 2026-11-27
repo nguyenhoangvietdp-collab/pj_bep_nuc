@@ -718,15 +718,14 @@
 @media (min-width: 600px) and (max-width: 999px) { .commerce .food-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 599px) {
   .commerce .food-grid { grid-template-columns: 1fr; }
-  .commerce .food-card { display: grid; grid-template-columns: minmax(96px, 30%) minmax(0, 1fr); }
+  .commerce .food-card { display: grid; grid-template-columns: minmax(0, 1fr); }
   .commerce .food-card .food-picture-button { align-self: start; }
-  .commerce .food-card .food-image { aspect-ratio: 1; }
+  .commerce .food-card .food-image { aspect-ratio: 4 / 3; width: 100%; }
   .commerce .food-card .food-card-body { padding: 12px; min-width: 0; }
   .commerce .food-card .food-price { font-size: 21px; }
   .commerce .food-card .plain-title { font-size: 17px; }
-  .commerce .food-image .demo-image-label { position: static; padding: 4px; line-height: 1.3; }
-  .commerce .food-card .food-image:has(.demo-image-label) { aspect-ratio: auto; }
-  .commerce .food-card .food-image img { aspect-ratio: 1; height: auto; }
+  .commerce .food-image .demo-image-label { padding: 6px 10px; line-height: 1.4; white-space: normal; }
+  .commerce .food-card .food-image img { aspect-ratio: auto; height: 100%; }
   .commerce .meal-dialog { padding: 16px; }
   .commerce .dialog-close { position: sticky; top: 0; z-index: 2; }
   .commerce .order-progress { flex-direction: column; }
@@ -775,7 +774,7 @@
   .commerce .market-content { padding: 10px 12px 24px; }
   .commerce .market-banner h1 { font-size: 23px; }
   .commerce .market-banner .market-eligibility { line-height: 1.4; }
-  .commerce .food-card .food-image { max-width: 112px; }
+  .commerce .food-card .food-image { max-width: none; }
   .commerce .food-card-body { padding: 10px; }
   .commerce .food-card .food-image .demo-image-label { font-size: 14px; }
   .commerce .checkout-layout { margin-top: 12px; gap: 8px; }
@@ -1039,6 +1038,7 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 .commerce .menu-preview-grid li { min-width: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; background: #fff; }
 .commerce .menu-preview-grid img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
 .commerce .menu-preview-info { padding: 16px; display: flex; flex-direction: column; flex: 1; }
+.commerce .menu-preview-grid [data-reference-id] > div:first-child > .fine { display: block; padding: 8px 16px 0; }
 .commerce .menu-preview-info h3 { font-size: 20px; margin: 0 0 8px; }
 .commerce .menu-preview-info > p { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
 .commerce .menu-preview-info .menu-preview-price { color: var(--ink); font-weight: 700; font-size: 26px; margin-top: auto; }
@@ -1274,7 +1274,7 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 .commerce .flower-showcase .food-card-body p{margin:0}
 .commerce .flower-showcase .food-card-body button{margin-top:auto}
 .commerce .catalogue-results .flower-image{max-width:none;max-height:none}
-.commerce .food-card .flower-image .demo-image-label{position:absolute;bottom:10px;left:10px;max-width:calc(100% - 20px)}
+.commerce .food-card .demo-image-label{position:absolute;bottom:10px;left:10px;max-width:calc(100% - 20px);width:auto;white-space:normal;overflow-wrap:anywhere;background:#fff;color:#4d5650;padding:6px 10px;line-height:1.4}
 .commerce .catalogue-results .food-card .near-date-template-image{aspect-ratio:4/3;min-height:0}
 .commerce .meal-detail-visual .near-date-image-credit{margin:8px 0 0}
 
@@ -1285,5 +1285,26 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 .payment-summary{margin:18px 0;padding:16px;background:#f0f5f0;border:1px solid #c3d0c5;border-radius:10px}.payment-summary h3{margin:0 0 14px}.payment-summary dl{margin:0}.payment-summary dl>div{display:flex;justify-content:space-between;gap:16px;margin:10px 0}.payment-summary dt{min-width:0;overflow-wrap:anywhere}.payment-summary dd{margin:0;flex-shrink:0;font-variant-numeric:tabular-nums;font-weight:600}.payment-summary .payment-total{border-top:1px solid #bccbbf;padding-top:14px;margin-top:16px;align-items:center}.payment-total output{font-size:1.7rem;font-weight:750;color:#143b20}.payment-total dt{font-weight:650}.payment-average{font-weight:600}.payment-summary .fine{margin:12px 0 0}@media(max-width:430px){.payment-summary{padding:12px}.payment-summary .payment-total{align-items:flex-start;flex-direction:column;gap:8px}}
 
 .sale-price .sale-original{font-size:.95rem;color:#526056;margin:0 0 8px}.sale-original del{text-decoration-thickness:2px}.sale-price-main>div{display:flex;flex-direction:column;gap:3px}.sale-price-label{font-size:.85rem;font-weight:650}.sale-price-main strong{font-size:2rem;font-weight:800;line-height:1.2}.sale-price .sale-saving{font-size:.9rem;margin:8px 0}.sale-after-voucher{display:flex;flex-direction:column;gap:4px;padding-top:10px;margin-top:10px;border-top:1px solid #c3d0c5}.sale-after-voucher>span{font-size:.85rem}.sale-after-voucher strong{font-size:2rem;font-weight:800;color:#143b20;line-height:1.2;font-variant-numeric:tabular-nums}.sale-after-voucher small{font-size:.85rem;font-weight:400}.sale-schedule{margin:14px 0;padding:10px 12px;background:#f4f0e7;border-radius:6px;color:#3c321e}.sale-schedule .sale-window{margin:4px 0;font-size:.9rem;line-height:1.5}.sale-schedule time{font-weight:650}
+
+/* Keep product identity and the next action together in shared catalogue cards. */
+.commerce .food-card h3.food-name { font-size: 21px; line-height: 1.3; overflow-wrap: anywhere; }
+.commerce .food-card .sale-price-main strong,
+.commerce .menu-preview-info .sale-price-main strong { font-size: 22px; }
+.commerce .food-card-purchase .food-price-row { flex-direction: column; align-items: flex-start; }
+.commerce .food-card-purchase .food-price { font-size: 22px; }
+.commerce .food-card-purchase .sale-price { margin-top: 0; }
+.commerce .food-card-description .near-date-info { padding-bottom: 0; }
+.commerce .food-card-purchase button:not(:disabled),
+.commerce .menu-preview-info .button-link { background: #0c2b15; color: #fff; }
+.commerce .food-card-purchase button:hover:not(:disabled),
+.commerce .menu-preview-info .button-link:hover { background: #174b28; }
+.label-image-preview { display: block; width: min(100%, 320px); height: auto; max-height: 240px; object-fit: contain; margin-block: 12px; }
+@media (max-width: 767px) {
+  .commerce .food-card .food-picture-button { margin: 0; width: 100%; }
+  .commerce .food-card .food-image { width: 100%; max-width: none; max-height: none; }
+  .commerce .food-card-description { padding-bottom: 8px; }
+  .commerce .food-card-description .food-address { margin-bottom: 4px; }
+  .commerce .food-card-description .pickup-line { margin-block: 4px; }
+}
 
 .sale-schedule .sale-remaining{font-size:1.15rem;font-weight:750;font-variant-numeric:tabular-nums;margin:5px 0 0;color:#6f2c13}

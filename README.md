@@ -2,6 +2,7 @@
 
 Đồ ăn và hoa cắm nhà còn dùng tốt, với giá lô, lý do giảm và khung nhận rõ ràng. Dự án đang kiểm chứng mô hình tại Hà Nội; dữ liệu DEMO không phải doanh số thật.
 
+- [Bàn giao website cho người và agent mới](bep-nuc/docs/website-handoff.md)
 - [Ứng dụng và cách chạy](bep-nuc/README.md)
 - [Quy tắc giao dịch và triển khai ngày01/11/2026](bep-nuc/docs/trading-update-20261101.md)
 - [Danh mục 12 loại hoa tham khảo và yêu cầu đặt hàng ngày02/11/2026](bep-nuc/docs/flower-catalogue-20261102.md)

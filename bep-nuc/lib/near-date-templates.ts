@@ -2,6 +2,7 @@ import type { NearDate, NearDateGroup } from "./near-date";
 import { nearDateCategory, retailLabel } from "./near-date";
 import { normalize, type Food } from "./commerce";
 import { saleOrderable } from "./trading";
+import { menuPricing } from "./catalogue-sale";
 
 export type NearDateTemplate = {
   id: string;
@@ -11,8 +12,12 @@ export type NearDateTemplate = {
   subtitle: string;
   description: string;
   whyDiscount: string;
+  spec: string;
+  listPrice: number;
+  discountPercent: 30 | 35;
+  daysToExpiry: number;
   storage: string;
-  allergenNote?: string;
+  allergenNote: string;
   fieldsForShop: string[];
   imageAlt: string;
   credit?: {
@@ -25,9 +30,6 @@ export type NearDateTemplate = {
 };
 
 const whyDiscount = "Hàng còn hạn nhưng gần hạn ghi trên bao bì, quán xả để không phí.";
-const packagedFoodStorage = "Bảo quản theo hướng dẫn ghi trên bao bì, tránh nơi ẩm nóng và ánh nắng trực tiếp.";
-const drinkStorage = "Bảo quản theo hướng dẫn ghi trên bao bì, tránh ánh nắng trực tiếp và nhiệt độ cao.";
-const allergenNote = "Kiểm tra thành phần và cảnh báo dị ứng trên nhãn trước khi dùng.";
 
 const fieldsForShop = (quantity: string): string[] => [
   "hạn sử dụng",
@@ -51,8 +53,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Bữa ăn tiện lợi cho nhu cầu dùng sớm với mức giá tiết kiệm",
     description: "Mì ăn liền dạng gói tiện lợi, dễ chuẩn bị cho bữa ăn nhanh hoặc dự trữ ngắn ngày. Phù hợp với khách cần mua dùng sớm với chi phí tiết kiệm.",
     whyDiscount,
-    storage: packagedFoodStorage,
-    allergenNote,
+    spec: "gói 75 g",
+    listPrice: 5000,
+    discountPercent: 30,
+    daysToExpiry: 25,
+    storage: "Để nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp và tránh đặt gần hóa chất hoặc đồ có mùi mạnh.",
+    allergenNote: "Sản phẩm thường chứa lúa mì (gluten), đậu nành hoặc chiết xuất hải sản, nên người có cơ địa dị ứng cần xem kỹ thành phần trên bao bì trước khi ăn.",
     fieldsForShop: fieldsForShop("khối lượng tịnh"),
     imageAlt: "Ảnh minh họa bát mì cạnh gói mì ăn liền",
     credit: {
@@ -70,8 +76,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Bánh mềm tiện dùng cho bữa phụ hoặc ăn nhẹ hằng ngày",
     description: "Bánh mì hoặc bông lan đóng gói sẵn, tiện mang theo cho bữa sáng nhẹ hoặc giờ nghỉ. Phù hợp với khách mua dùng ngay với mức giá ưu đãi.",
     whyDiscount,
-    storage: packagedFoodStorage,
-    allergenNote,
+    spec: "gói 65 g",
+    listPrice: 10000,
+    discountPercent: 35,
+    daysToExpiry: 5,
+    storage: "Bảo quản ở nơi thoáng mát, tránh nắng trực tiếp và dùng hết trong ngày sau khi mở gói.",
+    allergenNote: "Bánh thường chứa bột mì (gluten), trứng và sữa, nên cần kiểm tra kỹ bảng thành phần trên nhãn trước khi dùng.",
     fieldsForShop: fieldsForShop("khối lượng tịnh"),
     imageAlt: "Ảnh minh họa bánh mì tròn trong túi nylon trong suốt",
     credit: {
@@ -89,8 +99,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Món ăn vặt hoặc ăn kèm tiện lợi, dễ mang theo bên mình",
     description: "Xúc xích ăn liền đóng gói nhỏ gọn, dùng nhanh cho bữa phụ hoặc kết hợp cùng món khác. Lựa chọn hợp lý cho khách mua dùng sớm.",
     whyDiscount,
-    storage: packagedFoodStorage,
-    allergenNote,
+    spec: "gói 40 g (1 cây)",
+    listPrice: 8000,
+    discountPercent: 30,
+    daysToExpiry: 15,
+    storage: "Để nơi khô mát, tránh ánh nắng trực tiếp và ăn ngay sau khi bóc vỏ.",
+    allergenNote: "Sản phẩm có thể chứa đạm đậu nành, gia vị hoặc phụ gia thực phẩm, nên người dị ứng cần đọc kỹ nhãn trước khi sử dụng.",
     fieldsForShop: fieldsForShop("khối lượng tịnh"),
     imageAlt: "Ảnh minh họa ô giữ chỗ cho mẫu xúc xích ăn liền",
   },
@@ -102,8 +116,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Lựa chọn gọn nhẹ cho bữa sáng hoặc bữa phụ hằng ngày",
     description: "Ngũ cốc hoặc yến mạch đóng gói tiện pha chế và sử dụng nhanh tại nhà hay văn phòng. Thích hợp cho khách có kế hoạch dùng sớm trong tuần.",
     whyDiscount,
-    storage: packagedFoodStorage,
-    allergenNote,
+    spec: "gói 400 g",
+    listPrice: 45000,
+    discountPercent: 30,
+    daysToExpiry: 35,
+    storage: "Bảo quản nơi khô thoáng, tránh ẩm mốc và kẹp kín miệng túi sau mỗi lần lấy dùng.",
+    allergenNote: "Ngũ cốc và yến mạch có thể chứa gluten, sữa bột hoặc các loại hạt, nên cần đối chiếu thành phần trên bao bì nếu bạn dễ dị ứng.",
     fieldsForShop: fieldsForShop("khối lượng tịnh"),
     imageAlt: "Ảnh minh họa yến mạch cán trong thau trên nền xanh",
     credit: {
@@ -121,8 +139,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Thức uống quen thuộc, tiện dùng cho cá nhân hoặc gia đình",
     description: "Sữa tươi đóng hộp tiện mang theo hoặc dùng trực tiếp cho bữa sáng và bữa phụ. Phù hợp với khách muốn mua sử dụng sớm với giá tiết kiệm.",
     whyDiscount,
-    storage: drinkStorage,
-    allergenNote,
+    spec: "hộp 180 ml",
+    listPrice: 8000,
+    discountPercent: 35,
+    daysToExpiry: 18,
+    storage: "Khi chưa mở hộp, để nơi khô mát, tránh nắng trực tiếp. Sau khi mở hộp, giữ lạnh và dùng hết trong 24 giờ.",
+    allergenNote: "Sản phẩm chứa sữa động vật và đường lactose, không phù hợp với người dị ứng đạm sữa bò hoặc bất dung nạp lactose.",
     fieldsForShop: fieldsForShop("dung tích thực"),
     imageAlt: "Ảnh minh họa hộp sữa nằm ngang trong cảnh mô hình thu nhỏ",
     credit: {
@@ -140,8 +162,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Thức uống giải khát tiện mang theo khi đi học, đi làm",
     description: "Trà đóng chai pha sẵn gọn nhẹ, tiện giải khát ngay trong ngày hoặc khi di chuyển. Phù hợp với khách mua dùng sớm để tối ưu chi phí.",
     whyDiscount,
-    storage: drinkStorage,
-    allergenNote,
+    spec: "chai 450 ml",
+    listPrice: 10000,
+    discountPercent: 30,
+    daysToExpiry: 30,
+    storage: "Khi chưa mở nắp, để nơi thoáng mát, tránh ánh nắng trực tiếp. Sau khi mở nắp, giữ lạnh và uống sớm trong ngày.",
+    allergenNote: "Thức uống có thể chứa caffeine tự nhiên từ lá trà và hương liệu, nên người nhạy cảm với caffeine cần xem kỹ nhãn trước khi uống.",
     fieldsForShop: fieldsForShop("dung tích thực"),
     imageAlt: "Ảnh minh họa ô giữ chỗ cho mẫu trà đóng chai",
   },
@@ -153,8 +179,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Thức uống thực vật đóng hộp tiện lợi cho nhu cầu hằng ngày",
     description: "Sữa hạt hoặc sữa đậu nành đóng hộp tiện dùng nhanh tại nhà, nơi làm việc hoặc khi ra ngoài. Dành cho khách mua sử dụng sớm với giá tốt.",
     whyDiscount,
-    storage: drinkStorage,
-    allergenNote,
+    spec: "hộp 180 ml",
+    listPrice: 9000,
+    discountPercent: 30,
+    daysToExpiry: 20,
+    storage: "Để nơi khô ráo, tránh nắng trực tiếp, lắc đều trước khi uống và giữ lạnh nếu chưa dùng hết sau khi mở hộp.",
+    allergenNote: "Sản phẩm chứa đậu nành hoặc các loại hạt, nên người dị ứng đậu nành hay hạt cây cần kiểm tra kỹ thành phần trên bao bì.",
     fieldsForShop: fieldsForShop("dung tích thực"),
     imageAlt: "Ảnh minh họa ô giữ chỗ cho mẫu sữa hạt, đậu nành đóng hộp",
   },
@@ -166,7 +196,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Sản phẩm làm sạch da mặt hằng ngày, tiện mang theo khi đi xa",
     description: "Sữa rửa mặt dạng tuýp gọn nhẹ cho bước chăm sóc da cơ bản mỗi ngày. Phù hợp với khách cần dùng ngay trong thời gian ngắn với mức giá tiết kiệm.",
     whyDiscount,
-    storage: "Để nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp và đậy kín sau khi dùng.",
+    spec: "tuýp 100 g",
+    listPrice: 65000,
+    discountPercent: 30,
+    daysToExpiry: 60,
+    storage: "Đậy kín nắp sau khi dùng, để nơi khô thoáng và tránh ánh nắng trực tiếp.",
+    allergenNote: "Tránh để sản phẩm dính vào mắt và ngưng dùng ngay nếu da có dấu hiệu châm chích hoặc kích ứng.",
     fieldsForShop: [
       "hạn sử dụng",
       "mã lô",
@@ -195,7 +230,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Đồ dùng vệ sinh răng miệng thiết yếu cho cả gia đình",
     description: "Kem đánh răng dạng tuýp quen thuộc cho sinh hoạt hằng ngày, dễ dùng và dễ bảo quản. Lựa chọn tiết kiệm cho khách mua sử dụng liên tục.",
     whyDiscount,
-    storage: "Để nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp và đậy kín sau khi dùng.",
+    spec: "tuýp 180 g",
+    listPrice: 35000,
+    discountPercent: 30,
+    daysToExpiry: 75,
+    storage: "Đóng kín nắp sau mỗi lần sử dụng và để ở nơi khô ráo, tránh nguồn nhiệt cao.",
+    allergenNote: "Không nuốt kem đánh răng và theo dõi độ tuổi khuyến nghị trên vỏ tuýp nếu dùng cho trẻ nhỏ.",
     fieldsForShop: [
       "hạn sử dụng",
       "mã lô",
@@ -224,7 +264,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Sản phẩm chăm sóc cá nhân dùng hằng ngày với giá tiết kiệm",
     description: "Dầu gội hoặc sữa tắm đóng chai dùng trong sinh hoạt cá nhân và gia đình. Phù hợp với khách có nhu cầu sử dụng thường xuyên trong thời gian gần.",
     whyDiscount,
-    storage: "Để nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp và đậy kín sau khi dùng.",
+    spec: "chai 500 ml",
+    listPrice: 90000,
+    discountPercent: 30,
+    daysToExpiry: 90,
+    storage: "Đậy kín nắp hoặc khóa vòi sau khi dùng, để nơi khô thoáng và tránh nắng chiếu trực tiếp.",
+    allergenNote: "Chỉ dùng ngoài da, rửa sạch bằng nước nếu sản phẩm dính vào mắt và ngưng dùng khi thấy kích ứng.",
     fieldsForShop: [
       "hạn sử dụng",
       "mã lô",
@@ -253,7 +298,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Sản phẩm giặt giũ tiện dụng cho nhu cầu sinh hoạt gia đình",
     description: "Nước giặt hoặc nước xả dạng túi gọn nhẹ, thuận tiện cho việc giặt giũ hằng ngày tại nhà. Phù hợp để mua dùng sớm với chi phí hợp lý.",
     whyDiscount,
-    storage: "Đóng kín sau khi dùng, để nơi khô thoáng, tránh nắng trực tiếp và xa tầm tay trẻ em.",
+    spec: "túi 1,8 lít",
+    listPrice: 95000,
+    discountPercent: 30,
+    daysToExpiry: 90,
+    storage: "Sau khi mở và rót, giữ kín miệng túi, đặt nơi khô mát, tránh ánh nắng và để xa tầm tay trẻ em.",
+    allergenNote: "Không được uống, tránh để dung dịch bắn vào mắt và rửa sạch tay sau khi tiếp xúc trực tiếp.",
     fieldsForShop: [
       "hạn sử dụng",
       "mã lô",
@@ -282,7 +332,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Đồ dùng nhà bếp thiết yếu, phù hợp mua sử dụng hằng ngày",
     description: "Nước rửa chén đóng chai phục vụ nhu cầu làm sạch dụng cụ bếp trong gia đình. Lựa chọn tiết kiệm cho khách mua dùng ngay.",
     whyDiscount,
-    storage: "Đóng kín sau khi dùng, để nơi khô thoáng, tránh nắng trực tiếp và xa tầm tay trẻ em.",
+    spec: "chai 750 g",
+    listPrice: 32000,
+    discountPercent: 30,
+    daysToExpiry: 75,
+    storage: "Đóng chặt nắp sau khi dùng, để nơi thoáng mát, tránh nắng trực tiếp và xa tầm tay trẻ em.",
+    allergenNote: "Không được uống, tránh tiếp xúc với mắt và mang găng tay nếu da tay dễ khô hoặc kích ứng.",
     fieldsForShop: [
       "hạn sử dụng",
       "mã lô",
@@ -307,11 +362,16 @@ export const nearDateTemplates: NearDateTemplate[] = [
     id: "nd-khan-giay-giay-uot",
     group: "household",
     unit: "hộp",
-    title: "Khăn giấy, giấy ướt đóng hộp",
+    title: "Khăn giấy đóng hộp",
     subtitle: "Vật dụng sinh hoạt tiện lợi cho bàn ăn, phòng khách hoặc mang theo",
-    description: "Khăn giấy hoặc giấy ướt tiện dùng trong sinh hoạt hằng ngày tại nhà hay văn phòng. Thích hợp mua dùng sớm với mức giá tiết kiệm.",
+    description: "Khăn giấy khô tiện dùng trong sinh hoạt hằng ngày tại nhà hay văn phòng. Thích hợp mua dùng sớm với mức giá tiết kiệm.",
     whyDiscount,
-    storage: "Bảo quản nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp và tránh nơi ẩm mốc.",
+    spec: "hộp 180 tờ khăn giấy khô (2 lớp)",
+    listPrice: 22000,
+    discountPercent: 30,
+    daysToExpiry: 90,
+    storage: "Để hộp khăn giấy ở nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp và nơi ẩm mốc.",
+    allergenNote: "Không dùng khăn giấy lau trực tiếp lên vùng da có vết thương hở.",
     fieldsForShop: [
       "hạn sử dụng",
       "mã lô",
@@ -340,7 +400,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Nguồn pin dự phòng tiện lợi cho các thiết bị gia dụng nhỏ",
     description: "Pin tiểu đóng vỉ dùng cho các thiết bị điện tử gia dụng phù hợp theo thông số trên bao bì. Thuận tiện để thay thế sớm tại nhà với chi phí hợp lý.",
     whyDiscount,
-    storage: "Bảo quản nơi khô ráo, thoáng mát, tránh nhiệt độ cao, ẩm ướt và để xa tầm tay trẻ em.",
+    spec: "vỉ 4 viên pin AA (1,5 V)",
+    listPrice: 20000,
+    discountPercent: 30,
+    daysToExpiry: 120,
+    storage: "Giữ pin ở nơi khô mát, tránh nhiệt độ cao, ẩm ướt và để xa tầm tay trẻ nhỏ.",
+    allergenNote: "Lắp đúng cực âm dương, không sạc lại pin dùng một lần và không lắp lẫn pin mới với pin cũ trong cùng thiết bị.",
     fieldsForShop: [
       "hạn sử dụng",
       "mã lô",
@@ -368,8 +433,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Gồm bánh mì hoặc bông lan, xúc xích và sữa tươi đóng hộp",
     description: "Bộ ba gồm bánh mì hoặc bông lan, xúc xích ăn liền và sữa tươi đóng hộp cho bữa sáng gọn nhẹ. Tiện mua một lần để dùng sớm với giá tiết kiệm.",
     whyDiscount,
-    storage: "Bảo quản từng món theo hướng dẫn ghi trên bao bì, tránh nơi ẩm nóng và ánh nắng trực tiếp.",
-    allergenNote,
+    spec: "1 gói bánh mì/bông lan 65 g, 1 gói xúc xích 40 g và 1 hộp sữa tươi 180 ml",
+    listPrice: 26000,
+    discountPercent: 35,
+    daysToExpiry: 5,
+    storage: "Bảo quản từng món theo hướng dẫn trên bao bì ở nơi thoáng mát, tránh nắng và dùng sớm sau khi mở gói hoặc mở hộp.",
+    allergenNote: "Combo có thể chứa bột mì (gluten), trứng, sữa động vật và đạm đậu nành, nên cần kiểm tra thành phần từng món trước khi ăn.",
     fieldsForShop: [
       "hạn sử dụng từng món",
       "mã lô từng món",
@@ -399,7 +468,12 @@ export const nearDateTemplates: NearDateTemplate[] = [
     subtitle: "Gồm sữa rửa mặt, kem đánh răng và dầu gội hoặc sữa tắm",
     description: "Bộ sản phẩm thiết yếu gồm sữa rửa mặt, kem đánh răng và dầu gội hoặc sữa tắm cho sinh hoạt hằng ngày. Tiện sắm đủ một lượt với chi phí tiết kiệm.",
     whyDiscount,
-    storage: "Để các sản phẩm ở nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp và đậy kín sau khi dùng.",
+    spec: "1 tuýp sữa rửa mặt 100 g, 1 tuýp kem đánh răng 180 g và 1 chai dầu gội/sữa tắm 500 ml",
+    listPrice: 190000,
+    discountPercent: 35,
+    daysToExpiry: 60,
+    storage: "Đậy kín nắp từng sản phẩm sau khi dùng và để ở nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp.",
+    allergenNote: "Chỉ dùng ngoài da hoặc vệ sinh răng miệng đúng công dụng từng món, tránh để dính vào mắt và ngưng dùng nếu bị kích ứng.",
     fieldsForShop: [
       "hạn sử dụng từng món",
       "mã lô từng món",
@@ -427,6 +501,20 @@ export function visibleNearDateTemplates(listings: Food[], category: string, que
       lot.stock > 0 && lot.end > now && saleOrderable(lot, now)),
   );
 }
+
+// Cùng quy tắc sản phẩm tham chiếu: khách trả Q (giảm nền 5%), quán nhận F theo mức discountPercent.
+export const nearDatePricing = (template: NearDateTemplate) =>
+  menuPricing(template.listPrice, template.discountPercent);
+export const nearDateBasis = (template: NearDateTemplate) => {
+  const { salePrice, originalPrice, negotiatedPrice } = nearDatePricing(template);
+  return { unitPrice: salePrice, originalUnitPrice: originalPrice, supplierUnitPrice: negotiatedPrice };
+};
+
+// HSD của mẫu đặt thử tính từ ngày xem, theo giờ Việt Nam.
+export const nearDateExpiry = (template: NearDateTemplate, now: number) =>
+  new Date(now + template.daysToExpiry * 86400000).toLocaleDateString("vi-VN", {
+    timeZone: "Asia/Ho_Chi_Minh", day: "2-digit", month: "2-digit", year: "numeric",
+  });
 
 export function nearDateTemplateFormValues(template: NearDateTemplate) {
   return {

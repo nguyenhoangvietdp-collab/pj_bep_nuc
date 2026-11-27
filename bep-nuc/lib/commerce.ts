@@ -141,7 +141,7 @@ export function browseUrl(value: unknown) {
   if (typeof value !== "string" || !/^\/(?:meals(?:\?|$)|\?|$|shops\/[A-Za-z0-9_-]+(?:\?|$))/.test(value) || /[\\\r\n]/.test(value)) return "/meals";
   const url = new URL(value, "https://local.invalid");
   if (url.origin !== "https://local.invalid" || !/^\/(?:meals|shops\/[A-Za-z0-9_-]+)?$/.test(url.pathname)) return "/meals";
-  const allowed = ["q", "budget", "category", "shop", "stock", "receiving", "sort"];
+  const allowed = ["q", "budget", "category", "all", "shop", "stock", "receiving", "sort"];
   const params = new URLSearchParams();
   for (const key of allowed) if (url.searchParams.has(key)) params.set(key, url.searchParams.get(key)!);
   return (url.pathname === "/" ? "/meals" : url.pathname) + (params.size ? "?" + params.toString() : "");

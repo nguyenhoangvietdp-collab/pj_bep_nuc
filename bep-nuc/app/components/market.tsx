@@ -12,9 +12,12 @@ import SalePrice from "./sale-price";
 import ShopPicture from "./shop-picture";
 import {productAssets} from "../../lib/product-assets";
 import NearDateInfo from "./near-date-info";
-import {retailCategories,retailLabel,normalizeRetailCategory,isNonFoodGroup,nearDateGroups} from "../../lib/near-date";
+import {retailLabel,normalizeRetailCategory,isNonFoodGroup,nearDateGroups,nearDateCategory} from "../../lib/near-date";
 import {nearDateTemplates,visibleNearDateTemplates,type NearDateTemplate} from "../../lib/near-date-templates";
+import {NearDatePrice,NearDateCheckout} from "./near-date-offer";
+import {nearDatePricing} from "../../lib/near-date-templates";
 import HelpTip from "./help-tip";
+import RetailReferenceCatalogue from "./retail-reference-catalogue";
 import PickupBenefit from "./pickup-benefit";
 import PickupPoint from "./pickup-point";
 import MealRequests from "./meal-requests";
@@ -22,13 +25,17 @@ import LoadingScreen from "./loading-screen";
 import { SiteHeader, SiteFooter } from "./site-frame";
 import { useAppRouter as useRouter } from "./navigation";
 import { apiFetch, googleLogin } from "../../lib/mvp-client";
-import { isCloudMvp, readAppLocation, replaceAppUrl } from "../../lib/app-navigation";
+import { isCloudMvp, readAppLocation, replaceAppUrl, appHref } from "../../lib/app-navigation";
 import { filterLaunchMenu, menuShops } from "../../lib/launch-menu";
 import Offers from "./offers";
 import FulfillmentChoice from "./fulfillment-choice";
 import SavedPlace from "./saved-place";
 import {flowerImageCaption} from "../../lib/flower-demo";
 import {ReferenceCard,ReferenceDetails,ReferencePrice} from "./reference-product";
+import ProductCard from "./product-card";
+import {AddToCartButton,BuyBox} from "./use-cart";
+import ShopNav,{Breadcrumb,DirectoryTree,SubcategoryPills} from "./product-directory";
+import {departments,departmentOf,directoryCount,directoryHref,referenceItems} from "../../lib/directory";
 import {filterRequestFlowers,requestProduct,requestUnit} from "../../lib/request-catalogue";
 import {voucherLabel,voucherCurrent,flowerQuantityLabel,saleState,saleOrderable,isStoredLotImage,type PublicTradingRules} from "../../lib/trading";
 import {
@@ -40,7 +47,7 @@ import {
   supportLink,
   voucherHint,
   filterFood,
-  mealCategories,
+  foodCategories,
   money,
   time,
   Food,
@@ -99,6 +106,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
     [budget, setBudget] = useState(0),
     [filtersReady, setFiltersReady] = useState(false),
     [category, setCategory] = useState(""),
+    [allFood, setAllFood] = useState(false),
     [shopFilter, setShopFilter] = useState(""),
     [stockOnly, setStockOnly] = useState(true),
     [receiving, setReceiving] = useState(false),
@@ -190,17 +198,23 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
       }
     } catch {}
     try { setFulfillment(sessionStorage.getItem("bc-fulfillment")==="delivery"?"delivery":"pickup"); } catch {}
-    const p = new URLSearchParams(readAppLocation().search);
-    setQuery(p.get("q") || "");
-    const limit = Number(p.get("budget"));
-    setBudget(Number.isSafeInteger(limit) && limit > 0 ? limit : 0);
-    setCategory(normalizeRetailCategory(p.get("category") || ""));
-    setShopFilter(p.get("shop") || "");
-    setStockOnly(p.get("stock") !== "all");
-    setReceiving(p.get("receiving") === "1");
-    setSort(p.get("sort") === "price" ? "price" : "end");
+    const readFilters = () => {
+      const p = new URLSearchParams(readAppLocation().search);
+      setQuery(p.get("q") || "");
+      const limit = Number(p.get("budget"));
+      setBudget(Number.isSafeInteger(limit) && limit > 0 ? limit : 0);
+      setCategory(normalizeRetailCategory(p.get("category") || ""));
+      setAllFood(p.get("all") === "1");
+      setShopFilter(p.get("shop") || "");
+      setStockOnly(p.get("stock") !== "all");
+      setReceiving(p.get("receiving") === "1");
+      setSort(p.get("sort") === "price" ? "price" : "end");
+    };
+    readFilters();
+    window.addEventListener("hashchange", readFilters);
     setFiltersReady(true);
     return () => {
+      window.removeEventListener("hashchange", readFilters);
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", refresh);
       loadVersion.current++;
@@ -214,6 +228,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
     if (query) p.set("q", query);
     if (budget) p.set("budget", String(budget));
     if (category) p.set("category", category);
+    else if (allFood) p.set("all", "1");
     if (shopFilter) p.set("shop", shopFilter);
     if (!stockOnly) p.set("stock", "all");
     if (receiving) p.set("receiving", "1");
@@ -222,7 +237,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
     replaceAppUrl(url);
     setBrowseHref(url);
     try { sessionStorage.setItem("bc-browse", url); } catch {}
-  }, [query, budget, filtersReady, category, shopFilter, stockOnly, receiving, sort, view]);
+  }, [query, budget, filtersReady, category, shopFilter, stockOnly, receiving, sort, view, allFood]);
   useEffect(() => {
     if (!selected) return;
     setQty(1);
@@ -458,13 +473,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
   }
   function filterFields(values: Filters, change: (next: Filters) => void, prefix: string) {
     return <>
-      <fieldset className="facet-group"><legend>Nhóm hàng</legend>
-        {[{value:"",label:"Đồ ăn"},{value:"Hoa cắm nhà",label:"Hoa"},{value:"Hàng gần hạn sử dụng",label:"Hàng gần hạn sử dụng"}].map(group=><label key={group.label} className="facet-option"><input type="radio" name={`${prefix}-group`} checked={group.value==="Hàng gần hạn sử dụng"?values.category.startsWith("Hàng gần hạn sử dụng"):group.value?values.category===group.value:values.category!=="Hoa cắm nhà"&&!values.category.startsWith("Hàng gần hạn sử dụng")} onChange={()=>change({...defaultFilters,category:group.value})}/><span>{group.label}</span></label>)}
-      </fieldset>
-      {values.category!=="Hoa cắm nhà"&&!values.category.startsWith("Hàng gần hạn sử dụng")&&<fieldset className="facet-group"><legend>Loại món</legend>
-        {["",...mealCategories].map(value=><label key={value} className="facet-option"><input type="radio" name={`${prefix}-category`} checked={values.category===value} onChange={()=>change({...values,category:value})}/><span>{value||"Tất cả món"}</span></label>)}
-      </fieldset>}
-      {values.category.startsWith("Hàng gần hạn sử dụng")&&<fieldset className="facet-group"><legend>Loại sản phẩm gần hạn sử dụng</legend>{retailCategories.map(value=><label key={value} className="facet-option"><input type="radio" name={`${prefix}-near-date`} checked={values.category===value} onChange={()=>change({...values,category:value})}/><span>{value==="Hàng gần hạn sử dụng"?"Tất cả gần hạn sử dụng":value.replace("Hàng gần hạn sử dụng: ","")}</span></label>)}</fieldset>}
+      {view==="shop"&&<fieldset className="facet-group"><legend>Loại hàng</legend><label>Chọn loại<select value={values.category} onChange={e=>change({...values,category:e.target.value})}><option value="">Đồ ăn</option>{foodCategories.map(value=><option key={value}>{value}</option>)}</select></label></fieldset>}
       <fieldset className="facet-group"><legend>Giá mỗi lô</legend>
         <p className="facet-hint">{values.category==="Hoa cắm nhà"?"Lọc theo giá sale trước voucher; chưa gồm phí giao.":"Theo giá món đang hiển thị; chưa gồm phí giao."}</p>
         {[0, 30000, 40000, 50000].map(value => <label key={value} className="facet-option"><input type="radio" name={`${prefix}-budget`} checked={values.budget === value} onChange={() => change({ ...values, budget: value })} /><span>{value ? `Không quá ${money(value)}` : "Không giới hạn"}</span></label>)}
@@ -480,13 +489,12 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
   function reset() {
     setQuery("");
     setBudget(0);
-    setCategory("");
     setShopFilter("");
     setStockOnly(true);
     setReceiving(false);
     setSort("end");
   }
-  const filterCount = Number(!!budget) + Number(!!category) + Number(!!shopFilter) + Number(receiving) + Number(!stockOnly);
+  const filterCount = Number(!!budget) + Number(!!shopFilter) + Number(receiving) + Number(!stockOnly);
   const hasFilters = !!query || filterCount > 0 || sort !== "end";
   const shown = catalog
     ? filterFood(
@@ -504,13 +512,41 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
       )
     : [];
   if(nearDateGroup&&sort==="end")shown.sort((a,b)=>(a.lot?.nearDate?.expiresAt??Infinity)-(b.lot?.nearDate?.expiresAt??Infinity)||a.end-b.end);
-  const templates = catalog && view === "browse" && nearDateGroup && !shopFilter && !budget && !receiving
-    ? visibleNearDateTemplates(catalog.listings, category, query, now)
+  const templatePrice=(t:NearDateTemplate)=>nearDatePricing(t).salePrice;
+  const templates = catalog && view === "browse" && nearDateGroup && !shopFilter && !receiving
+    ? visibleNearDateTemplates(catalog.listings, category, query, now).filter(t=>!budget||templatePrice(t)<=budget)
     : [];
+  if(sort==="price")templates.sort((a,b)=>templatePrice(a)-templatePrice(b));
   const browseShops = [...(catalog?.shops || []), ...(isCloudMvp ? menuShops.filter(p=>!catalog?.shops.some(s=>s.id===p.id)) : [])];
-  const upcoming = isCloudMvp && view === "browse" && !receiving
-    ? (nearDateGroup?[]:flowerGroup?filterRequestFlowers(query,budget,sort).map(p=>({...p,shop:undefined})):filterLaunchMenu(query,category,budget,sort).map(p=>({...requestProduct(undefined,p.name)!,shop:p.shop}))).filter(p=>(!shopFilter||p.shop?.id===shopFilter)&&!catalog?.listings.some(l=>l.stock>0&&saleOrderable(l,now)&&(l.image===p.image||l.lot?.catalogueProductId===p.id)))
+  const source={listings:catalog?.listings??[],shops:catalog?.shops??[],now,cloud:isCloudMvp};
+  const upcoming = view === "browse" && !receiving
+    ? referenceItems(category,source,query,budget,sort,shopFilter)
     : [];
+  // Landing = nothing chosen yet: category tiles, then one shelf per department.
+  const landing = view === "browse" && !category && !allFood && !query && !budget && !shopFilter && !receiving && stockOnly && sort === "end";
+  const lotCard=(l:Food)=>{
+    const sale=saleState(l,now),active=sale?.status==="active";
+    const ended=now>=l.end;
+    return <ProductCard key={l.id} foodId={l.id} href={`/meals/${l.id}`} name={l.name}
+      spec={l.lot?.kind==="flowers"?flowerQuantityLabel(l.lot):l.lot?.nearDate?`${l.lot.nearDate.amount} ${l.lot.nearDate.unit}`:"1 suất"}
+      price={l.price} original={l.customerPricing?.originalUnitPrice??(active?sale.regular:undefined)} discount={l.customerPricing?.baseDiscountPercent??(active?sale.percent:undefined)}
+      media={<FoodImage l={l}/>}
+      action={<button type="button" disabled={!l.stock||ended} onClick={()=>openFood(l)} aria-label={`Chọn mua ${l.name}`}>{!l.stock?"Hết hàng":ended?"Hết giờ nhận":"Chọn mua"}</button>}/>;
+  };
+  const templateCard=(t:NearDateTemplate)=>{
+    const pricing=nearDatePricing(t);
+    return <ProductCard key={t.id} href={`/meals/${t.id}`} name={t.title} spec={t.spec} price={pricing.salePrice} original={t.listPrice} discount={pricing.discountPercent}
+      media={<FoodImage template={t}/>} credit={t.credit?.license.startsWith("CC BY-SA")?`Ảnh: ${t.credit.author}, ${t.credit.license}`:undefined}
+      action={<AddToCartButton id={t.id} name={t.title}/>}/>;
+  };
+  const shelves=landing&&catalog?departments.map(department=>{
+    const cards=[
+      ...filterFood(catalog.listings,catalog.shops,"",department.value,"",true,false,"end",now,0,vouchers).map(lotCard),
+      ...referenceItems(department.value,source).map(({product})=><ReferenceCard key={product.id} product={product}/>),
+      ...(department.key==="near"?visibleNearDateTemplates(catalog.listings,department.value,"",now).map(templateCard):[]),
+    ];
+    return {department,cards};
+  }).filter(shelf=>shelf.cards.length):[];
   function foodDetails(l: Food, n: number, change: (n: number) => void) {
     const Heading = view === "meal" ? "h1" : "h2";
     const s = catalog?.shops.find((s) => s.id === l.shopId);
@@ -527,6 +563,14 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
             <Link href={`/shops/${l.shopId}`}>{s?.name}</Link>
           </div>
           <p className="menu-availability">Lô sẵn – giữ suất 10 phút</p>
+          <section className="meal-purchase" aria-label="Chọn số suất và kiểm tra giá">
+            {(l.customerPricing||saleState(l,now))?<SalePrice item={l} now={now}/>:<div className="meal-price"><span>{l.lot?"Giá trước voucher":"Giá menu · trước voucher"}</span><strong>{money(l.price)} <small>/ {l.lot?.kind==="flowers"?flowerQuantityLabel(l.lot):l.lot?.nearDate?`${l.lot.nearDate.amount} ${l.lot.nearDate.unit}`:"suất"}</small></strong></div>}
+            <p className="fine">{displayed.voucher ? `Ước tính với voucher ${voucherLabel(displayed.voucher)}` : displayed.rate ? `Ước tính với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}</p>
+            <Quantity unit={l.lot&&l.lot.kind!=="food"?"đơn vị":"suất"} n={n} max={Math.min(3, l.stock)} disabled={false} change={change} />
+            <p className="detail-total" aria-live="polite">Tổng dự tính {n} {(l.lot?.kind==="flowers"||l.lot?.kind==="goods")?"đơn vị mua":"suất"} <strong>{money(total.total)}</strong></p>
+            <button disabled={l.stock < n || now >= l.end || !saleOrderable(l,now)} onClick={() => saveDraft(l, n)}>Kiểm tra lô đã chọn</button>
+            <p className="fine">Tối đa 3 đơn vị mua · Chọn tự lấy hoặc giao ở bước tiếp theo</p>
+          </section>
           <PickupBenefit/>
           <LotPreparation lot={l}/>
           {l.lot?.nearDate&&<NearDateInfo value={l.lot.nearDate}/>}
@@ -537,14 +581,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
             <p className="meal-pickup"><b>{time(l.start)}–{time(l.end)}</b> · Còn {l.stock} {(l.lot?.kind==="flowers"||l.lot?.kind==="goods")?"đơn vị mua":"suất"}</p>
             {l.lot?.kind!=="flowers"&&!(l.lot?.kind==="goods"&&!!l.lot.nearDate&&isNonFoodGroup(l.lot.nearDate.group))&&<p className="meal-allergens"><b>Dị ứng:</b> {l.allergens || "Chưa có thông tin. Hỏi quán trước khi đặt."}</p>}
           </section>
-          <section className="meal-purchase" aria-label="Chọn số suất và kiểm tra giá">
-            {(l.customerPricing||saleState(l,now))?<SalePrice item={l} now={now}/>:<div className="meal-price"><strong>{money(displayed.total)} <small>/ {l.lot?"lô":"suất"}</small></strong><span>{l.lot?"Giá lô trước voucher":"Giá menu"} {money(l.price)}</span></div>}
-            <p className="fine">{displayed.voucher ? `Ước tính với voucher ${voucherLabel(displayed.voucher)}` : displayed.rate ? `Ước tính với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}</p>
-            <Quantity unit={l.lot&&l.lot.kind!=="food"?"đơn vị":"suất"} n={n} max={Math.min(3, l.stock)} disabled={false} change={change} />
-            <p className="detail-total" aria-live="polite">Tổng {n} {(l.lot?.kind==="flowers"||l.lot?.kind==="goods")?"đơn vị mua":"suất"} <strong>{money(total.total)}</strong></p>
-            <button disabled={l.stock < n || now >= l.end || !saleOrderable(l,now)} onClick={() => saveDraft(l, n)}>Kiểm tra lô đã chọn</button>
-            <p className="fine">Tối đa 3 đơn vị mua · Chọn tự lấy hoặc giao ở bước tiếp theo</p>
-          </section>
+
         </div>
       </div>
     );
@@ -552,10 +589,12 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
 
   const referenceParams=new URLSearchParams(typeof window === "undefined"?"":readAppLocation().search);
   const referenceName=referenceParams.get("product")||referenceParams.get("menu");
+  const nearDateRef=nearDateTemplates.find(p=>p.id===referenceName);
   const referenceMeal=requestProduct(referenceParams.get("product")||undefined,referenceParams.get("menu")||undefined);
   return (
     <div className={`site-frame commerce commerce-${view}`} id="top">
       <SiteHeader role={user?.role} name={user?.name} approved={user?.approved} />
+      <ShopNav/>
       <main id="content" tabIndex={-1}>
       
       {catalog?.demo && (
@@ -595,7 +634,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
             {view === "offers" && <>{user&&modern&&<SavedPlace place={user.place} demo={catalog.demo} disabled={busy||!!held} save={a=>act("save_place",a)}/>}<Offers listings={catalog.listings} shops={catalog.shops} vouchers={vouchers} now={now} browseHref={browseHref} rules={catalog.tradingRules}/></>}
             {(view === "browse" || view === "shop") && (
               <>
-                {view === "browse" ? (
+                {view === "browse" ? !landing ? <h1 className="visually-hidden">Sản phẩm</h1> : (
                   <section className="market-banner">
                     <div>
 
@@ -640,23 +679,30 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
           <button aria-label="Tìm kiếm">Tìm</button>
         </form>
                 </section>
-                <div className="catalogue-layout">
-                  <aside className="catalogue-sidebar" aria-label="Bộ lọc món">
+                {landing ? <>
+                  <nav className="category-tiles" aria-label="Chọn ngành hàng">{departments.map(department=><a key={department.key} href={appHref(directoryHref(department.value))}><img src={department.image} alt="" width="96" height="96" loading="lazy"/><span>{department.label}</span></a>)}</nav>
+                  {shelves.map(({department,cards})=><section className="product-shelf" key={department.key} aria-labelledby={`shelf-${department.key}`}>
+                    <header><h2 id={`shelf-${department.key}`}>{department.label}</h2><a href={appHref(directoryHref(department.value))}>Xem tất cả {cards.length}</a></header>
+                    <div className="product-grid">{cards.slice(0,4)}</div>
+                  </section>)}
+                  {!shelves.length&&<section className="market-empty"><h3>Chưa mở nhận đơn</h3><p>Chọn một ngành hàng để xem món khi quán đăng.</p></section>}
+                </> : <div className="catalogue-layout">
+                  <aside className="catalogue-sidebar" aria-label="Danh mục và bộ lọc">
+                    {view==="browse"&&<><div className="facet-heading"><h2>Danh mục</h2></div><DirectoryTree category={category} all={allFood||!category} counts={value=>directoryCount(value,source)}/></>}
                     <div className="facet-heading"><h2>Lọc theo nhu cầu</h2></div>
                     {filterFields(currentFilters, applyFilters, "desktop")}
                   </aside>
                   <section className="catalogue-results" aria-label="Kết quả tìm món">
+                    {view==="browse"&&<><Breadcrumb category={category}/><SubcategoryPills category={category} all={allFood||!category}/></>}
                     <div className="catalogue-toolbar">
                       <div><h2>{nearDateGroup?"Hàng gần hạn sử dụng":flowerGroup?"Hoa cắm nhà":query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : !catalog.listings.length ? "Khám phá thực đơn" : "Lô đang có"}</h2><p role="status" aria-live="polite">{nearDateGroup?"Chọn loại sản phẩm · Xem hạn dùng và lý do giảm giá trước khi mua":flowerGroup?"Giá sale trước voucher · Gửi yêu cầu để xác nhận nguồn hoa":catalog.listings.length ? `${shown.length} lô${stockOnly ? " còn hàng" : ""}` : "Đang nhận yêu cầu · Xác nhận khả năng phục vụ trước thanh toán"}</p></div>
                       <button className="secondary mobile-filter-toggle" ref={filterOpener} onClick={() => { setMobileFilters(currentFilters); filterDialog.current?.showModal(); }}>Bộ lọc{filterCount > 0 ? ` (${filterCount})` : ""}</button>
-                      {(flowerGroup || nearDateGroup || catalog.listings.length > 0 || sort === "price") && <label className="catalogue-sort"><span>Sắp xếp</span><select value={sort} onChange={e => setSort(e.target.value)}><option value="end">{nearDateGroup?"Hạn dùng gần nhất":flowerGroup?"Thứ tự danh mục":catalog.listings.length ? "Giờ nhận kết thúc sớm" : "Thứ tự thực đơn"}</option><option value="price">Giá thấp đến cao</option></select></label>}
+                      <div className="sort-chips" role="group" aria-label="Sắp xếp">{[{value:"end",label:nearDateGroup?"Hạn dùng gần nhất":flowerGroup?"Thứ tự danh mục":catalog.listings.length?"Giờ nhận kết thúc sớm":"Thứ tự thực đơn"},{value:"price",label:"Giá thấp đến cao"}].map(option=><button type="button" key={option.value} className="secondary" aria-pressed={sort===option.value} onClick={()=>setSort(option.value)}>{option.label}</button>)}</div>
                     </div>
                   <>
-                  {nearDateGroup&&<nav className="retail-category-nav" aria-label="Danh mục hàng gần hạn"><div className="help-heading"><h3>Bạn muốn mua gì?</h3><HelpTip title="Vì sao có ưu đãi dùng sớm?"><p>Loại sản phẩm cho biết bạn đang mua gì. Gần hạn sử dụng là lý do giảm giá, không đồng nghĩa hàng còn lại cuối ngày.</p><p>Chọn lượng phù hợp với nhu cầu và hạn dùng trên nhãn. Giá ưu đãi và khoản tự lấy được kiểm tra trước khi thanh toán.</p></HelpTip></div><div>{retailCategories.map(value=><button type="button" key={value} className="secondary" aria-pressed={category===value} onClick={()=>applyFilters({...currentFilters,category:value})}>{value===retailLabel?"Tất cả sản phẩm":value.replace(retailLabel+": ","")}</button>)}</div></nav>}
                   <div className="filter-chips" role="group" aria-label="Bộ lọc đang áp dụng">
                     {query && <button className="secondary" onClick={() => setQuery("")}>Từ khóa: {query} ×</button>}
                     {!!budget && <button className="secondary" onClick={() => setBudget(0)}>Đến {money(budget)} / suất ×</button>}
-                    {category && <button className="secondary" onClick={() => setCategory("")}>{nearDateGroup?category.replace(retailLabel+": ",""):category} ×</button>}
                     {shopFilter && view === "browse" && <button className="secondary" onClick={() => setShopFilter("")}>{browseShops.find(s => s.id === shopFilter)?.name || "Quán đã chọn"} ×</button>}
                     {receiving && <button className="secondary" onClick={() => setReceiving(false)}>Đang nhận ×</button>}
                     {!stockOnly && <button className="secondary" onClick={() => setStockOnly(true)}>Hiện cả hết suất ×</button>}
@@ -664,9 +710,9 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                   </div>
                   {hasFilters && <button className="text-button clear-result-filters" onClick={reset}>Xóa tất cả điều kiện</button>}
                 {!shown.length && !templates.length && (catalog.listings.length > 0 || !upcoming.length) && (
-                  <section className="market-empty">
+                  <section className={nearDateGroup?"market-empty retail-stock-status":"market-empty"}>
                     <h3>
-                      {nearDateGroup?"Chưa có sản phẩm phù hợp":catalog.listings.length
+                      {nearDateGroup?"Chưa có lô được xác nhận":catalog.listings.length
                         ? "Chưa tìm thấy món phù hợp"
                         : "Chưa mở nhận đơn"}
                     </h3>
@@ -675,73 +721,20 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                     {receiving && <button className="secondary" onClick={() => setReceiving(false)}>Xem cả khung nhận sắp tới</button>}
                   </section>
                 )}
-                <section className="food-grid" aria-label="Danh sách món">
-                  {shown.map((l) => { const displayed = displayPrice(l, vouchers, now); return (
-                    <article
-                      className="food-card"
-                      data-food-id={l.id}
-                      key={l.id}
-                    >
-                      <button
-                        className="food-picture-button"
-                        aria-label={`Xem ${l.name}`}
-                        onClick={() => openFood(l)}
-                      >
-                        <FoodImage l={l} />
-                      </button>
-                      <div className="food-card-body"><PickupBenefit/>{l.lot?.nearDate&&<NearDateInfo value={l.lot.nearDate} compact/>}
-                        <div className="food-card-description">
-                          <h3><button className="plain-title" onClick={() => openFood(l)}>{l.name}</button></h3>
-                          <Link className="shop-meta" href={`/shops/${l.shopId}`}>{catalog.shops.find(s => s.id === l.shopId)?.name}</Link>
-                          <p className="food-address">{catalog.shops.find(s => s.id === l.shopId)?.address || "Chưa có địa chỉ nhận"}</p>
-                          <p className="pickup-line"><b>Nhận {time(l.start)}–{time(l.end)}</b></p>
-                          <p className="fine">Lô sẵn – giữ suất 10 phút</p>
-                          <LotPreparation lot={l}/>
-                          <span className="stock-label">{l.stock ? `Còn ${l.stock} ${l.lot?"lô":"suất"}` : "Hết hàng"}</span>
-                        </div>
-                        <div className="food-card-purchase">
-                          {(l.customerPricing||saleState(l,now))?<SalePrice item={l} now={now}/>:<div className="food-price-row"><strong className="food-price">{money(displayed.total)}</strong><span className="food-menu-price">{l.lot?"Giá lô":"Giá menu"} {money(l.price)}</span></div>}
-                          {l.id.startsWith("flower-")&&!isStoredLotImage(l.image)&&<p className="fine">{flowerImageCaption}</p>}{l.lot&&<p className="fine">{l.lot.offer==="surplus"?"Lô còn lại cuối phiên":"Khuyến mãi cửa hàng"} · {l.lot.kind==="flowers"?`${flowerQuantityLabel(l.lot)} · gói cơ bản`:l.lot.contents}</p>}
-                          <p className="price-condition">{displayed.voucher ? `Với voucher ${voucherLabel(displayed.voucher)}` : displayed.rate ? `Với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}{fulfillment === "delivery" && " · Chưa gồm phí giao"}</p>
-                          <button disabled={!l.stock || now >= l.end} onClick={() => openFood(l)}>Xem lô này</button>
-                        </div>
-                      </div>
-                    </article>
-                  ); })}
-                  {templates.map(template => (
-                    <article className="food-card" key={template.id}>
-                      <Link className="food-picture-button" href={`/meals/${template.id}`} aria-label={`Xem ${template.title}`}>
-                        <FoodImage template={template} />
-                      </Link>
-                      <div className="food-card-body">
-                        <div className="food-card-description">
-                          <p className="fine">{nearDateGroups[template.group]}</p>
-                          <h3><Link className="plain-title" href={`/meals/${template.id}`}>{template.title}</Link></h3>
-                          <p>{template.subtitle}</p>
-                          {template.credit?.license.startsWith("CC BY-SA") && (
-                            <p className="fine">Ảnh: {template.credit.author}, {template.credit.license}</p>
-                          )}
-                        </div>
-                        <div className="food-card-purchase"><button type="button" disabled>Chờ quán đăng lô</button></div>
-                      </div>
-                    </article>
-                  ))}
+                {!!templates.length&&<header className="section-title"><h2>Sản phẩm đặt thử</h2><p>Bỏ vào giỏ để tính tiền thử. Giỏ không gửi đơn hay thu tiền.</p></header>}
+                <section className="product-grid" aria-label="Danh sách món">
+                  {shown.map(lotCard)}
+                  {templates.map(templateCard)}
+                  {upcoming.map(({product})=><ReferenceCard key={product.id} product={product}/>)}
                 </section>
-                {!!upcoming.length && (
-                  <section className="menu-preview" aria-labelledby="menu-preview-title">
-                    <header><h2 id="menu-preview-title">{flowerGroup?"Hoa đang ưu đãi":"Thực đơn đang ưu đãi"}</h2><p>{flowerGroup?"Giá sale trước voucher. Gửi yêu cầu để Bếp Núc xác nhận nguồn hoa, quy cách và tổng tiền.":"Giá sale trước voucher. Gửi yêu cầu để Bếp Núc kiểm tra khả năng phục vụ và xác nhận tổng tiền."}</p></header>
-                    <ul className="menu-preview-grid">
-                      {upcoming.map(p=><ReferenceCard key={p.id} product={p} shop={p.shop}/>)}
-                    </ul>
-                  </section>
-                )}
+                {nearDateGroup&&!shopFilter&&!receiving&&<RetailReferenceCatalogue query={query} category={category} budget={budget} sort={sort}/>}
                   </>
                   </section>
-                </div>
+                </div>}
                 <dialog className="filter-drawer" ref={filterDialog} aria-labelledby="filter-title" onClose={() => filterOpener.current?.focus()}>
                   <header><h2 id="filter-title">Lọc hàng theo nhu cầu</h2><button className="secondary" onClick={() => { filterDialog.current?.close(); filterOpener.current?.focus(); }}>Đóng</button></header>
                   <div className="drawer-fields">{filterFields(mobileFilters, setMobileFilters, "mobile")}</div>
-                  <footer><button className="secondary" onClick={() => setMobileFilters(defaultFilters)}>Xóa bộ lọc</button><button onClick={() => { applyFilters(mobileFilters); filterDialog.current?.close(); filterOpener.current?.focus(); }}>Áp dụng bộ lọc</button></footer>
+                  <footer><button className="secondary" onClick={() => setMobileFilters({...defaultFilters,category:mobileFilters.category})}>Xóa bộ lọc</button><button onClick={() => { applyFilters(mobileFilters); filterDialog.current?.close(); filterOpener.current?.focus(); }}>Áp dụng bộ lọc</button></footer>
                 </dialog>
                 {!flowerGroup&&!nearDateGroup&&view === "browse" && !!browseShops.length && (
                   <section className="shop-list">
@@ -770,15 +763,16 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                 return (
                   <section className="standalone-meal">
                     <Link href={template ? `/meals?category=${encodeURIComponent(retailLabel)}` : browseHref}>{template ? "Quay lại danh mục" : "Quay lại tìm món"}</Link>
+                    {(l||template||requestProduct(id))&&<Breadcrumb category={template?nearDateCategory(template.group):l?(l.lot?.kind==="goods"&&l.lot.nearDate?nearDateCategory(l.lot.nearDate.group):l.category):requestProduct(id)!.category} name={l?.name??template?.title??requestProduct(id)!.name}/>}
                     {l ? (
                       foodDetails(l, qty, setQty)
-                    ) : template ? <NearDateTemplateDetails template={template}/> : requestProduct(id) ? <ReferenceDetails product={requestProduct(id)!}/> : (
+                    ) : template ? <NearDateTemplateDetails template={template} now={now}/> : requestProduct(id) ? <ReferenceDetails product={requestProduct(id)!}/> : (
                       <h1>Món đã kết thúc hoặc chưa được công bố.</h1>
                     )}
                   </section>
                 );
               })()}
-            {view === "checkout" && referenceName && <section className="reference-checkout"><Link href={browseHref}>Quay lại chọn sản phẩm</Link><h1>Kiểm tra đơn của bạn</h1>{referenceMeal ? <><MealRequests name={referenceMeal.name} product={referenceMeal} rules={catalog.tradingRules} shops={catalog.shops}/></> : <p>Sản phẩm tham khảo không tồn tại. Vui lòng quay lại danh mục.</p>}</section>}
+            {view === "checkout" && referenceName && <section className="reference-checkout"><Link href={nearDateRef ? `/meals?category=${encodeURIComponent(retailLabel)}` : browseHref}>Quay lại chọn sản phẩm</Link><h1>Kiểm tra đơn của bạn</h1>{nearDateRef ? <NearDateCheckout key={nearDateRef.id} template={nearDateRef} now={now}/> : referenceMeal ? <><MealRequests name={referenceMeal.name} product={referenceMeal} rules={catalog.tradingRules} shops={catalog.shops}/></> : <p>Sản phẩm tham khảo không tồn tại. Vui lòng quay lại danh mục.</p>}</section>}
             {view === "checkout" && !referenceName && (
               <>
                 <Link href={browseHref}>Tiếp tục tìm món</Link>
@@ -1183,7 +1177,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
 function LotPreparation({lot,preparedAt=lot.lot?.preparedAt}:{lot:Food;preparedAt?:number}) {
   return <div className="fine"><p><b>Bảo quản</b> · {lot.storage?.trim() || "Quán chưa cung cấp"}</p>{(!lot.lot||lot.lot.kind==="food")&&<p><b>Giờ chế biến</b> · {preparedAt===undefined?"Quán chưa cung cấp":time(preparedAt)}</p>}</div>;
 }
-function NearDateTemplateDetails({ template }: { template: NearDateTemplate }) {
+function NearDateTemplateDetails({ template, now }: { template: NearDateTemplate; now: number }) {
   const { credit } = template;
   return (
     <div className="meal-detail">
@@ -1203,15 +1197,16 @@ function NearDateTemplateDetails({ template }: { template: NearDateTemplate }) {
       </div>
       <div className="meal-detail-info">
         <h1>{template.title}</h1>
+        <NearDatePrice template={template} now={now}/>
+        <BuyBox id={template.id} name={template.title}/>
+        <Link className="button-link secondary-link" href={`/checkout?product=${template.id}`}>Đặt thử riêng món này</Link>
         <p>{template.description}</p>
         <section className="lot-proof">
           <h3>Vì sao giá giảm?</h3>
           <p>{template.whyDiscount}</p>
           <p><b>Bảo quản:</b> {template.storage}</p>
-          {template.allergenNote && <p><b>Dị ứng:</b> {template.allergenNote}</p>}
-          <p><b>Quán sẽ cập nhật:</b> {template.fieldsForShop.join(", ")}.</p>
+          <p><b>{isNonFoodGroup(template.group) ? "Lưu ý" : "Dị ứng"}:</b> {template.allergenNote}</p>
         </section>
-        <button type="button" disabled>Chờ quán đăng lô</button>
       </div>
     </div>
   );

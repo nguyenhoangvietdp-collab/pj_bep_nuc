@@ -25,7 +25,7 @@ if (target === "mvp-site" && existsSync(nearDateIllustrations)) {
  await cp(nearDateIllustrations, path.join(publicDir, "near-date-illustrations"), { recursive: true });
 }
 let css = "";
-for (const file of ["app/style.css", "app/commerce.css", "app/frame.css", "mvp-site/mvp.css"]) css += await readFile(path.join(root, file), "utf8") + "\n";
+for (const file of ["app/style.css", "app/commerce.css", "app/frame.css", "app/shop.css", "mvp-site/mvp.css", "app/garden.css"]) css += await readFile(path.join(root, file), "utf8") + "\n";
 css = css.replaceAll('url("/fonts/', `url("${base}/fonts/`);
 const stylesheet = `theme-${createHash("sha256").update(css).digest("hex").slice(0, 12)}.css`;
 await writeFile(path.join(publicDir, stylesheet), css);

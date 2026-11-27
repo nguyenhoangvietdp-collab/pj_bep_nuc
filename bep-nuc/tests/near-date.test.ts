@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {validNearDate,nearDateGroups,nearDateCategory,retailLabel,retailUnits,type NearDate} from "../lib/near-date";
-import {nearDateTemplates,nearDateTemplateFormValues,visibleNearDateTemplates} from "../lib/near-date-templates";
+import {nearDateTemplates,nearDateTemplateFormValues,visibleNearDateTemplates,nearDatePricing,nearDateBasis,nearDateExpiry} from "../lib/near-date-templates";
+import {launchEstimate} from "../lib/launch-estimate";
+import stores from "../lib/store-locations.json";
 import {nearDateFromForm} from "../app/components/near-date-fields";
 import {validLot} from "../lib/trading";
 import {act,catalogue,issue,tradingDemoState} from "../lib/domain";
@@ -123,4 +125,34 @@ test("applying a near-date template leaves lot evidence and price required",()=>
  }
  act(s,ops,"listing",args(form),now);
  assert.equal(s.listings.length,before+1);
+});
+test("16 trial offers have prices from the web-wide formula, a Vietnam-time expiry and no real shop",()=>{
+ assert.equal(nearDateTemplates.filter(t=>Number.isSafeInteger(t.listPrice)&&t.listPrice>0).length,16);
+ for(const t of nearDateTemplates){
+  assert.ok(t.discountPercent===30||t.discountPercent===35,t.id);
+  const sale=nearDatePricing(t);
+  assert.equal(sale.salePrice,Math.ceil(t.listPrice*95/100),t.id);
+  assert.equal(sale.negotiatedPrice,Math.floor(t.listPrice*(100-t.discountPercent)/100),t.id);
+  assert.equal(sale.discountPercent,5,t.id);
+  assert.ok(Number.isSafeInteger(t.daysToExpiry)&&t.daysToExpiry>0&&t.spec&&t.storage&&t.allergenNote,t.id);
+  const text=JSON.stringify(t);
+  assert.ok(!("shopId" in t),t.id);
+  for(const s of stores)for(const name of [s.id,s.name,s.label,s.address])assert.ok(!text.includes(name),`${t.id}: ${name}`);
+ }
+ // 18:00 UTC đã sang ngày hôm sau ở Việt Nam.
+ assert.equal(nearDateExpiry({...nearDateTemplates[0],daysToExpiry:5},Date.parse("2026-11-28T18:00:00Z")),"04/12/2026");
+});
+test("trial offers fund vouchers and pickup reward from Q minus F; small prices stay at zero",()=>{
+ const run=(id:string,method:"pickup"|"delivery"="pickup",qty=1,rate=.15)=>
+  launchEstimate({...nearDateBasis(nearDateTemplates.find(t=>t.id===id)!),qty,rate,method,grossFee:method==="delivery"?20000:undefined});
+ assert.deepEqual(nearDateBasis(nearDateTemplates.find(t=>t.id==="nd-ngu-coc-yen-mach")!),{unitPrice:42750,originalUnitPrice:45000,supplierUnitPrice:31500});
+ const oats=run("nd-ngu-coc-yen-mach");
+ assert.deepEqual([oats.amounts.voucherDiscount,oats.amounts.bonusDiscount,oats.amounts.total],[6412,838,35500]);
+ assert.equal(run("nd-ngu-coc-yen-mach","delivery").shippingSupport,838);
+ assert.equal(run("nd-ngu-coc-yen-mach","delivery",1,0).shippingSupport,6000);
+ // Mì: Q-F = 4750-3500 = 1250đ/gói, thấp hơn chi phí 3.000đ + đóng góp 1.000đ.
+ for(const qty of [1,2,3])for(const rate of [0,.15,.1,9000])for(const method of ["pickup","delivery"] as const){
+  const e=run("nd-mi-an-lien",method,qty,rate);
+  assert.deepEqual([e.basicEligible,e.amounts.voucherDiscount,e.amounts.bonusDiscount,e.shippingSupport],[false,0,0,0]);
+ }
 });
