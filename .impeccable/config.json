@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "bep-nuc/app/style.css"
+        ],
+        "createdAt": "2026-11-27T17:39:47.911Z",
+        "reason": "Agent decision: retain the existing locally bundled Inter with Vietnamese coverage for commerce readability; this refresh changes illustration, palette and layout, not the transactional typeface."
+      }
+    ]
+  }
+}

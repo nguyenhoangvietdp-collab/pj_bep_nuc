@@ -1,7 +1,13 @@
+import {nearDateCategory,retailCategories,isNonFoodGroup} from "./near-date.ts";
+import {promotionThreshold,promotionThresholds} from "./promotion-threshold.ts";
+import {locatedStore} from "./store-locations.ts";
+import {straightLineKm,pickupPricing,type PickupPricing} from "./pickup-pricing.ts";
+import {validateCheckoutSelection,cleanDelivery,type CheckoutSelection} from "./checkout-selection.ts";
+import {negotiatedPricing,customerPricingOf,type CustomerPricing} from "./catalogue-sale.ts";
 import { randomBytes, randomUUID } from "node:crypto";
 import {flowerListings,flowerShops,flowerDemoVersion} from "./flower-demo.ts";
 import {requestProduct,type RequestProduct} from "./request-catalogue.ts";
-import { defaultTradingRules, demoTradingRules, publicTradingRules, weekStart, voucherCurrent, voucherDiscount, pickupSupport, validLot, validateRules, type TradingRules, type SavedPlace, type Lot, hasSale, validSale, publicLot } from "./trading.ts";
+import { defaultTradingRules, demoTradingRules, publicTradingRules, weekStart, voucherCurrent, voucherDiscount, validLot, validateRules, type TradingRules, type SavedPlace, type Lot, hasSale, validSale, publicLot } from "./trading.ts";
 export type Role = "student" | "merchant" | "ops";
 export type User = {
   id: string;
@@ -25,6 +31,7 @@ export type Shop = {
   image?: string;
 };
 export type Listing = {
+  negotiatedDiscountPercent?:30|35;
   approved?:boolean;
   lot?: Lot;
   id: string;
@@ -55,6 +62,9 @@ export type Voucher = {
   quoteId?: string;
 };
 export type Quote = {
+  pickupPricingSnapshot?:PickupPricing;
+  checkoutSelection?:CheckoutSelection;
+  customerPricingSnapshot?:CustomerPricing;
   promotion?: { week: string; voucher: number; pickup: number; shipping: number; shippingCap: number; stackReceiving: boolean; status: "reserved" | "used" | "released" };
   lotSnapshot?: Lot;
   placeSnapshot?: { id: string; label: string };
@@ -121,7 +131,7 @@ export type Settlement = {
   paid: boolean;
   reference?: string;
 };
-export type MealRequest = { id:string; userId:string; name:string; product?:RequestProduct; appliedRate?:number; qty:number; rate:number; fulfillment:"pickup"|"delivery"; delivery?:Order["delivery"]; status:"pending"|"confirmed"|"rejected"|"ordered"; revision:number; created:number; quoteId?:string; fee?:number; grossFee?:number; orderId?:string; reason?:string };
+export type MealRequest = { checkoutSelection?:CheckoutSelection; id:string; userId:string; name:string; product?:RequestProduct; appliedRate?:number; qty:number; rate:number; fulfillment:"pickup"|"delivery"; delivery?:Order["delivery"]; status:"pending"|"confirmed"|"rejected"|"ordered"; revision:number; created:number; quoteId?:string; fee?:number; grossFee?:number; orderId?:string; reason?:string };
 export type State = {
   flowerDemoVersion?: number;
   tradingRules?: TradingRules;
@@ -243,6 +253,19 @@ export function expire(s: State, now: number) {
   }
 }
 export const rulesFor = (s: State) => s.tradingRules ?? defaultTradingRules();
+// Run the same financial checks on an isolated copy; no reservation or voucher is issued.
+export function previewReceiving(s:State,u:User,a:Record<string,any>,now:number,distance:number|null,production:boolean){
+  requireThat(rulesFor(s).version===2,"Tính thử hỗ trợ tự lấy cần quy tắc giao dịch mới");
+  requireThat([0,.15,.1,9000].includes(a.rate),"Voucher mong muốn không hợp lệ");
+  const copy=structuredClone(s),customer=copy.users.find(x=>x.id===u.id)!;
+  const rules=rulesFor(copy),id=randomUUID();
+  if(a.rate){
+    requireThat(rules.enabled,"Voucher chưa được kích hoạt; chọn không voucher để tính hỗ trợ tự lấy");
+    copy.vouchers.push({id,userId:u.id,day:weekStart(now),period:"week",state:"available",rate:a.rate===9000?0:a.rate,...(a.rate===9000?{amount:9000}:{cap:a.rate===.15?rules.cap15:rules.cap10})});
+  }
+  const q=quoteModern(copy,customer,{listingId:a.listingId,qty:a.qty,fulfillment:"pickup",checkout:a.checkout,voucherId:a.rate?id:undefined},now,distance,production);
+  return {mode:"preview" as const,checkedAt:now,validUntil:Math.min(now+60000,q.expires),distance:q.distance,pickupPricing:q.pickupPricing,amounts:{menuTotal:q.menuTotal,baseDiscount:q.baseDiscount,voucherDiscount:q.voucherDiscount,bonusDiscount:q.bonusDiscount,total:q.total},pickupStatus:!rules.enabled?"disabled":!u.place||q.distance===null?"unknown":"calculated"};
+}
 export const promotionUsed = (s: State, week: string, except?: string) => s.quotes.filter(q=>q.id!==except && q.promotion?.week===week && q.promotion.status!=="released").reduce((n,q)=>n+q.promotion!.voucher+q.promotion!.pickup+q.promotion!.shipping,0);
 function reservePromotion(s: State, q: Quote, shipping: number) {
   if (!q.promotion) return;
@@ -255,25 +278,33 @@ function quoteModern(s:State,u:User,a:Record<string,any>,now:number,distance:num
   requireThat(!s.quotes.some(q=>q.userId===u.id&&q.state==="held"&&q.expires>now)&&!s.orders.some(o=>o.userId===u.id&&["awaiting_payment","awaiting_delivery_fee"].includes(o.status)&&s.quotes.some(q=>q.id===o.quoteId&&q.expires>now)),"Hoàn tất hoặc hủy lô đang giữ/chờ thanh toán trước khi chọn thêm");
   const l=s.listings.find(l=>l.id===a.listingId),r=rulesFor(s);
   requireThat(l && now<l.end && s.shops.some(x=>x.id===l.shopId&&x.approved&&(!production||!x.mock)),"Lô không còn nhận đơn");
-  const shop=s.shops.find(x=>x.id===l.shopId)!;
+  const shop=locatedStore(s.shops.find(x=>x.id===l.shopId)!);
   requireThat(validSale(l.lot,l.price,now,l.end)&&(!hasSale(l.lot)||(shop.approved&&!shop.mock&&now>=l.lot!.saleStart!&&now<l.lot!.saleEnd!)),"Sale chưa mở, đã kết thúc hoặc chưa được xác nhận");
-  if(shop.lat===null||shop.lng===null)distance=null;
-  requireThat(l.approved===true&&!!l.image&&validLot(l.lot,now,l.end,!production&&shop.mock) && l.storage.trim().length>=3 && (l.lot!.kind==="flowers" || l.allergens.trim().length>=3),"Lô chưa được duyệt hoặc chưa có đủ thông tin chất lượng");
+  distance=straightLineKm(u.place,shop);
+  requireThat(l.approved===true&&!!l.image&&validLot(l.lot,now,l.end,!production&&shop.mock) && l.storage.trim().length>=3 && (l.lot!.kind==="flowers" || l.lot!.kind==="goods"&&!!l.lot!.nearDate&&isNonFoodGroup(l.lot!.nearDate.group) || l.allergens.trim().length>=3),"Lô chưa được duyệt hoặc chưa có đủ thông tin chất lượng");
   requireThat(l.payoutShare===undefined,"Lô mới cần khoản thực nhận cố định được tiệm đồng ý");
   requireThat(Number.isInteger(a.qty)&&a.qty>=1&&a.qty<=3&&l.stock>=a.qty,"Số lượng không hợp lệ hoặc không đủ tồn");
   requireThat(["pickup","delivery"].includes(a.fulfillment??"pickup"),"Cách nhận không hợp lệ");
   const v=a.voucherId?s.vouchers.find(v=>v.id===a.voucherId&&v.userId===u.id&&v.period==="week"&&voucherCurrent(v,now)&&v.state==="available"):undefined;
   requireThat(!a.voucherId||v,"Voucher không còn khả dụng");
   requireThat(!v||u.place,"Chọn và lưu vị trí trước khi dùng voucher");
+  const customerPricing=l.negotiatedDiscountPercent===undefined?undefined:customerPricingOf(negotiatedPricing(l.floor,l.negotiatedDiscountPercent));
+  requireThat(!customerPricing||l.price===customerPricing.saleUnitPrice,"Giá khách phải giảm nền5% từ giá gốc quy đổi");
   const base=l.price*a.qty;
   requireThat(!v||(r.enabled&&base>=r.minimumBasket&&(!v.amount||base>=v.amount)),"Lô chưa đủ điều kiện voucher");
+  const threshold=v?promotionThreshold({unitPrice:l.price,payout:l.floor,cost:l.cost,margin:l.margin,minimumBasket:r.minimumBasket},v):undefined;
+  requireThat(!v||!!threshold&&a.qty>=threshold.qty,threshold?`Lô không đủ ngân sách cho voucher cơ bản này; cần đặt từ ${threshold.subtotal.toLocaleString("vi-VN")}đ (${threshold.qty} đơn vị)`:"Lô không đủ ngân sách cho voucher cơ bản này trong tối đa 3 đơn vị");
   const discount=voucherDiscount(base,v);requireThat(!v||discount>0,"Voucher chưa được cấp mức tài trợ");
+  const selection=production||a.checkout?validateCheckoutSelection(a.checkout,u.place,a.fulfillment??"pickup",a.delivery):undefined;
   const fulfillment=a.fulfillment??"pickup",km=fulfillment==="pickup"&&u.place?distance:null;
-  const extra=fulfillment==="pickup"&&(!v||r.stackReceiving)?pickupSupport(r,km):0;
-  const total=base-discount-extra, payout=l.floor*a.qty,cost=l.cost*a.qty,margin=l.margin*a.qty;
-  requireThat([base,total,payout,cost,margin].every(n=>Number.isSafeInteger(n)&&n>=0),"Giá hoặc chi phí lô không hợp lệ");
-  requireThat(total>0 && total-payout-cost>=margin,"Lô không đủ ngân sách cho ưu đãi này");
-  const q:Quote={id:randomUUID(),userId:u.id,listingId:l.id,voucherId:v?.id??"",qty:a.qty,fulfillment,expires:Math.min(now+600000,l.end,l.lot?.saleEnd??Infinity,Date.parse(weekStart(now)+"T00:00:00+07:00")+7*86400000),state:"held",price:total,payout,cost,margin,baseRate:v?.rate??0,rate:v?.rate??0,distance:km,bonusReason:extra?"Hỗ trợ theo tuyến từ điểm đã lưu; không xác nhận hành trình thực tế":km===null?"Chưa có tuyến xác nhận: không tính hỗ trợ khoảng cách":"Tuyến tham khảo; hỗ trợ theo vùng và điều kiện lô",menuTotal:base,lotSnapshot:structuredClone(l.lot!),placeSnapshot:u.place?{id:u.place.id,label:u.place.label}:undefined,promotion:{week:weekStart(now),voucher:discount,pickup:extra,shipping:0,shippingCap:r.enabled?r.shippingCap:0,stackReceiving:r.stackReceiving,status:"reserved"}};
+  const payout=l.floor*a.qty,cost=l.cost*a.qty,margin=Math.max(1,l.margin)*a.qty,afterVoucher=base-discount;
+  requireThat([base,afterVoucher,payout,cost,margin].every(n=>Number.isSafeInteger(n)&&n>=0),"Giá hoặc chi phí lô không hợp lệ");
+  requireThat(afterVoucher>0&&afterVoucher-payout-cost>=margin,"Lô không đủ ngân sách cho voucher cơ bản này");
+  const remainingBudget=Math.max(0,r.weeklyBudget-promotionUsed(s,weekStart(now)));
+  requireThat(discount<=remainingBudget,"Ngân sách ưu đãi đã hết. Chọn không voucher hoặc quay lại sau.");
+  const pickup=fulfillment==="pickup"?pickupPricing(base,km,r.enabled,base>=r.minimumBasket?Math.min(afterVoucher-1,afterVoucher-payout-cost-margin):0,remainingBudget-discount):undefined;
+  const extra=pickup?.applied??0,total=afterVoucher-extra;
+  const q:Quote={pickupPricingSnapshot:pickup,checkoutSelection:selection,id:randomUUID(),userId:u.id,listingId:l.id,voucherId:v?.id??"",qty:a.qty,fulfillment,expires:Math.min(now+600000,l.end,l.lot?.saleEnd??Infinity,Date.parse(weekStart(now)+"T00:00:00+07:00")+7*86400000),state:"held",price:total,payout,cost,margin,baseRate:v?.rate??0,rate:v?.rate??0,distance:km,bonusReason:km===null?"Chưa đủ tọa độ để tính đường chim bay":pickup?.limited?"Voucher đường chim bay đã giới hạn theo ngân sách và biên":"Đường chim bay: 8 điểm phần trăm/km, tối đa 2 km",menuTotal:base,customerPricingSnapshot:customerPricing,lotSnapshot:structuredClone(l.lot!),placeSnapshot:u.place?{id:u.place.id,label:u.place.label}:undefined,promotion:{week:weekStart(now),voucher:discount,pickup:extra,shipping:0,shippingCap:r.enabled&&base>=r.minimumBasket?r.shippingCap:0,stackReceiving:r.stackReceiving,status:"reserved"}};
   reservePromotion(s,q,0);s.quotes.push(q);l.stock-=a.qty;
   if(v){v.state="reserved";v.quoteId=q.id;}
   return publicQuote(s,q);
@@ -408,10 +439,10 @@ export function view(s: State, u: User, now: number) {
     });
   return {
     user: u,
-    mealRequests: (s.mealRequests || []).filter(r=>u.role==="ops" || (u.role==="student" && r.userId===u.id)).map(r=>({...r,status:r.status==="confirmed" && (s.quotes.find(q=>q.id===r.quoteId)?.expires||0)<=now?"expired":r.status, quote:r.quoteId?(()=>{const q=s.quotes.find(q=>q.id===r.quoteId);const l=q&&s.listings.find(l=>l.id===q.listingId);const shop=l&&s.shops.find(x=>x.id===l.shopId);return q?{total:q.price,expires:q.expires,name:l?.name,address:shop?.address,start:l?.start,end:l?.end,lot:publicLot(q.lotSnapshot),unitPrice:q.menuTotal!==undefined?q.menuTotal/q.qty:undefined,saleVerified:hasSale(q.lotSnapshot),priceBreakdown:publicQuote(s,q),appliedRate:r.appliedRate??r.rate,voucherDiscount:q.promotion?.voucher??0,shippingSupport:(r.grossFee??r.fee??0)-(r.fee??0)}:undefined;})():undefined})),
+    mealRequests: (s.mealRequests || []).filter(r=>u.role==="ops" || (u.role==="student" && r.userId===u.id)).map(r=>({...r,status:r.status==="confirmed" && (s.quotes.find(q=>q.id===r.quoteId)?.expires||0)<=now?"expired":r.status, quote:r.quoteId?(()=>{const q=s.quotes.find(q=>q.id===r.quoteId);const l=q&&s.listings.find(l=>l.id===q.listingId);const rawShop=l&&s.shops.find(x=>x.id===l.shopId);const shop=rawShop?locatedStore(rawShop):undefined;return q?{total:q.price,expires:q.expires,name:l?.name,address:shop?.address,start:l?.start,end:l?.end,lot:publicLot(q.lotSnapshot),unitPrice:q.menuTotal!==undefined?q.menuTotal/q.qty:undefined,saleVerified:hasSale(q.lotSnapshot),priceBreakdown:publicQuote(s,q),appliedRate:r.appliedRate??r.rate,voucherDiscount:q.promotion?.voucher??0,shippingSupport:(r.grossFee??r.fee??0)-(r.fee??0)}:undefined;})():undefined})),
     now,
     listings,
-    shops: s.shops.map(({ id, name, address, mock, story }) => ({ id, name, address, mock, story })),
+    shops: s.shops.map(locatedStore).map(({ id, name, address, mock, story }) => ({ id, name, address, mock, story })),
     orders,
     tradingRules: u.role==="ops"?rulesFor(s):publicTradingRules(rulesFor(s)),
     issues:(s.issues??[]).filter(x=>u.role==="ops"||x.userId===u.id),
@@ -482,7 +513,7 @@ export function act(
   distance: number | null = null,
   policy: RuntimePolicy = policyFromEnv(typeof process === "undefined" ? {} : process.env),
   requestConsent = false): unknown {
-  requireThat(u.approved || (u.role === "student" && action === "meal_request"), "Tài khoản chưa được duyệt");
+  requireThat(u.approved || action === "save_place" || (u.role === "student" && action === "meal_request"), "Tài khoản chưa được duyệt");
   const key = `${u.id}:${action}:${a.key}`;
   requireThat(
     typeof a.key === "string" && a.key.length >= 8,
@@ -497,7 +528,6 @@ export function act(
       "Không có quyền với đơn này",
     );
   if(action === "save_place") {
-    requireThat(u.role==="student","Chỉ khách hàng lưu vị trí");
     requireThat(typeof a.label==="string"&&a.label.trim().length>=2&&a.label.length<=60&&typeof a.address==="string"&&a.address.trim().length>=10&&a.address.length<=250&&Number.isFinite(a.lat)&&a.lat>=20.5&&a.lat<=21.5&&Number.isFinite(a.lng)&&a.lng>=105&&a.lng<=106.3,"Chọn địa chỉ và tọa độ hợp lệ tại Hà Nội");
     requireThat(!s.quotes.some(q=>q.userId===u.id&&q.state==="held"),"Bỏ giữ lô trước khi đổi vị trí");
     u.place={id:randomUUID(),label:a.label.trim(),address:a.address.trim(),lat:a.lat,lng:a.lng,savedAt:now};
@@ -524,6 +554,7 @@ export function act(
     }
     issue.status="resolved";issue.resolution=a.resolution.trim();
   } else if(action === "meal_request") {
+    if(a.checkout&&a.fulfillment==="delivery")a={...a,delivery:cleanDelivery(a.delivery)};
     requireThat(u.role==="student","Chỉ sinh viên gửi yêu cầu");
     const product=requestProduct(a.productId,a.name);
     requireThat(a.productId===undefined||typeof a.productId==="string"&&!!product,"Mã sản phẩm không hợp lệ");
@@ -531,9 +562,10 @@ export function act(
     requireThat(Number.isInteger(a.qty)&&a.qty>=1&&a.qty<=3&&(product?.kind==="flowers"||rulesFor(s).version===2?[0,.15,.1,9000]:[0.07,0.1,0.2]).includes(a.rate),"Số suất hoặc voucher không hợp lệ");
     requireThat(["pickup","delivery"].includes(a.fulfillment),"Cách nhận không hợp lệ");
     if(a.fulfillment==="delivery") requireThat(a.delivery&&typeof a.delivery.recipient==="string"&&a.delivery.recipient.trim().length>=2&&a.delivery.recipient.length<=100&&typeof a.delivery.phone==="string"&&/^(0\d{9}|\+84\d{9})$/.test(a.delivery.phone)&&typeof a.delivery.address==="string"&&a.delivery.address.length>=10&&a.delivery.address.length<=250,"Cần tên, số điện thoại và địa chỉ nhận hợp lệ");
+    const selection=policy.production&&rulesFor(s).version===2||a.checkout?validateCheckoutSelection(a.checkout,u.place,a.fulfillment,a.delivery):undefined;
     const list=s.mealRequests??=[];
     requireThat(list.filter(x=>x.userId===u.id&&["pending","confirmed"].includes(x.status)).length<5,"Bạn có tối đa 5 yêu cầu đang xử lý");
-    const request:MealRequest={id:randomUUID(),userId:u.id,name:product?.name??a.name.trim(),...(product?{product:structuredClone(product)}:{}),qty:a.qty,rate:a.rate,fulfillment:a.fulfillment,delivery:a.fulfillment==="delivery"?{recipient:a.delivery.recipient,phone:a.delivery.phone,address:a.delivery.address,revision:0}:undefined,status:"pending",revision:0,created:now};
+    const request:MealRequest={checkoutSelection:selection,id:randomUUID(),userId:u.id,name:product?.name??a.name.trim(),...(product?{product:structuredClone(product)}:{}),qty:a.qty,rate:a.rate,fulfillment:a.fulfillment,delivery:a.fulfillment==="delivery"?{recipient:a.delivery.recipient,phone:a.delivery.phone,address:a.delivery.address,revision:0}:undefined,status:"pending",revision:0,created:now};
     list.push(request);result={id:request.id};
   } else if(["confirm_meal_request","reject_meal_request","accept_meal_request"].includes(action)) {
     const request=s.mealRequests?.find(x=>x.id===a.requestId);requireThat(request,"Không có yêu cầu");
@@ -551,6 +583,7 @@ export function act(
     } else {
       ops();
       if(action==="confirm_meal_request") {
+        if(policy.production&&rulesFor(s).version===2||request.checkoutSelection)validateCheckoutSelection(request.checkoutSelection,student.place,request.fulfillment,request.delivery);
         requireThat(a.sourceConfirmed===true,"Xác nhận nguồn món và giờ thực hiện trước khi báo giá");
         requireThat(Number.isSafeInteger(a.fee)&&a.fee>=0&&a.fee<=1000000&&(request.fulfillment==="delivery"||a.fee===0),"Phí giao không hợp lệ");
         if(request.product){
@@ -571,7 +604,7 @@ export function act(
         const appliedRate=a.appliedRate??request.rate;
         requireThat((rulesFor(s).version===2?[0,.15,.1,9000]:[.07,.1,.2]).includes(appliedRate),"Ưu đãi báo giá không hợp lệ");
         const v=appliedRate===0?undefined:s.vouchers.find(v=>v.userId===student.id&&(appliedRate===9000?v.amount===9000:v.rate===appliedRate&&!v.amount)&&voucherCurrent(v,now)&&v.state==="available");requireThat(appliedRate===0||v,"Voucher báo giá không còn dùng được");
-        const q=act(s,student,"quote",{key:a.key+":quote",listingId:a.listingId,voucherId:v?.id,qty:request.qty,fulfillment:request.fulfillment},now,null,policy) as {id:string};
+        const q=act(s,student,"quote",{key:a.key+":quote",listingId:a.listingId,voucherId:v?.id,qty:request.qty,fulfillment:request.fulfillment,checkout:request.checkoutSelection,delivery:request.delivery},now,distance,policy) as {id:string};
         const internal=s.quotes.find(x=>x.id===q.id)!;
         const support=request.fulfillment==="delivery"&&internal.promotion&&(!internal.promotion.voucher||internal.promotion.stackReceiving)?Math.min(Math.floor(a.fee*.3),internal.promotion.shippingCap):0;
         reservePromotion(s,internal,support);
@@ -656,6 +689,7 @@ export function act(
       q && q.state === "held" && q.expires > now,
       "Báo giá hết hạn hoặc đã sử dụng",
     );
+    if(q.checkoutSelection)validateCheckoutSelection(q.checkoutSelection,u.place,q.fulfillment??"pickup",a.delivery);
     let delivery: Order["delivery"];
     if(q.fulfillment==="delivery"){
       requireThat(a.delivery && typeof a.delivery==="object","Cần thông tin nhận hàng");
@@ -963,13 +997,21 @@ export function act(
       stock: l.stock,
     });
   } else if(action==="approve_listing") {
-    ops();const l=s.listings.find(l=>l.id===a.id);requireThat(l?.lot&&validLot(l.lot,now,l.end)&&validSale(l.lot,l.price,now,l.end)&&l.end>now,"Lô không đủ điều kiện duyệt");
-    requireThat(a.confirmed===true&&[a.floor,a.cost,a.margin].every(n=>Number.isSafeInteger(n)&&n>=0)&&a.floor+a.cost+a.margin<=l.price,"Xác nhận khoản tiệm nhận, chi phí đầy đủ và biên hợp lệ");
-    l.floor=a.floor;l.cost=a.cost;l.margin=a.margin;l.approved=true;
+    ops();const l=s.listings.find(l=>l.id===a.id);requireThat(l?.lot&&validLot(l.lot,now,l.end)&&l.end>now,"Lô không đủ điều kiện duyệt");
+    const nextPricing=l.negotiatedDiscountPercent===undefined?undefined:negotiatedPricing(a.floor,l.negotiatedDiscountPercent),nextPrice=nextPricing?.salePrice??l.price;
+    requireThat(validSale(l.lot,nextPrice,now,l.end)&&(!nextPricing||!hasSale(l.lot)||l.lot.referencePrice===nextPricing.originalPrice),"Cần xác nhận lại giá gốc/lịch sale khi sửa giá đàm phán");
+    requireThat(a.confirmed===true&&[a.floor,a.cost,a.margin].every(n=>Number.isSafeInteger(n)&&n>=0)&&a.floor+a.cost+a.margin<=nextPrice,"Xác nhận khoản tiệm nhận, chi phí đầy đủ và biên hợp lệ");
+    if(nextPricing&&!hasSale(l.lot))l.lot.referencePrice=nextPricing.originalPrice;
+    l.price=nextPrice;l.floor=a.floor;l.cost=a.cost;l.margin=a.margin;l.approved=true;
   } else if (action === "listing") {
+    if(a.negotiatedDiscountPercent!==undefined){
+      requireThat(a.negotiatedConfirmed===true&&rulesFor(s).version===2&&[30,35].includes(a.negotiatedDiscountPercent),"Mức giảm đàm phán không hợp lệ");
+      const p=negotiatedPricing(a.floor,a.negotiatedDiscountPercent);
+      requireThat(a.price===p.salePrice&&(!hasSale(a.lot)||a.lot.referencePrice===p.originalPrice),"Giá khách phải giảm nền5% từ giá gốc quy đổi");
+    }
     if(a.lot&&rulesFor(s).version===2)a.lot.checkedAt=now;
     if(hasSale(a.lot)){requireThat(a.saleConfirmed===true,"Cần xác nhận giá thường, quy cách và lịch sale");a.lot.referenceConfirmedAt=now;requireThat(rulesFor(s).version===2&&validSale(a.lot,a.price,now,a.end)&&a.lot.saleEnd>now,"Thông tin giá hoặc lịch sale không hợp lệ");}
-    if(rulesFor(s).version===2){requireThat(validLot(a.lot,now,a.end),"Cần đủ thông tin lô, tình trạng và bằng chứng giá");requireThat(a.payoutShare===undefined,"Lô mới cần khoản tiệm thực nhận cố định");requireThat(typeof a.storage==="string"&&a.storage.trim().length>=3&&a.storage.length<=500&&(a.lot.kind==="flowers"||typeof a.allergens==="string"&&a.allergens.trim().length>=3&&a.allergens.length<=500),"Thiếu bảo quản/dị ứng hoặc vượt500ký tự");}
+    if(rulesFor(s).version===2){requireThat(validLot(a.lot,now,a.end),"Cần đủ thông tin lô, tình trạng và bằng chứng giá");requireThat(a.payoutShare===undefined,"Lô mới cần khoản tiệm thực nhận cố định");requireThat(typeof a.storage==="string"&&a.storage.trim().length>=3&&a.storage.length<=500&&(a.lot.kind==="flowers"||a.lot.kind==="goods"&&!!a.lot.nearDate&&isNonFoodGroup(a.lot.nearDate.group)||typeof a.allergens==="string"&&a.allergens.trim().length>=3&&a.allergens.length<=500),"Thiếu bảo quản/dị ứng hoặc vượt500ký tự");}
     if(rulesFor(s).version===2)requireThat(typeof a.image==="string"&&a.image.length>0,"Cần ảnh đúng lô trước khi mở bán");
     if(a.lot?.catalogueProductId){const p=requestProduct(a.lot.catalogueProductId);requireThat(p?.kind==="flowers"&&a.lot.kind==="flowers"&&a.lot.species===p.name&&a.lot.quantity?.amount===p.quantity.amount&&a.lot.quantity?.unit===p.quantity.unit,"Liên kết danh mục hoa không đúng loại hoặc quy cách");}
     requireThat(
@@ -982,6 +1024,7 @@ export function act(
     );
     for (const k of ["price", "floor", "cost", "margin", "stock"])
       requireThat(Number.isSafeInteger(a[k]) && a[k] >= 0, `Sai ${k}`);
+    requireThat(a.negotiatedDiscountPercent===undefined||a.floor+a.cost+a.margin<=a.price,"Giá giảm nền5% không đủ khoản tiệm nhận, chi phí và biên tối thiểu");
     requireThat(a.payoutShare === undefined || a.payoutShare === 0.9, "Tỷ lệ thực nhận không hợp lệ");
     requireThat(a.payoutShare !== 0.9 || a.floor === 0, "Chia doanh thu không dùng khoản thực nhận cố định");
     requireThat(
@@ -1001,6 +1044,7 @@ export function act(
       price: a.price,
       floor: a.floor,
       payoutShare: a.payoutShare,
+      negotiatedDiscountPercent:a.negotiatedDiscountPercent,
       cost: a.cost,
       margin: a.margin,
       stock: a.stock,
@@ -1008,7 +1052,7 @@ export function act(
       end: a.end,
       storage: String(a.storage).slice(0, 500),
       allergens: String(a.allergens).slice(0, 500),
-      category: categories.includes(a.category) ? a.category : "Món khác",
+      category: a.lot?.kind==="goods"?nearDateCategory(a.lot.nearDate.group):categories.includes(a.category) ? a.category : "Món khác",
       image: localImage(a.image),
       lot: a.lot ? structuredClone(a.lot) : undefined,
       approved:u.role==="ops",
@@ -1020,7 +1064,7 @@ export function act(
     at: now,
     actor: u.id,
     action,
-    detail: action==="save_place"?{placeId:u.place?.id}:["pickup","order","delivery_complete","meal_request","confirm_meal_request","accept_meal_request","reject_meal_request"].includes(action) ? { orderId: a.orderId ?? (result as any)?.id, quoteId: a.quoteId } : a,
+    detail: action==="save_place"?{placeId:u.place?.id}:action==="quote"?{listingId:a.listingId,qty:a.qty,fulfillment:a.fulfillment,placeId:u.place?.id,voucherId:a.voucherId}:["pickup","order","delivery_complete","meal_request","confirm_meal_request","accept_meal_request","reject_meal_request"].includes(action) ? { orderId: a.orderId ?? (result as any)?.id, quoteId: a.quoteId } : a,
   });
   return result;
 }
@@ -1089,7 +1133,7 @@ export function seedFlowerDemo(s:State,now:number,production=false){
   s.flowerDemoVersion=flowerDemoVersion;
 }
 export function modernDemoState(now:number){const s=tradingDemoState(now);seedFlowerDemo(s,now);return s;}
-export const categories = ["Cơm", "Bún/mì", "Bánh", "Đồ uống", "Món khác", "Hoa cắm nhà"];
+export const categories = ["Cơm", "Bún/mì", "Bánh", "Đồ uống", "Món khác", "Hoa cắm nhà",...retailCategories];
 export function localImage(value: unknown): string | undefined {
   if (value === undefined || value === "") return undefined;
   requireThat(
@@ -1105,18 +1149,20 @@ export function publicListing(l: Listing,rules=defaultTradingRules(),realShop=fa
     shopId: l.shopId,
     name: l.name,
     price: l.price,
+    customerPricing:l.negotiatedDiscountPercent===undefined?undefined:customerPricingOf(negotiatedPricing(l.floor,l.negotiatedDiscountPercent)),
     stock: l.stock,
     start: l.start,
     end: l.end,
     storage: l.storage,
     allergens: l.allergens,
-    category: categories.includes(l.category || "") ? l.category! : "Món khác",
+    category:l.lot?.kind==="goods"&&l.lot.nearDate?nearDateCategory(l.lot.nearDate.group):categories.includes(l.category || "") ? l.category! : "Món khác",
     image: l.image,
     lot:publicLot(l.lot),
     saleVerified:realShop&&l.approved===true&&hasSale(l.lot)&&validSale(l.lot,l.price,now,l.end),
     pricingVersion:l.lot?2:1,
-    eligibleFixed:!!l.lot&&rules.enabled&&l.price>9000&&l.price>=rules.minimumBasket&&l.price-9000>=l.floor+l.cost+l.margin,
-    eligible: l.lot?[.15,.1].filter(rate=>{const d=Math.min(Math.floor(l.price*rate),rate===.15?rules.cap15:rules.cap10);return rules.enabled&&d>0&&l.price>=rules.minimumBasket&&l.price-d>=l.floor+l.cost+l.margin;}):[0.07, 0.1, 0.2].filter((v) => {
+    promotionThresholds:l.lot?promotionThresholds({unitPrice:l.price,payout:l.floor,cost:l.cost,margin:l.margin,minimumBasket:rules.minimumBasket},rules.cap15,rules.cap10):undefined,
+    eligibleFixed:!!l.lot&&rules.enabled&&l.price>9000&&l.price>=rules.minimumBasket&&l.price-9000>=l.floor+l.cost+Math.max(1,l.margin),
+    eligible: l.lot?[.15,.1].filter(rate=>{const d=Math.min(Math.floor(l.price*rate),rate===.15?rules.cap15:rules.cap10);return rules.enabled&&d>0&&l.price>=rules.minimumBasket&&l.price-d>=l.floor+l.cost+Math.max(1,l.margin);}):[0.07, 0.1, 0.2].filter((v) => {
       try {
         price(l, 1, v, null);
         return true;
@@ -1127,16 +1173,21 @@ export function publicListing(l: Listing,rules=defaultTradingRules(),realShop=fa
   };
 }
 export function catalogue(s: State, now: number, production = false) {
-  const shops = s.shops.filter((x) => x.approved && (!production || !x.mock));
+  const shops = s.shops.filter((x) => x.approved && (!production || !x.mock)).map(locatedStore);
   return {
     now,
-    shops: shops.map(({ id, name, address, image, mock, story }) => ({
+    shops: shops.map(({ id, name, address, image, mock, story, lat, lng, ...location }) => ({
       id,
       name,
       address,
       image,
       mock,
       story,
+      lat,
+      lng,
+      ...("pickupEntrance" in location&&typeof location.pickupEntrance==="string"?{pickupEntrance:location.pickupEntrance}:{}),
+      ...("driverNotes" in location&&typeof location.driverNotes==="string"?{driverNotes:location.driverNotes}:{}),
+      ...("label" in location&&typeof location.label==="string"?{label:location.label}:{}),
     })),
     listings: s.listings
       .filter((l) => !(s.flowerDemoVersion&&l.id==="flowers") && shops.some((x) => x.id === l.shopId) && l.end > now && (rulesFor(s).version!==2||l.approved===true&&!!l.image&&validLot(l.lot,now,l.end,!production&&!!shops.find(x=>x.id===l.shopId)?.mock)))
@@ -1149,7 +1200,7 @@ export function publicQuote(s: State, q: Quote) {
     q.menuTotal ?? s.listings.find((l) => l.id === q.listingId)!.price * q.qty;
   const afterBase = Math.ceil(menuTotal * 0.95);
   const afterVoucher = Math.ceil(menuTotal * 0.95 * (1 - q.baseRate));
-  if(q.promotion)return {id:q.id,fulfillment:q.fulfillment||"pickup",listingId:q.listingId,qty:q.qty,voucherId:q.voucherId,total:q.price,expires:q.expires,rate:q.rate,baseRate:q.baseRate,distance:q.distance,bonusReason:q.bonusReason,menuTotal,baseDiscount:0,voucherDiscount:q.promotion.voucher,bonusDiscount:q.promotion.pickup,saved:q.promotion.voucher+q.promotion.pickup,lotSnapshot:publicLot(q.lotSnapshot),placeSnapshot:q.placeSnapshot,shippingCap:q.promotion.shippingCap,stackReceiving:q.promotion.stackReceiving,pricingVersion:2};
+  if(q.promotion){const originalTotal=q.customerPricingSnapshot?q.customerPricingSnapshot.originalUnitPrice*q.qty:menuTotal;return {pickupPricing:q.pickupPricingSnapshot,checkoutSelection:q.checkoutSelection,id:q.id,fulfillment:q.fulfillment||"pickup",listingId:q.listingId,qty:q.qty,voucherId:q.voucherId,total:q.price,expires:q.expires,rate:q.rate,baseRate:q.baseRate,distance:q.distance,bonusReason:q.bonusReason,menuTotal:originalTotal,saleTotal:menuTotal,customerPricing:q.customerPricingSnapshot,baseDiscount:originalTotal-menuTotal,voucherDiscount:q.promotion.voucher,bonusDiscount:q.promotion.pickup,saved:originalTotal-q.price,lotSnapshot:publicLot(q.lotSnapshot),placeSnapshot:q.placeSnapshot,shippingCap:q.promotion.shippingCap,stackReceiving:q.promotion.stackReceiving,pricingVersion:2};}
   return {
     id: q.id,
     fulfillment: q.fulfillment || "pickup",

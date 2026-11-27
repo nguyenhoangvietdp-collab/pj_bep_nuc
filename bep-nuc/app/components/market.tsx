@@ -1,10 +1,22 @@
 "use client";
+import {thresholdFor} from "../../lib/promotion-threshold";
 import { useEffect, useRef, useState } from "react";
 import Link from "./navigation";
 import PaymentSummary from "./payment-summary";
+import CheckoutReceiving from "./checkout-receiving";
+import CheckoutVouchers from "./checkout-vouchers";
+import {checkoutSelection,selectionKey} from "../../lib/checkout-selection";
+import ReceivingSavings,{useReceivingPreview} from "./receiving-savings";
+import {requestPayment} from "../../lib/payment-summary";
 import SalePrice from "./sale-price";
 import ShopPicture from "./shop-picture";
 import {productAssets} from "../../lib/product-assets";
+import NearDateInfo from "./near-date-info";
+import {retailCategories,retailLabel,normalizeRetailCategory,isNonFoodGroup} from "../../lib/near-date";
+import HelpTip from "./help-tip";
+import RetailReferenceCatalogue from "./retail-reference-catalogue";
+import PickupBenefit from "./pickup-benefit";
+import PickupPoint from "./pickup-point";
 import MealRequests from "./meal-requests";
 import LoadingScreen from "./loading-screen";
 import { SiteHeader, SiteFooter } from "./site-frame";
@@ -67,6 +79,7 @@ const safeReturn = (value: string | null) =>
     : "/checkout";
 export default function Market({ view, id, offline=false }: { view: string; id?: string; offline?:boolean }) {
   const router = useRouter();
+  const [previewRate,setPreviewRate]=useState(0),[confirmedSelection,setConfirmedSelection]=useState("");
   const [catalog, setCatalog] = useState<Catalog>(),
     [profile, setProfile] = useState<any>(),
     [user, setUser] = useState<any>(null),
@@ -79,7 +92,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
     [voucher, setVoucher] = useState(""),
     [location, setLocation] = useState(false),
     [fulfillment,setFulfillment] = useState<"pickup"|"delivery">("pickup"),
-    [recipient,setRecipient] = useState(""), [phone,setPhone] = useState(""), [deliveryAddress,setDeliveryAddress] = useState(""),
+    [recipient,setRecipient] = useState(""), [phone,setPhone] = useState(""), [deliveryNote,setDeliveryNote] = useState(""),
     [tick, setTick] = useState(Date.now()),
     [query, setQuery] = useState(""),
     [budget, setBudget] = useState(0),
@@ -180,7 +193,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
     setQuery(p.get("q") || "");
     const limit = Number(p.get("budget"));
     setBudget(Number.isSafeInteger(limit) && limit > 0 ? limit : 0);
-    setCategory(p.get("category") || "");
+    setCategory(normalizeRetailCategory(p.get("category") || ""));
     setShopFilter(p.get("shop") || "");
     setStockOnly(p.get("stock") !== "all");
     setReceiving(p.get("receiving") === "1");
@@ -257,7 +270,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
     ? catalog.now + (catalog.demo ? 0 : Math.max(0, tick - fetched.current))
     : tick;
   const modern=catalog?.tradingRules?.version===2;
-  const vouchers = user?.approved && user.role === "student" && (!modern||user.place) ? profile?.vouchers || [] : [];
+  const vouchers = user?.approved && user.role === "student" ? profile?.vouchers || [] : [];
   const held = profile?.heldQuotes?.[0];
   const pendingOrder = profile?.orders?.find((o: any) => o.status === "awaiting_payment" && o.expires > now);
   useEffect(() => {
@@ -272,17 +285,32 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
         l.id ===
         (held?.listingId || draft?.listingId || (view === "meal" ? id : "")),
     ) || profile?.listings?.find((l: Food) => l.id === held?.listingId);
-  const shop = catalog?.shops.find(
+  const shop:PublicShop|undefined = catalog?.shops.find(
     (s) => s.id === (view === "shop" ? id : item?.shopId),
-  );
-  const activeVoucher = vouchers.find((v: any) => v.id === voucher && item && v.state==="available"&&voucherCurrent(v,now)&&(modern?(v.amount?item.eligibleFixed||countForDraft()>1:item.eligible.includes(v.rate)||countForDraft()>1):displayPrice(item,[v],now).rate===v.rate));
+  ) || (isCloudMvp?menuShops.find(s=>s.id===(view==="shop"?id:item?.shopId)):undefined);
+  const receiverName=held?.checkoutSelection?.delivery?.recipient??recipient,receiverPhone=held?.checkoutSelection?.delivery?.phone??phone;
+  const deliveryAddress=held?.checkoutSelection?.delivery?.address??(user?.place?user.place.address+(deliveryNote?", "+deliveryNote:""):"");
+  const receivingSelection=checkoutSelection(user?.place,held?.fulfillment||fulfillment,{recipient:receiverName,phone:receiverPhone,address:deliveryAddress});
+  const receivingKey=selectionKey(receivingSelection),receivingConfirmed=!!held||!!receivingKey&&confirmedSelection===receivingKey;
+  function invalidateReceiving(){setConfirmedSelection("");}
+  const activeVoucher = vouchers.find((v: any) => v.id === voucher && item && v.state==="available"&&voucherCurrent(v,now)&&(!modern||thresholdFor(item.promotionThresholds,v.amount===9000?9000:v.rate)===undefined||!!thresholdFor(item.promotionThresholds,v.amount===9000?9000:v.rate)&&countForDraft()>=thresholdFor(item.promotionThresholds,v.amount===9000?9000:v.rate)!.qty)&&(modern?(v.amount?item.eligibleFixed||countForDraft()>1:item.eligible.includes(v.rate)||countForDraft()>1):displayPrice(item,[v],now).rate===v.rate));
   function countForDraft(){return held?.qty||draft?.qty||1;}
   const count = held?.qty || draft?.qty || 1;
   const receiveMethod = held?.fulfillment || fulfillment;
-  const deliveryValid = recipient.trim().length>=2 && /^(0\d{9}|\+84\d{9})$/.test(phone.replace(/[\s-]/g,"")) && deliveryAddress.trim().length>=10;
+  const deliveryValid = receiverName.trim().length>=2 && /^(0\d{9}|\+84\d{9})$/.test(receiverPhone.replace(/[\s-]/g,"")) && deliveryAddress.trim().length>=10;
+  const desiredRate=user&&!user.approved?previewRate:activeVoucher?.amount===9000?9000:activeVoucher?.rate||0;
+  const receivingPreview=useReceivingPreview(view==="checkout"&&!held&&receivingConfirmed?item?.id:undefined,count,desiredRate,user?.place?.id,receiveMethod,user?.id,receivingSelection);
+  const requestedThreshold=thresholdFor(item?.promotionThresholds,desiredRate);
+  const previewEffectiveRate=requestedThreshold===null||requestedThreshold&&count<requestedThreshold.qty?0:previewRate;
+  const previewAmounts=item&&modern&&user&&!user.approved?requestPayment(item.price,count,previewEffectiveRate,previewRate===.15?catalog?.tradingRules?.cap15:previewRate===.1?catalog?.tradingRules?.cap10:undefined,item.customerPricing?.originalUnitPrice):undefined;
   const amounts =
-    held ||
+    held || (receiveMethod==="pickup"?receivingPreview.preview?.amounts:undefined) || previewAmounts ||
     (item ? modern?lotEstimate(item,count,activeVoucher):estimate(item.price * count, activeVoucher?.rate || 0) : undefined);
+  const baseVoucherLabel=held?.voucherId?(profile?.vouchers?.find((v:any)=>v.id===held.voucherId)?voucherLabel(profile.vouchers.find((v:any)=>v.id===held.voucherId)):"đã chọn"):activeVoucher?voucherLabel(activeVoucher):user&&!user.approved&&previewRate?(previewRate===9000?"9.000đ":`${previewRate*100}%`):undefined;
+  const combinedVoucherLabel=amounts?.bonusDiscount>0?(baseVoucherLabel?baseVoucherLabel+" + tự lấy":"tự lấy"):baseVoucherLabel;
+  const groupedVouchers=modern?[.15,.1,9000].flatMap(kind=>{const matches=vouchers.filter((v:any)=>kind===9000?v.amount===9000:v.rate===kind&&!v.amount);const chosen=matches.find((v:any)=>v.id===voucher)||matches.find((v:any)=>v.state==="available")||matches[0];return chosen?[{...chosen,remaining:matches.filter((v:any)=>v.state==="available").length}]:[];}):vouchers;
+  function voucherThresholdHint(kind:number){const t=thresholdFor(item?.promotionThresholds,kind);return t===null?"Chưa đủ điều kiện trong tối đa 3 đơn vị":t&&t.qty>1?`Đơn từ ${money(t.subtotal)} · ${t.qty} đơn vị mua`:undefined;}
+  const billVoucherOptions=[{value:"",label:"Không dùng voucher",discount:0,detail:"Giữ nguyên lượt voucher"},...(user&&!user.approved?[.15,.1,9000].map(rate=>({value:String(rate),label:rate===9000?"9.000đ":`${rate*100}%`,discount:item?requestPayment(item.price,count,rate,rate===.15?catalog?.tradingRules?.cap15:rate===.1?catalog?.tradingRules?.cap10:undefined).voucherDiscount:0,detail:"Tính thử · chưa được cấp voucher"})):groupedVouchers.map((v:any)=>({value:v.id,label:voucherLabel(v),discount:item?(modern?lotEstimate(item,count,v):estimate(item.price*count,v.rate)).voucherDiscount:0,detail:v.state!=="available"?states[v.state]:!voucherCurrent(v,now)?"Đã hết thời hạn":voucherThresholdHint(v.amount===9000?9000:v.rate)??`${v.amount?"Giảm cố định":`Tối đa ${money(v.cap??0)}`} · ${v.remaining??1} lượt còn lại`,disabled:v.state!=="available"||!voucherCurrent(v,now)||!item||!!item.promotionThresholds&&(thresholdFor(item.promotionThresholds,v.amount===9000?9000:v.rate)===null||!!thresholdFor(item.promotionThresholds,v.amount===9000?9000:v.rate)&&count<thresholdFor(item.promotionThresholds,v.amount===9000?9000:v.rate)!.qty)||(modern?(v.amount?!item.eligibleFixed&&count===1:!item.eligible.includes(v.rate)&&count===1):displayPrice(item,[v],now).rate!==v.rate)})))];
   const seconds = held
     ? Math.max(0, Math.ceil((held.expires - now) / 1000))
     : 0;
@@ -348,7 +376,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
     router.push("/checkout");
   }
   async function quote() {
-    if (!item || (!modern&&!activeVoucher) || mutation.current) return;
+    if (!item || (modern&&!receivingConfirmed) || (!modern&&!activeVoucher) || mutation.current) return;
     mutation.current = true;
     let coords;
     setBusy(true);
@@ -371,6 +399,8 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
       voucherId: activeVoucher?.id,
       qty: count,
       fulfillment,
+      checkout:modern?receivingSelection:undefined,
+      delivery:receiveMethod==="delivery"?{recipient:receiverName,phone:receiverPhone,address:deliveryAddress}:undefined,
       location: coords,
     });
   }
@@ -418,23 +448,24 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
           ? `/orders/${id}`
           : "/checkout",
     );
-  const flowerGroup=category==="Hoa cắm nhà";
+  const flowerGroup=category==="Hoa cắm nhà",nearDateGroup=category.startsWith("Hàng gần hạn sử dụng");
   const currentFilters: Filters = { category, budget, shop: shopFilter, stock: stockOnly, receiving };
   function applyFilters(next: Filters) {
-    if((next.category==="Hoa cắm nhà")!==flowerGroup){setQuery("");setSort("end");}
+    if((next.category==="Hoa cắm nhà"?"flowers":next.category.startsWith("Hàng gần hạn sử dụng")?"near":"food")!==(flowerGroup?"flowers":nearDateGroup?"near":"food")){setQuery("");setSort("end");}
     setCategory(next.category); setBudget(next.budget); setShopFilter(next.shop);
     setStockOnly(next.stock); setReceiving(next.receiving);
   }
   function filterFields(values: Filters, change: (next: Filters) => void, prefix: string) {
     return <>
       <fieldset className="facet-group"><legend>Nhóm hàng</legend>
-        {[{value:"",label:"Đồ ăn"},{value:"Hoa cắm nhà",label:"Hoa"}].map(group=><label key={group.label} className="facet-option"><input type="radio" name={`${prefix}-group`} checked={group.value?values.category===group.value:values.category!=="Hoa cắm nhà"} onChange={()=>change({...defaultFilters,category:group.value})}/><span>{group.label}</span></label>)}
+        {[{value:"",label:"Đồ ăn"},{value:"Hoa cắm nhà",label:"Hoa"},{value:"Hàng gần hạn sử dụng",label:"Hàng gần hạn sử dụng"}].map(group=><label key={group.label} className="facet-option"><input type="radio" name={`${prefix}-group`} checked={group.value==="Hàng gần hạn sử dụng"?values.category.startsWith("Hàng gần hạn sử dụng"):group.value?values.category===group.value:values.category!=="Hoa cắm nhà"&&!values.category.startsWith("Hàng gần hạn sử dụng")} onChange={()=>change({...defaultFilters,category:group.value})}/><span>{group.label}</span></label>)}
       </fieldset>
-      {values.category!=="Hoa cắm nhà"&&<fieldset className="facet-group"><legend>Loại món</legend>
+      {values.category!=="Hoa cắm nhà"&&!values.category.startsWith("Hàng gần hạn sử dụng")&&<fieldset className="facet-group"><legend>Loại món</legend>
         {["",...mealCategories].map(value=><label key={value} className="facet-option"><input type="radio" name={`${prefix}-category`} checked={values.category===value} onChange={()=>change({...values,category:value})}/><span>{value||"Tất cả món"}</span></label>)}
       </fieldset>}
+      {values.category.startsWith("Hàng gần hạn sử dụng")&&<fieldset className="facet-group"><legend>Loại sản phẩm gần hạn sử dụng</legend>{retailCategories.map(value=><label key={value} className="facet-option"><input type="radio" name={`${prefix}-near-date`} checked={values.category===value} onChange={()=>change({...values,category:value})}/><span>{value==="Hàng gần hạn sử dụng"?"Tất cả gần hạn sử dụng":value.replace("Hàng gần hạn sử dụng: ","")}</span></label>)}</fieldset>}
       <fieldset className="facet-group"><legend>Giá mỗi lô</legend>
-        <p className="facet-hint">{values.category==="Hoa cắm nhà"?"Lọc theo giá mục tiêu; giá bán cần xác nhận, chưa gồm phí giao.":"Theo giá món đang hiển thị; chưa gồm phí giao."}</p>
+        <p className="facet-hint">{values.category==="Hoa cắm nhà"?"Lọc theo giá sale trước voucher; chưa gồm phí giao.":"Theo giá món đang hiển thị; chưa gồm phí giao."}</p>
         {[0, 30000, 40000, 50000].map(value => <label key={value} className="facet-option"><input type="radio" name={`${prefix}-budget`} checked={values.budget === value} onChange={() => change({ ...values, budget: value })} /><span>{value ? `Không quá ${money(value)}` : "Không giới hạn"}</span></label>)}
         <label className="custom-budget">Ngân sách khác (đ)<input type="number" min="0" step="1" inputMode="numeric" placeholder="Ví dụ: 35000" value={values.budget || ""} onChange={e => { const n = Number(e.target.value); if(Number.isSafeInteger(n) && n >= 0) change({ ...values, budget: n }); }} /></label>
       </fieldset>
@@ -471,9 +502,10 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
         vouchers,
       )
     : [];
+  if(nearDateGroup&&sort==="end")shown.sort((a,b)=>(a.lot?.nearDate?.expiresAt??Infinity)-(b.lot?.nearDate?.expiresAt??Infinity)||a.end-b.end);
   const browseShops = [...(catalog?.shops || []), ...(isCloudMvp ? menuShops.filter(p=>!catalog?.shops.some(s=>s.id===p.id)) : [])];
   const upcoming = isCloudMvp && view === "browse" && !receiving
-    ? (flowerGroup?filterRequestFlowers(query,budget,sort).map(p=>({...p,shop:undefined})):filterLaunchMenu(query,category,budget,sort).map(p=>({...requestProduct(undefined,p.name)!,shop:p.shop}))).filter(p=>(!shopFilter||p.shop?.id===shopFilter)&&!catalog?.listings.some(l=>l.stock>0&&saleOrderable(l,now)&&(l.image===p.image||l.lot?.catalogueProductId===p.id)))
+    ? (nearDateGroup?[]:flowerGroup?filterRequestFlowers(query,budget,sort).map(p=>({...p,shop:undefined})):filterLaunchMenu(query,category,budget,sort).map(p=>({...requestProduct(undefined,p.name)!,shop:p.shop}))).filter(p=>(!shopFilter||p.shop?.id===shopFilter)&&!catalog?.listings.some(l=>l.stock>0&&saleOrderable(l,now)&&(l.image===p.image||l.lot?.catalogueProductId===p.id)))
     : [];
   function foodDetails(l: Food, n: number, change: (n: number) => void) {
     const Heading = view === "meal" ? "h1" : "h2";
@@ -491,18 +523,20 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
             <Heading>{l.name}</Heading>
             <Link href={`/shops/${l.shopId}`}>{s?.name}</Link>
           </div>
-          {l.lot&&<section className="lot-proof"><p className="lot-reason">{l.lot.offer==="surplus"?"Còn lại cuối phiên":"Ưu đãi cửa hàng"} · {l.lot.kind==="flowers"?"Hoa cắm nhà":"Đồ ăn"}</p><h3>Vì sao giá giảm?</h3><p>{l.lot.reason}</p><p><b>Bạn nhận:</b> {l.lot.contents}</p><p><b>Tình trạng:</b> {l.lot.condition}</p><p>{s?.mock?"Dữ liệu mô phỏng tạo lúc":"Tiệm cập nhật lúc"} {time(l.lot.checkedAt)}</p>{l.lot.kind==="flowers"&&<p>{flowerQuantityLabel(l.lot)} · {l.lot.species} · {l.lot.packaging}</p>}{l.lot.referencePrice&&<details><summary>Giá tham chiếu {money(l.lot.referencePrice)}</summary><p>{l.lot.referenceEvidence}</p><p>Mốc tham chiếu chưa bao gồm công đi lại hoặc lựa chọn thay thế của bạn.</p></details>}</section>}
+          <PickupBenefit/>
+          {l.lot?.nearDate&&<NearDateInfo value={l.lot.nearDate}/>}
+          {l.lot&&<section className="lot-proof"><p className="lot-reason">{l.lot.offer==="near_expiry"?"Hàng gần hạn sử dụng":l.lot.offer==="surplus"?"Còn lại cuối phiên":"Ưu đãi cửa hàng"} · {l.lot.kind==="goods"?"Hàng gần hạn sử dụng":l.lot.kind==="flowers"?"Hoa cắm nhà":"Đồ ăn"}</p><h3>Vì sao giá giảm?</h3><p>{l.lot.reason}</p><p><b>Bạn nhận:</b> {l.lot.contents}</p><p><b>Tình trạng:</b> {l.lot.condition}</p><p>{s?.mock?"Dữ liệu mô phỏng tạo lúc":"Tiệm cập nhật lúc"} {time(l.lot.checkedAt)}</p>{l.lot.kind==="flowers"&&<p>{flowerQuantityLabel(l.lot)} · {l.lot.species} · {l.lot.packaging}</p>}{l.lot.referencePrice&&<details><summary>Giá tham chiếu {money(l.lot.referencePrice)}</summary><p>{l.lot.referenceEvidence}</p><p>Mốc tham chiếu chưa bao gồm công đi lại hoặc lựa chọn thay thế của bạn.</p></details>}</section>}
           <section className="meal-collection" aria-label="Nơi và giờ nhận">
             <h3>Quán và khung giờ bàn giao</h3>
             <p className="meal-address">{s?.address || "Chưa có địa chỉ nhận"}</p>
-            <p className="meal-pickup"><b>{time(l.start)}–{time(l.end)}</b> · Còn {l.stock} {l.lot?.kind==="flowers"?"đơn vị mua":"suất"}</p>
-            {l.lot?.kind!=="flowers"&&<p className="meal-allergens"><b>Dị ứng:</b> {l.allergens || "Chưa có thông tin. Hỏi quán trước khi đặt."}</p>}
+            <p className="meal-pickup"><b>{time(l.start)}–{time(l.end)}</b> · Còn {l.stock} {(l.lot?.kind==="flowers"||l.lot?.kind==="goods")?"đơn vị mua":"suất"}</p>
+            {l.lot?.kind!=="flowers"&&!(l.lot?.kind==="goods"&&!!l.lot.nearDate&&isNonFoodGroup(l.lot.nearDate.group))&&<p className="meal-allergens"><b>Dị ứng:</b> {l.allergens || "Chưa có thông tin. Hỏi quán trước khi đặt."}</p>}
           </section>
           <section className="meal-purchase" aria-label="Chọn số suất và kiểm tra giá">
-            {saleState(l,now)?<SalePrice item={l} now={now}/>:<div className="meal-price"><strong>{money(displayed.total)} <small>/ {l.lot?"lô":"suất"}</small></strong><span>{l.lot?"Giá lô trước voucher":"Giá menu"} {money(l.price)}</span></div>}
+            {(l.customerPricing||saleState(l,now))?<SalePrice item={l} now={now}/>:<div className="meal-price"><strong>{money(displayed.total)} <small>/ {l.lot?"lô":"suất"}</small></strong><span>{l.lot?"Giá lô trước voucher":"Giá menu"} {money(l.price)}</span></div>}
             <p className="fine">{displayed.voucher ? `Ước tính với voucher ${voucherLabel(displayed.voucher)}` : displayed.rate ? `Ước tính với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}</p>
-            <Quantity n={n} max={Math.min(3, l.stock)} disabled={false} change={change} />
-            <p className="detail-total" aria-live="polite">Tổng {n} {l.lot?.kind==="flowers"?"đơn vị mua":"suất"} <strong>{money(total.total)}</strong></p>
+            <Quantity unit={l.lot&&l.lot.kind!=="food"?"đơn vị":"suất"} n={n} max={Math.min(3, l.stock)} disabled={false} change={change} />
+            <p className="detail-total" aria-live="polite">Tổng {n} {(l.lot?.kind==="flowers"||l.lot?.kind==="goods")?"đơn vị mua":"suất"} <strong>{money(total.total)}</strong></p>
             <button disabled={l.stock < n || now >= l.end || !saleOrderable(l,now)} onClick={() => saveDraft(l, n)}>Kiểm tra lô đã chọn</button>
             <p className="fine">Tối đa 3 đơn vị mua · Chọn tự lấy hoặc giao ở bước tiếp theo</p>
           </section>
@@ -553,24 +587,24 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
           </section>
         ) : (
           <>
-            {view === "offers" && <>{user?.approved&&modern&&<SavedPlace place={user.place} demo={catalog.demo} disabled={busy||!!held} save={a=>act("save_place",a)}/>}<Offers listings={catalog.listings} shops={catalog.shops} vouchers={vouchers} now={now} browseHref={browseHref} rules={catalog.tradingRules}/></>}
+            {view === "offers" && <>{user&&modern&&<SavedPlace place={user.place} demo={catalog.demo} disabled={busy||!!held} save={a=>act("save_place",a)}/>}<Offers listings={catalog.listings} shops={catalog.shops} vouchers={vouchers} now={now} browseHref={browseHref} rules={catalog.tradingRules}/></>}
             {(view === "browse" || view === "shop") && (
               <>
                 {view === "browse" ? (
                   <section className="market-banner">
                     <div>
 
-                      <h1>Đồ ăn và hoa, đúng lúc bạn cần.</h1>
+                      <div className="help-heading"><h1>Tự đến lấy, <strong>tiết kiệm thêm.</strong></h1><HelpTip title="Quyền lợi khi tự lấy"><p>Ưu đãi tự lấy cộng riêng với voucher cơ bản của bạn. Có vị trí xuất phát và điểm nhận thì hệ thống tính khoản dự tính.</p><p>Số tiền trên thẻ sản phẩm là kịch bản trước khi chọn voucher cơ bản. Checkout tính lại hai khoản cùng nhau theo điều kiện, ngân sách và biên.</p></HelpTip></div>
                       <p className="market-eligibility">
-                        Xem lý do giảm, tình trạng lô và khung nhận. Giá lô luôn hiển thị trước voucher và phí giao.
-                      </p>
+                        Chọn đồ ăn, hoa hoặc hàng gần hạn sử dụng. Giữ voucher của bạn, nhận thêm ưu đãi khi tự đến lấy.
+                      </p><Link className="text-button" href="/offers">Chọn vị trí để xem quyền lợi</Link>
                     </div>
                   </section>
                 ) : shop ? (
                   <section className="shop-intro">
                     <Link href="/meals">Tất cả món</Link>
                     <h1>{shop.name}</h1>
-                    <p>{shop.address}</p>{shop.mock&&<p className="demo-disclosure">Hồ sơ minh họa · không có điểm nhận hoặc giao dịch thật.</p>}{shop.story&&<p>{shop.story}</p>}
+                    <PickupPoint showName={false} store={{...shop,lat:shop.lat??null,lng:shop.lng??null}}/>{shop.mock&&<p className="demo-disclosure">Hồ sơ minh họa · không có điểm nhận hoặc giao dịch thật.</p>}{shop.story&&<p>{shop.story}</p>}
                     <p>
                       Tự đến lấy hoặc giao tận nơi · Kiểm tra giờ nhận và phí giao trước khi thanh toán.
                     </p>
@@ -594,7 +628,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
         >
           <input
             aria-label="Tìm sản phẩm hoặc cửa hàng"
-            placeholder="Tên món, hoa, cửa hàng hoặc khu vực"
+            placeholder="Tên sản phẩm, cửa hàng hoặc khu vực"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -608,15 +642,16 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                   </aside>
                   <section className="catalogue-results" aria-label="Kết quả tìm món">
                     <div className="catalogue-toolbar">
-                      <div><h2>{flowerGroup?"Hoa cắm nhà":query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : !catalog.listings.length ? "Khám phá thực đơn" : "Lô đang có"}</h2><p role="status" aria-live="polite">{flowerGroup?"Gửi yêu cầu để Bếp Núc xác nhận nguồn hoa và báo giá":catalog.listings.length ? `${shown.length} lô${stockOnly ? " còn hàng" : ""}` : "Chưa có suất mở bán · Tham khảo món bên dưới"}</p></div>
+                      <div><h2>{nearDateGroup?"Hàng gần hạn sử dụng":flowerGroup?"Hoa cắm nhà":query ? "Kết quả tìm kiếm" : view === "shop" ? "Thực đơn cuối ngày" : !catalog.listings.length ? "Khám phá thực đơn" : "Lô đang có"}</h2><p role="status" aria-live="polite">{nearDateGroup?"Chọn loại sản phẩm · Xem hạn dùng và lý do giảm giá trước khi mua":flowerGroup?"Giá sale trước voucher · Gửi yêu cầu để xác nhận nguồn hoa":catalog.listings.length ? `${shown.length} lô${stockOnly ? " còn hàng" : ""}` : "Đang nhận yêu cầu · Xác nhận khả năng phục vụ trước thanh toán"}</p></div>
                       <button className="secondary mobile-filter-toggle" ref={filterOpener} onClick={() => { setMobileFilters(currentFilters); filterDialog.current?.showModal(); }}>Bộ lọc{filterCount > 0 ? ` (${filterCount})` : ""}</button>
-                      {(flowerGroup || catalog.listings.length > 0 || sort === "price") && <label className="catalogue-sort"><span>Sắp xếp</span><select value={sort} onChange={e => setSort(e.target.value)}><option value="end">{flowerGroup?"Thứ tự danh mục":catalog.listings.length ? "Giờ nhận kết thúc sớm" : "Thứ tự thực đơn"}</option><option value="price">Giá thấp đến cao</option></select></label>}
+                      {(flowerGroup || nearDateGroup || catalog.listings.length > 0 || sort === "price") && <label className="catalogue-sort"><span>Sắp xếp</span><select value={sort} onChange={e => setSort(e.target.value)}><option value="end">{nearDateGroup?"Hạn dùng gần nhất":flowerGroup?"Thứ tự danh mục":catalog.listings.length ? "Giờ nhận kết thúc sớm" : "Thứ tự thực đơn"}</option><option value="price">Giá thấp đến cao</option></select></label>}
                     </div>
                   <>
+                  {nearDateGroup&&<nav className="retail-category-nav" aria-label="Danh mục hàng gần hạn"><div className="help-heading"><h3>Bạn muốn mua gì?</h3><HelpTip title="Vì sao có ưu đãi dùng sớm?"><p>Loại sản phẩm cho biết bạn đang mua gì. Gần hạn sử dụng là lý do giảm giá, không đồng nghĩa hàng còn lại cuối ngày.</p><p>Chọn lượng phù hợp với nhu cầu và hạn dùng trên nhãn. Giá ưu đãi và khoản tự lấy được kiểm tra trước khi thanh toán.</p></HelpTip></div><div>{retailCategories.map(value=><button type="button" key={value} className="secondary" aria-pressed={category===value} onClick={()=>applyFilters({...currentFilters,category:value})}>{value===retailLabel?"Tất cả sản phẩm":value.replace(retailLabel+": ","")}</button>)}</div></nav>}
                   <div className="filter-chips" role="group" aria-label="Bộ lọc đang áp dụng">
                     {query && <button className="secondary" onClick={() => setQuery("")}>Từ khóa: {query} ×</button>}
                     {!!budget && <button className="secondary" onClick={() => setBudget(0)}>Đến {money(budget)} / suất ×</button>}
-                    {category && <button className="secondary" onClick={() => setCategory("")}>{category} ×</button>}
+                    {category && <button className="secondary" onClick={() => setCategory("")}>{nearDateGroup?category.replace(retailLabel+": ",""):category} ×</button>}
                     {shopFilter && view === "browse" && <button className="secondary" onClick={() => setShopFilter("")}>{browseShops.find(s => s.id === shopFilter)?.name || "Quán đã chọn"} ×</button>}
                     {receiving && <button className="secondary" onClick={() => setReceiving(false)}>Đang nhận ×</button>}
                     {!stockOnly && <button className="secondary" onClick={() => setStockOnly(true)}>Hiện cả hết suất ×</button>}
@@ -624,13 +659,13 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                   </div>
                   {hasFilters && <button className="text-button clear-result-filters" onClick={reset}>Xóa tất cả điều kiện</button>}
                 {!shown.length && (catalog.listings.length > 0 || !upcoming.length) && (
-                  <section className="market-empty">
+                  <section className={nearDateGroup?"market-empty retail-stock-status":"market-empty"}>
                     <h3>
-                      {catalog.listings.length
+                      {nearDateGroup?"Chưa có lô được xác nhận":catalog.listings.length
                         ? "Chưa tìm thấy món phù hợp"
                         : "Chưa mở nhận đơn"}
                     </h3>
-                    <p>Không có món đáp ứng đủ điều kiện hiện tại. Bạn có thể bỏ một bộ lọc hoặc quay lại khi quán đăng món.</p>
+                    <p>{nearDateGroup?"Cửa hàng sẽ đăng sản phẩm và combo cùng hạn dùng, quy cách và điểm nhận. Chưa có lô được xác nhận để mở bán.":"Không có món đáp ứng đủ điều kiện hiện tại. Bạn có thể bỏ một bộ lọc hoặc quay lại khi quán đăng món."}</p>
                     {!!budget && <button className="secondary" onClick={() => setBudget(0)}>Bỏ giới hạn ngân sách</button>}
                     {receiving && <button className="secondary" onClick={() => setReceiving(false)}>Xem cả khung nhận sắp tới</button>}
                   </section>
@@ -649,7 +684,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                       >
                         <FoodImage l={l} />
                       </button>
-                      <div className="food-card-body">
+                      <div className="food-card-body"><PickupBenefit/>{l.lot?.nearDate&&<NearDateInfo value={l.lot.nearDate} compact/>}
                         <div className="food-card-description">
                           <h3><button className="plain-title" onClick={() => openFood(l)}>{l.name}</button></h3>
                           <Link className="shop-meta" href={`/shops/${l.shopId}`}>{catalog.shops.find(s => s.id === l.shopId)?.name}</Link>
@@ -658,7 +693,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                           <span className="stock-label">{l.stock ? `Còn ${l.stock} ${l.lot?"lô":"suất"}` : "Hết hàng"}</span>
                         </div>
                         <div className="food-card-purchase">
-                          {saleState(l,now)?<SalePrice item={l} now={now}/>:<div className="food-price-row"><strong className="food-price">{money(displayed.total)}</strong><span className="food-menu-price">{l.lot?"Giá lô":"Giá menu"} {money(l.price)}</span></div>}
+                          {(l.customerPricing||saleState(l,now))?<SalePrice item={l} now={now}/>:<div className="food-price-row"><strong className="food-price">{money(displayed.total)}</strong><span className="food-menu-price">{l.lot?"Giá lô":"Giá menu"} {money(l.price)}</span></div>}
                           {l.id.startsWith("flower-")&&<p className="fine">{flowerImageCaption}</p>}{l.lot&&<p className="fine">{l.lot.offer==="surplus"?"Lô còn lại cuối phiên":"Khuyến mãi cửa hàng"} · {l.lot.kind==="flowers"?`${flowerQuantityLabel(l.lot)} · gói cơ bản`:l.lot.contents}</p>}
                           <p className="price-condition">{displayed.voucher ? `Với voucher ${voucherLabel(displayed.voucher)}` : displayed.rate ? `Với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}{fulfillment === "delivery" && " · Chưa gồm phí giao"}</p>
                           <button disabled={!l.stock || now >= l.end} onClick={() => openFood(l)}>Xem lô này</button>
@@ -669,12 +704,13 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                 </section>
                 {!!upcoming.length && (
                   <section className="menu-preview" aria-labelledby="menu-preview-title">
-                    <header><h2 id="menu-preview-title">{flowerGroup?"Hoa tham khảo":"Thực đơn giới thiệu"}</h2><p>{flowerGroup?"Giá mục tiêu chưa phải giá bán đã xác nhận. Gửi nhu cầu để Bếp Núc tìm nguồn, kiểm tra quy cách và báo giá.":"Thực đơn và giá tham khảo đang được xác nhận với cửa hàng. Gửi yêu cầu để Bếp Núc kiểm tra khả năng phục vụ."}</p></header>
+                    <header><h2 id="menu-preview-title">{flowerGroup?"Hoa đang ưu đãi":"Thực đơn đang ưu đãi"}</h2><p>{flowerGroup?"Giá sale trước voucher. Gửi yêu cầu để Bếp Núc xác nhận nguồn hoa, quy cách và tổng tiền.":"Giá sale trước voucher. Gửi yêu cầu để Bếp Núc kiểm tra khả năng phục vụ và xác nhận tổng tiền."}</p></header>
                     <ul className="menu-preview-grid">
-                      {upcoming.map(p=><ReferenceCard key={p.id} product={p} shop={p.shop}/>)}
+                      {upcoming.map(p=><ReferenceCard key={p.id} product={p} shop={p.shop} origin={user?.place} store={catalog.shops.find(s=>s.id===p.shopId)}/>)}
                     </ul>
                   </section>
                 )}
+                {nearDateGroup&&!shopFilter&&!receiving&&<RetailReferenceCatalogue query={query} category={category} budget={budget} sort={sort}/>}
                   </>
                   </section>
                 </div>
@@ -683,7 +719,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                   <div className="drawer-fields">{filterFields(mobileFilters, setMobileFilters, "mobile")}</div>
                   <footer><button className="secondary" onClick={() => setMobileFilters(defaultFilters)}>Xóa bộ lọc</button><button onClick={() => { applyFilters(mobileFilters); filterDialog.current?.close(); filterOpener.current?.focus(); }}>Áp dụng bộ lọc</button></footer>
                 </dialog>
-                {!flowerGroup&&view === "browse" && !!browseShops.length && (
+                {!flowerGroup&&!nearDateGroup&&view === "browse" && !!browseShops.length && (
                   <section className="shop-list">
                     <h2>Khám phá các quán</h2>
                     <div>
@@ -711,13 +747,13 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                     <Link href={browseHref}>Quay lại tìm món</Link>
                     {l ? (
                       foodDetails(l, qty, setQty)
-                    ) : requestProduct(id) ? <ReferenceDetails product={requestProduct(id)!}/> : (
+                    ) : requestProduct(id) ? <ReferenceDetails product={requestProduct(id)!} origin={user?.place} store={catalog.shops.find(s=>s.id===requestProduct(id)?.shopId)}/> : (
                       <h1>Món đã kết thúc hoặc chưa được công bố.</h1>
                     )}
                   </section>
                 );
               })()}
-            {view === "checkout" && referenceName && <section className="reference-checkout"><Link href={browseHref}>Quay lại chọn sản phẩm</Link><h1>Kiểm tra lựa chọn của bạn</h1>{referenceMeal ? <><img className="reference-meal-photo" src={referenceMeal.image} alt={referenceMeal.name} width="600" height="450"/><h2>{referenceMeal.name}</h2><ReferencePrice product={referenceMeal}/><p>Mỗi đơn vị: {requestUnit(referenceMeal)}. {referenceMeal.note}</p><p>Chưa giữ hàng hoặc xác nhận nhà bán, tình trạng và giờ nhận.</p><MealRequests name={referenceMeal.name} product={referenceMeal} rules={catalog.tradingRules}/></> : <p>Sản phẩm tham khảo không tồn tại. Vui lòng quay lại danh mục.</p>}</section>}
+            {view === "checkout" && referenceName && <section className="reference-checkout"><Link href={browseHref}>Quay lại chọn sản phẩm</Link><h1>Kiểm tra đơn của bạn</h1>{referenceMeal ? <><MealRequests name={referenceMeal.name} product={referenceMeal} rules={catalog.tradingRules} shops={catalog.shops}/></> : <p>Sản phẩm tham khảo không tồn tại. Vui lòng quay lại danh mục.</p>}</section>}
             {view === "checkout" && !referenceName && (
               <>
                 <Link href={browseHref}>Tiếp tục tìm món</Link>
@@ -745,19 +781,18 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                       <div className="checkout-food">
                         <FoodImage l={item} />
                         <div>
-                          <h2>{item.name}</h2>
+                          <h2>{item.name}</h2>{(held?.lotSnapshot?.nearDate??item.lot?.nearDate)&&<NearDateInfo value={held?.lotSnapshot?.nearDate??item.lot!.nearDate!} compact/>}
                           <Link href={`/shops/${item.shopId}`}>
                             {shop?.name}
                           </Link>
                           <p>{shop?.address}</p>{item.lot?.quantity&&<p className="demo-disclosure">{flowerQuantityLabel(item.lot)} mỗi đơn vị mua; không kèm bình hoặc bó tặng.</p>}
-                          <SalePrice item={held?.lotSnapshot?{price:held.menuTotal/held.qty,lot:held.lotSnapshot,saleVerified:!!held.lotSnapshot.saleStart}:item} now={now} afterVoucher={amounts?.total} qty={count} voucherName={held?.voucherId?(profile?.vouchers?.find((v:any)=>v.id===held.voucherId)?voucherLabel(profile.vouchers.find((v:any)=>v.id===held.voucherId)):"đã chọn"):activeVoucher?voucherLabel(activeVoucher):undefined} confirmed={!!held}/><b>
+                          <SalePrice item={held?.lotSnapshot?{price:(held.saleTotal??held.menuTotal)/held.qty,customerPricing:held.customerPricing,lot:held.lotSnapshot,saleVerified:!!held.lotSnapshot.saleStart}:item} now={now} afterVoucher={amounts?.total} qty={count} voucherName={combinedVoucherLabel} confirmed={!!held}/><b>
                             Nhận {time(item.start)}–{time(item.end)}
                           </b>
                         </div>
                       </div>
-                      <FulfillmentChoice name="checkout-fulfillment" value={receiveMethod} disabled={!!held||busy} change={method=>{setFulfillment(method);sessionStorage.setItem("bc-fulfillment",method);const d={listingId:item.id,qty:count,voucherId:activeVoucher?.id,fulfillment:method};setDraft(d);sessionStorage.setItem("bc-draft",JSON.stringify(d));}}/>
-                      {receiveMethod==="delivery" && user?.approved && user.role==="student" && <section className="delivery-contact"><h3>Thông tin nhận hàng</h3><label>Người nhận<input disabled={busy} autoComplete="name" value={recipient} maxLength={100} onChange={e=>setRecipient(e.target.value)} required/></label><label>Số điện thoại<input disabled={busy} type="tel" autoComplete="tel" placeholder="Số điện thoại Việt Nam, 10 chữ số" value={phone} maxLength={20} onChange={e=>setPhone(e.target.value)} required/></label><label>Địa chỉ đầy đủ tại Hà Nội<textarea disabled={busy} autoComplete="street-address" value={deliveryAddress} maxLength={250} onChange={e=>setDeliveryAddress(e.target.value)} required/></label><p className="fine">Đội Bếp Núc dùng thông tin này để báo phí và điều phối giao hàng. Chỉ thanh toán sau khi bạn đồng ý phí; hạn giữ 10 phút vẫn được áp dụng. Không có thưởng di chuyển cho đơn giao tận nơi.</p></section>}
-                      <Quantity
+                      {modern?<CheckoutReceiving method={receiveMethod} place={user?.place} delivery={{recipient:receiverName,phone:receiverPhone,address:deliveryAddress}} note={deliveryNote} signedIn={!!user} loginHref={loginHref} disabled={!!held||busy} demo={catalog.demo} confirmed={receivingConfirmed} changeMethod={method=>{invalidateReceiving();setFulfillment(method);sessionStorage.setItem("bc-fulfillment",method);}} changeContact={(key,value)=>{invalidateReceiving();key==="recipient"?setRecipient(value):setPhone(value);}} changeNote={value=>{invalidateReceiving();setDeliveryNote(value);}} invalidate={invalidateReceiving} confirm={()=>setConfirmedSelection(receivingKey)} save={args=>{invalidateReceiving();return act("save_place",args);}}/>:<FulfillmentChoice name="checkout-fulfillment" value={receiveMethod} disabled={!!held||busy} change={setFulfillment}/>}
+                      <Quantity unit={item.lot&&item.lot.kind!=="food"?"đơn vị":"suất"}
                         n={count}
                         max={Math.min(3, item.stock)}
                         disabled={!!held || busy}
@@ -768,7 +803,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                         }}
                       />
                       <details className="food-safety">
-                        <summary>{item.lot?.kind==="flowers"?"Chăm hoa & gói cơ bản":"Bảo quản & thông tin dị ứng"}</summary>
+                        <summary>{(item.lot?.kind==="flowers"||item.lot?.kind==="goods")?"Chăm hoa & gói cơ bản":"Bảo quản & thông tin dị ứng"}</summary>
                         <p>{item.storage || "Chưa có hướng dẫn bảo quản. Hỏi quán trước khi đặt."}</p>
                         {item.lot?.kind!=="flowers"&&<p>{item.allergens || "Chưa có thông tin dị ứng. Hỏi quán trước khi đặt."}</p>}
                       </details>
@@ -784,10 +819,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                         </section>
                       ) : !user.approved ? (
                         <section className="checkout-gate">
-                          <h2>Tài khoản đang chờ duyệt</h2>
-                          <p>
-                            Lựa chọn đã lưu. Vận hành cần duyệt tài khoản trước khi bạn đặt bữa. Bạn chưa giữ suất và chưa cần chuyển tiền; có thể quay lại xem món trong lúc chờ.
-                          </p>
+                          <div className="help-heading"><h2>Chờ duyệt tài khoản</h2><HelpTip title="Quyền của tài khoản chờ duyệt"><p>Bạn vẫn chọn vị trí, tính voucher và hỗ trợ tự lấy. Vận hành cần duyệt tài khoản trước khi giữ hàng, đồng ý báo giá hoặc thanh toán.</p></HelpTip></div>
                           <button onClick={() => load()}>
                             Kiểm tra trạng thái duyệt
                           </button>
@@ -801,37 +833,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                         </p>
                       ) : (
                         <>
-                          {modern&&<SavedPlace place={user.place} demo={catalog.demo} disabled={!!held||busy} save={a=>act("save_place",a)}/>}
-                          <h2>Chọn một voucher</h2>
-                          <fieldset className="checkout-vouchers"><legend>Chọn một voucher cho đơn này</legend>
-                            {modern?<><label className={`voucher-option ${!voucher?"selected":""}`}><input type="radio" name="voucher" checked={!voucher&&!held?.voucherId} disabled={!!held||busy} onChange={()=>setVoucher("")}/><b>Giá lô</b><span>Không dùng voucher</span></label>{[.15,.1,9000].flatMap(kind=>{const matches=(profile?.vouchers||[]).filter((v:any)=>kind===9000?v.amount===9000:v.rate===kind&&!v.amount);const v=matches.find((v:any)=>v.id===held?.voucherId)||matches.find((v:any)=>v.id===voucher)||matches.find((v:any)=>v.state==="available")||matches[0];return v?[{...v,remaining:matches.filter((v:any)=>v.state==="available").length}]:[];}).map((v:any)=>{const preview=lotEstimate(item,count,v),eligible=user.place&&v.state==="available"&&voucherCurrent(v,now)&&(v.amount?item.eligibleFixed||count>1:item.eligible.includes(v.rate)||count>1);return <label key={v.id} className={`voucher-option ${voucher===v.id||held?.voucherId===v.id?"selected":""}`}><input type="radio" name="voucher" checked={voucher===v.id||held?.voucherId===v.id} disabled={!eligible||!!held||busy} onChange={()=>setVoucher(v.id)}/><b>{voucherLabel(v)}</b><span className="voucher-copy"><strong>{money(preview.total)}</strong><small>{v.amount?"Giảm cố định":`Tối đa ${money(v.cap??0)}`} · {states[v.state]} · còn {v.remaining} lượt</small><small>{held?.voucherId===v.id?"Đã giữ cho đơn này":!user.place?"Lưu vị trí trước khi chọn":!eligible?"Lô hoặc lượt chưa đủ điều kiện":"Giá cuối kiểm tra khi giữ lô"}</small></span></label>;})}</>:[0.07, 0.1, 0.2].map((rate) => {
-                              const v = profile?.vouchers?.find(
-                                (v: any) => v.rate === rate,
-                              );
-                              const eligible = item.eligible.includes(rate);
-                              const best = displayPrice(item, vouchers, now).rate;
-                              const preview = estimate(item.price * count, rate);
-                              const unavailable = !v || displayPrice(item, [v], now).rate !== rate || !!held;
-                              return (
-                                <label key={rate} className={`voucher-option ${v && (voucher === v.id || held?.voucherId === v.id) ? "selected" : "secondary"}`}>
-                                  <input type="radio" name="voucher" value={v?.id || String(rate)} disabled={unavailable || busy}
-                                    checked={!!v && (voucher === v.id || held?.voucherId === v.id)}
-                                    onChange={() => {
-                                      if (!v) return;
-                                      setVoucher(v.id);
-                                      const next = { listingId: item.id, qty: count, voucherId: v.id }; setDraft(next);
-                                      try { sessionStorage.setItem("bc-draft", JSON.stringify(next)); } catch {}
-                                    }} />
-                                  <b>{percent(rate)}</b>
-                                  <span className="voucher-copy">
-                                    {!unavailable && <><strong>Còn {money(preview.total)}</strong><small>Giảm thêm {money(preview.voucherDiscount)}{rate === best ? " · Gợi ý tiết kiệm nhất" : ""}</small></>}
-                                    <small>{!eligible ? "Món không áp dụng" : v ? states[v.state] : "Chưa có voucher"}</small>
-                                  </span>
-                                </label>
-                              );
-                            })}
-                          </fieldset>
-                          <p className="fine">Bạn tự chọn một voucher; có thể để dành lượt cho đơn sau.</p>
+                          <p className="fine">Kiểm tra địa chỉ rồi chọn voucher trong phần hóa đơn.</p>
                         </>
                       )}
                       {held && (
@@ -874,17 +876,21 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                       )}
                     </section>
                     <aside className="checkout-summary" ref={summary} tabIndex={-1}>
-                      <h2>Tóm tắt thanh toán</h2>
+                      {!held&&<CheckoutVouchers ready={user?.role==="student"} value={user&&!user.approved?(previewRate?String(previewRate):""):voucher} options={billVoucherOptions} busy={busy} request={!!user&&!user.approved} change={value=>user&&!user.approved?setPreviewRate(Number(value)||0):setVoucher(value)}/>}
+                      {modern&&!held&&<ReceivingSavings rules={catalog.tradingRules} method={receiveMethod} committed={receivingConfirmed} hasSource hasPlace={!!user?.place} signedIn={!!user} {...receivingPreview}/>}
+                      <h2>Chi tiết thanh toán</h2>{!held&&desiredRate>0&&requestedThreshold!==undefined&&(requestedThreshold===null||count<requestedThreshold.qty)&&<p className="promotion-threshold" role="status">{requestedThreshold?`Ưu đãi này cần tiền hàng từ ${money(requestedThreshold.subtotal)} (${requestedThreshold.qty} đơn vị mua).`:"Ưu đãi này chưa đủ điều kiện trong tối đa 3 đơn vị mua."}</p>}
                       {receiveMethod==="delivery" && user?.approved && !deliveryValid && <p className="fine">Điền đủ tên người nhận, số điện thoại hợp lệ và địa chỉ để giữ suất.</p>}{receiveMethod==="delivery" && <p className="delivery-fee-pending">Phí giao hàng: chờ vận hành báo. Số tiền bên dưới chỉ là tiền hàng.</p>}
-                      {amounts && <PaymentSummary amounts={amounts} qty={count} unit={item.lot?.kind==="flowers"?"đơn vị mua":"suất"} method={receiveMethod} mode={held?"confirmed":"estimate"} voucher={held?.voucherId?(profile?.vouchers?.find((v:any)=>v.id===held.voucherId)?voucherLabel(profile.vouchers.find((v:any)=>v.id===held.voucherId)):"Đã xác nhận"):activeVoucher?voucherLabel(activeVoucher):"Không dùng voucher"}/>}{voucher&&!activeVoucher&&!held&&<p role="status">Voucher đã chọn chưa đủ điều kiện; chưa trừ vào số tiền bên trên.</p>}
+                      {amounts && <PaymentSummary amounts={amounts} qty={count} unit={(item.lot?.kind==="flowers"||item.lot?.kind==="goods")?"đơn vị mua":"suất"} method={receiveMethod} mode={held?"confirmed":user&&!user.approved?"request":"estimate"} voucher={user&&!user.approved?(previewRate===9000?"9.000đ":previewRate?`${previewRate*100}%`:"Không dùng voucher"):held?.voucherId?(profile?.vouchers?.find((v:any)=>v.id===held.voucherId)?voucherLabel(profile.vouchers.find((v:any)=>v.id===held.voucherId)):"Đã xác nhận"):activeVoucher?voucherLabel(activeVoucher):"Không dùng voucher"}/>}{voucher&&!activeVoucher&&!held&&<p role="status">Voucher đã chọn chưa đủ điều kiện; chưa trừ vào số tiền bên trên.</p>}
                       <p className="price-type">
                         {held
                           ? receiveMethod==="delivery"?"Tiền hàng đã xác nhận; phí giao báo sau":"Giá xác nhận từ Bếp Núc"
-                          : "Ước tính · chưa gồm thưởng tự nhận"}
+                          : receivingPreview.preview&&receiveMethod==="pickup" ? "Dự tính đã kiểm tra hỗ trợ tự lấy · chưa giữ hàng" : "Ước tính · hỗ trợ tự lấy chưa xác nhận"}
                       </p>
                       <div className="checkout-action">
-                        {amounts && <div className="action-total"><span>{receiveMethod==="delivery"?"Tiền hàng (chưa gồm phí giao)":held ? "Tổng thanh toán" : activeVoucher ? "Tổng ước tính đã chọn voucher" : "Giá trước voucher"}</span><strong>{money(amounts.total)}</strong></div>}
+                        {amounts && <div className="action-total"><span>{receiveMethod==="delivery"?"Tiền hàng (chưa gồm phí giao)":held ? "Tổng thanh toán" : user&&!user.approved||receivingPreview.preview ? "Tổng dự tính theo lựa chọn" : activeVoucher ? "Tổng ước tính đã chọn voucher" : "Giá trước voucher"}</span><strong>{money(amounts.total)}</strong></div>}
                         {held && <p>{seconds ? `Giữ suất còn ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}` : "Đã hết hạn. Kiểm tra lại giá trước khi thanh toán."}</p>}
+                      {!user&&<Link className="button-link bill-continue" href={loginHref}>Đăng nhập để tiếp tục</Link>}
+                      {user&&!user.approved&&<p className="fine">Chỉ tính thử; thanh toán sau khi tài khoản được duyệt.</p>}
                       {user?.approved &&
                         user.role === "student" &&
                         (held ? (
@@ -893,7 +899,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                             onClick={async () => {
                               const o = await act("order", {
                                 quoteId: held.id,
-                                delivery: receiveMethod==="delivery"?{recipient,phone,address:deliveryAddress}:undefined,
+                                delivery: receiveMethod==="delivery"?{recipient:receiverName,phone:receiverPhone,address:deliveryAddress}:undefined,
                               });
                               if (o) {
                                 sessionStorage.removeItem("bc-draft");
@@ -908,7 +914,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                         ) : (
                           <button
                             disabled={
-                              busy ||
+                              busy || (modern&&!receivingConfirmed) ||
                               (receiveMethod==="delivery"&&!deliveryValid) ||
                               catalog.pilotOpen === false ||
                               (!modern&&!activeVoucher) ||
@@ -1152,7 +1158,7 @@ function FoodImage({ l }: { l: Food }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [l.image]);
   return (
-    <div className={`food-image ${l.lot?.kind==="flowers"?"flower-image":""}`}>
+    <div className={`food-image ${(l.lot?.kind==="flowers"||l.lot?.kind==="goods")?"flower-image":""}`}>
       {l.image && !failed ? (
         <img
           src={l.image}
@@ -1170,11 +1176,13 @@ function FoodImage({ l }: { l: Food }) {
   );
 }
 function Quantity({
+  unit="suất",
   n,
   max,
   disabled,
   change,
 }: {
+  unit?:string;
   n: number;
   max: number;
   disabled: boolean;
@@ -1185,7 +1193,7 @@ function Quantity({
       <b>Số lượng</b>
       <button
         className="secondary"
-        aria-label="Giảm số suất"
+        aria-label={`Giảm số ${unit}`}
         disabled={disabled || n <= 1}
         onClick={() => change(n - 1)}
       >
@@ -1194,7 +1202,7 @@ function Quantity({
       <output aria-live="polite">{n}</output>
       <button
         className="secondary"
-        aria-label="Tăng số suất"
+        aria-label={`Tăng số ${unit}`}
         disabled={disabled || n >= max}
         onClick={() => change(n + 1)}
       >
@@ -1208,11 +1216,11 @@ function PriceLines({ a, hideTotal = false }: { a: any; hideTotal?: boolean }) {
     <>
       <dl className="price-lines">
         <div>
-          <dt>{a.pricingVersion===2?"Giá lô trước ưu đãi":"Giá menu"}</dt>
+          <dt>{a.customerPricing?"Giá gốc trước giảm":a.pricingVersion===2?"Giá lô trước ưu đãi":"Giá menu"}</dt>
           <dd>{money(a.menuTotal)}</dd>
         </div>
         <div>
-          <dt>{a.pricingVersion===2?"Giảm nền không áp dụng":"Giảm nền 5%"}</dt>
+          <dt>{a.baseDiscount>0?"Giảm nền 5%":"Giảm nền không áp dụng"}</dt>
           <dd>−{money(a.baseDiscount)}</dd>
         </div>
         <div>
@@ -1266,7 +1274,7 @@ function CustomerOrder({
         <b>{o.fulfillment==="delivery"&&o.status==="paid"?"Đã thanh toán · chờ người giao nhận món":states[o.status]}</b>
       </div>
       <p>
-        {o.qty} {o.lotSnapshot?.kind==="flowers"?"đơn vị mua":"suất"} · {o.status==="awaiting_delivery_fee"?"Tiền hàng ":""}{money(o.total)} · {s?.name}
+        {o.qty} {(o.lotSnapshot?.kind==="flowers"||o.lotSnapshot?.kind==="goods")?"đơn vị mua":"suất"} · {o.status==="awaiting_delivery_fee"?"Tiền hàng ":""}{money(o.total)} · {s?.name}
       </p>
       {!detail ? (
         <Link className="button-link" href={`/orders/${o.id}`}>
@@ -1276,7 +1284,7 @@ function CustomerOrder({
         <>
           {o.fulfillment==="delivery" && <section className="delivery-order-details"><h3>Giao tận nơi</h3><p>{o.delivery?.recipient} · {o.delivery?.phone}</p><p>{o.delivery?.address}</p><p>Tiền hàng {money(o.foodTotal)} · Phí giao {o.deliveryFee===undefined?"chờ xác nhận":money(o.deliveryFee)}</p></section>}
           {o.shippingSupport>0&&<p>Phí vận chuyển {money(o.grossDeliveryFee)} · Bếp Núc hỗ trợ {money(o.shippingSupport)} · Bạn trả {money(o.deliveryFee)}</p>}
-          {o.lotSnapshot&&<details><summary>Thông tin lô đã xác nhận</summary><p>{o.lotSnapshot.contents}</p><p>{o.lotSnapshot.condition}</p><p>{o.lotSnapshot.reason}</p><PriceLines a={o.priceBreakdown}/></details>}
+          {o.lotSnapshot?.nearDate&&<NearDateInfo value={o.lotSnapshot.nearDate} compact/>}{o.lotSnapshot&&<details><summary>Thông tin lô đã xác nhận</summary><p>{o.lotSnapshot.contents}</p><p>{o.lotSnapshot.condition}</p><p>{o.lotSnapshot.reason}</p><PriceLines a={o.priceBreakdown}/></details>}
           {["awaiting_payment","awaiting_delivery_fee"].includes(o.status)&&<button className="secondary" disabled={busy} onClick={()=>action("cancel",{orderId:o.id})}>Hủy đơn chưa thanh toán</button>}
           {["paid","picked_up","out_for_delivery","delivered"].includes(o.status)&&<section className="order-issue"><h3>Báo sai lô hoặc cần hỗ trợ</h3>{(data.issues??[]).filter((x:any)=>x.orderId===o.id).map((x:any)=><p key={x.id}>{x.status==="open"?"Đang chờ xử lý":x.resolution} · {x.description}</p>)}{!(data.issues??[]).some((x:any)=>x.orderId===o.id&&x.status==="open")&&<form onSubmit={async e=>{e.preventDefault();if(await action("report_issue",{orderId:o.id,description}))setDescription("");}}><label>Mô tả tình trạng hoặc vấn đề<textarea value={description} onChange={e=>setDescription(e.target.value)} minLength={5} maxLength={1000} required/></label><p className="fine">Giữ ảnh lô và nội dung đơn để đối chiếu khi được yêu cầu. Vận hành xem xét trước quyết định hoàn tiền.</p><button className="secondary" disabled={busy}>Gửi yêu cầu hỗ trợ</button></form>}</section>}
           {o.status==="awaiting_delivery_fee" && <section className="delivery-fee-review" role="status"><h3>{o.deliveryFee===undefined?"Vận hành đang xác nhận phí giao":"Kiểm tra phí trước khi thanh toán"}</h3><p>Giữ suất đến {time(o.expires)}. Chưa chuyển tiền khi chưa đồng ý phí.</p>{o.deliveryFee!==undefined && <><p>Tiền hàng {money(o.foodTotal)} + giao hàng {money(o.deliveryFee)}</p><strong className="price">Tổng {money(o.foodTotal+o.deliveryFee)}</strong><button disabled={busy||o.expires<=now} onClick={()=>action("accept_delivery_fee",{orderId:o.id,revision:o.delivery.revision})}>Đồng ý tổng tiền và tiếp tục</button></>}<button className="secondary" disabled={busy} onClick={()=>action("decline_delivery_fee",{orderId:o.id})}>Hủy yêu cầu, trả lại suất và voucher</button></section>}

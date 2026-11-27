@@ -1,11 +1,15 @@
 # Bếp Núc — MVP pilot Hà Nội
 
+Nếu bạn mới tiếp quản website, đọc [hướng dẫn bàn giao](docs/website-handoff.md) để chọn đúng entry point, chạy thử an toàn và xác định phạm vi phải kiểm tra khi sửa giá, voucher hoặc checkout.
+
 Ứng dụng độc lập: Next.js 15, TypeScript, Supabase Auth, PostgreSQL. Demo sử dụng PostgreSQL nhúng PGlite; production dùng database Supabase riêng. Không có ML, theo dõi GPS hoặc thanh toán tự động.
+
+Giá hiện hành: từ khoản đàm phán quán nhận (giảm30/35%) quy đổi giá gốc, giảm nền5% cho khách, rồi mới áp voucher. [Quy tắc và đối soát](docs/owner-catalogue-sale.md). Báo giá/đơn cũ giữ nguyên snapshot.
 
 ## Chạy mô phỏng
 
 ```powershell
-cd 'C:\Users\Admin\Documents\ChatGPT\Swin-Biz-Rockstar 2026\bep-nuc'
+Set-Location bep-nuc  # Từ thư mục gốc của repo, trong worktree phát triển
 npm ci
 $env:APP_MODE='demo'
 $env:DEMO_NOW='2026-10-05T18:30:00+07:00'

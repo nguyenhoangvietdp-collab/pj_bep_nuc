@@ -4,28 +4,30 @@ import {filterLaunchMenu,menuShops,launchPartner} from "../lib/launch-menu";
 import {productAssets} from "../lib/product-assets";
 import {act,issue,demoState,readiness,catalogue} from "../lib/domain";
 test("owner menu searches actual merchant name and address without accents",()=>{
- for(const query of ["BÒ TƠ MAI CHÂU","bo to","198 thai thinh","dong da"]){assert.equal(filterLaunchMenu(query).length,3);}
+ for(const query of ["BÒ TƠ MAI CHÂU","bo to","198 thai thinh"]){assert.equal(filterLaunchMenu(query).length,3);}
+ assert.equal(filterLaunchMenu("dong da").length,7);
  assert.deepEqual(filterLaunchMenu("bun rieu").map(p=>p.name),["Bún riêu"]);
  assert.equal(filterLaunchMenu("khong co").length,0);
 });
-test("unopened menu keeps the approved menu price for budget boundaries and sort",()=>{
- assert.equal(filterLaunchMenu("bo to","",34999).length,0);
- assert.deepEqual(filterLaunchMenu("bo to","",35000).map(p=>p.name),["Bánh dày"]);
- assert.deepEqual(filterLaunchMenu("bo to","",0,"price").map(p=>p.referencePrice),[35000,45000,60000]);
+test("catalogue budget and sort use customer5% sale price, not the negotiated supplier price",()=>{
+ assert.equal(filterLaunchMenu("bo to","",47499).length,0);
+ assert.deepEqual(filterLaunchMenu("bo to","",47500).map(p=>p.name),["Bánh dày"]);
+ assert.deepEqual(filterLaunchMenu("bo to","",0,"price").map(p=>p.cataloguePrice),[47500,61072,81430]);
  assert.equal(filterLaunchMenu("bo to","Bánh").length,1);
 });
-test("three explicitly simulated stores cover all remaining Drive dishes exactly once",()=>{
- const all=filterLaunchMenu(),mocks=menuShops.filter(s=>s.mock);
- assert.equal(mocks.length,3);assert.equal(all.length,14);
+test("owner-confirmed real shops cover the menu without changing legacy IDs",()=>{
+ const all=filterLaunchMenu(),remaining=menuShops.filter(s=>s.id!==launchPartner.id);
+ assert.equal(menuShops.filter(s=>s.mock).length,0);assert.equal(all.length,14);
  assert.equal(new Set(all.map(p=>p.image)).size,productAssets.length);
  assert.equal(all.filter(p=>p.shop.id===launchPartner.id).length,3);
- assert.deepEqual(mocks.map(s=>all.filter(p=>p.shop.id===s.id).length),[4,4,3]);
+ assert.deepEqual(remaining.map(s=>all.filter(p=>p.shop.id===s.id).length),[4,4,3]);
+ assert.deepEqual(remaining.map(s=>s.id),["mock-nguyen-chi-thanh-8","mock-giai-phong-10","mock-dien-bien-phu-30"]);
  for(const [q,count] of [["8 nguyen chi thanh",4],["10 giai phong",4],["30 dien bien phu",3]] as const){assert.equal(filterLaunchMenu(q).length,count);}
- assert.equal(filterLaunchMenu("","",5000).length,1);
+ assert.equal(filterLaunchMenu("","",6785).length,0);assert.equal(filterLaunchMenu("","",6786).length,1);
 });
 test("simulated partners cannot satisfy readiness or appear as live sale partners",()=>{
  const now=Date.now(),s=demoState(now);
- s.shops=menuShops.filter(p=>p.mock).map(({menu,...p})=>({...p,lat:null,lng:null,approved:true,signed:true,recurring:true}));
+ s.shops=menuShops.slice(1).map(({menu,...p})=>({...p,mock:true,lat:null,lng:null,approved:true,signed:true,recurring:true}));
  s.listings=s.shops.map((p,i)=>({...s.listings[0],id:`mock-${i}`,shopId:p.id}));
  assert.equal(readiness(s).ready,false);assert.equal(readiness(s).eligibleShops,0);
  assert.equal(catalogue(s,now,true).shops.length,0);assert.equal(catalogue(s,now,true).listings.length,0);

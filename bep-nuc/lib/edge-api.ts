@@ -1,4 +1,5 @@
-import { act, catalogue, issue, readiness, view, type State, type RuntimePolicy } from "./domain.ts";
+import {publicTradingRules,defaultTradingRules} from "./trading.ts";
+import { act, catalogue, issue, readiness, previewReceiving, view, type State, type RuntimePolicy } from "./domain.ts";
 import { GeocodingError, type AddressCandidate } from "./geocoding.ts";
 import {receiveLotImage} from "./lot-images.ts";
 export type VerifiedIdentity = { id: string; email?: string; emailVerified?: boolean };
@@ -9,6 +10,7 @@ export type EdgeDependencies = {
   transaction: <T>(fn: (state: State) => T) => Promise<T>;
   now?: () => number;
   geocode?: (address: string) => Promise<AddressCandidate[]>;
+  // Retained for older integrations; pickup pricing never calls a road routing service.
   routeDistance?: (origin:{lat:number;lng:number}, destination:{lat:number|null;lng:number|null})=>Promise<number|null>;
   uploadImage?: (bytes:Uint8Array,mime:string)=>Promise<string>;
 };
@@ -33,7 +35,7 @@ export function createEdgeHandler(deps: EdgeDependencies) {
       const parts = new URL(req.url).pathname.split("/").filter(Boolean);
       const route = parts[parts.length-1];
       const now = deps.now?.() ?? Date.now();
-      if (req.method === "GET" && route === "health") return response({ok:true,deliveryFeeApproval:true,productRequestsVersion:1,salesVersion:1,paymentSummaryVersion:1});
+      if (req.method === "GET" && route === "health") return response({ok:true,deliveryFeeApproval:true,productRequestsVersion:1,salesVersion:1,paymentSummaryVersion:1,catalogueSaleVersion:2,pickupPreviewVersion:1,checkoutVersion:3,locationEstimatesVersion:1,storeLocationsVersion:1,nearDateVersion:1,promotionThresholdVersion:1,locationEstimatesAllAccounts:true,pickupStacking:true,pickupDistanceMethod:"haversine",pickupRatePerKm:.08,pickupCapKm:2});
       if (route === "geocode") {
         if (req.method !== "POST") return response({error:"Phương thức không hỗ trợ"},405);
         if (origin !== deps.config.origin) return response({error:"Origin không hợp lệ"},403);
@@ -54,7 +56,7 @@ export function createEdgeHandler(deps: EdgeDependencies) {
         });
         return response({candidates:await deps.geocode(address),provider:"Photon / OpenStreetMap"});
       }
-      if (req.method === "GET" && route === "catalogue") return response(await run(s => ({ ...catalogue(s,now,true), demo:false, mapsEnabled:!!deps.routeDistance, pilotOpen:deps.config.acceptingOrders && deps.config.policy.pilotEnabled && deps.config.policy.bankReady && readiness(s,now).ready })));
+      if (req.method === "GET" && route === "catalogue") return response(await run(s => ({ ...catalogue(s,now,true), demo:false, mapsEnabled:false,pickupDistanceMethod:"haversine", pilotOpen:deps.config.acceptingOrders && deps.config.policy.pilotEnabled && deps.config.policy.bankReady && readiness(s,now).ready })));
       if (!["auth","pilot","export","image"].includes(route)) return response({error:"Không tìm thấy API"},404);
       const token = req.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
       const identity = token ? await deps.authenticate(token) : null;
@@ -88,7 +90,7 @@ export function createEdgeHandler(deps: EdgeDependencies) {
       if (route !== "pilot") return response({error:"Phương thức không hỗ trợ"},405);
       if (req.method === "GET") return response(await run(s => {
         const current=s.users.find(u=>u.id===user.id)!; if(current.approved) issue(s,current,now);
-        if(!current.approved) return {user:current,mealRequests:(s.mealRequests||[]).filter(r=>r.userId===current.id).map(({quoteId,...r})=>r),orders:[],vouchers:[],heldQuotes:[],supportEmail:deps.config.supportEmail};
+        if(!current.approved) return {user:current,tradingRules:publicTradingRules(s.tradingRules??defaultTradingRules()),mealRequests:(s.mealRequests||[]).filter(r=>r.userId===current.id).map(({quoteId,...r})=>r),orders:[],vouchers:[],heldQuotes:[],supportEmail:deps.config.supportEmail};
         // Pausing new reservations must not remove payment instructions from existing orders.
         return {...view(s,current,now),demo:false,mapsEnabled:false,supportEmail:deps.config.supportEmail,bank:deps.config.policy.bankReady && s.orders.some(o=>o.userId===current.id&&o.status==="awaiting_payment"&&s.quotes.some(q=>q.id===o.quoteId&&q.expires>now))?deps.config.bank:undefined};
       }));
@@ -99,27 +101,12 @@ export function createEdgeHandler(deps: EdgeDependencies) {
       if (!body || typeof body.action!=="string" || !body.args || typeof body.args!=="object" || Array.isArray(body.args)) return response({error:"Sai yêu cầu"},400);
       if(!/^[a-z_]{1,32}$/.test(body.action) || typeof body.args.key!=="string" || body.args.key.length<8 || body.args.key.length>128) return response({error:"Khóa hoặc thao tác không hợp lệ"},400);
       if (["quote","confirm_meal_request","accept_meal_request"].includes(body.action) && !deps.config.acceptingOrders) return response({error:"Tạm dừng nhận đơn mới. Bạn vẫn có thể theo dõi đơn hiện tại."},409);
-      let distance:number|null=null,placeId:string|undefined;
-      if(body.action==="quote"&&body.args.fulfillment!=="delivery"){
-        const context=await run(s=>{
-          const current=s.users.find(u=>u.id===user.id)!;
-          const l=s.listings.find(l=>l.id===body.args.listingId),shop=l&&s.shops.find(x=>x.id===l.shopId);
-          if(!current.approved||!current.place||!shop)return {place:current.place,shop:undefined};
-          const today=new Date(now).toISOString().slice(0,10);
-          const permitted=shop.lat!==null&&shop.lng!==null&&!!deps.routeDistance&&!!s.tradingRules?.enabled&&s.tradingRules.pickupBands.length>0&&(!body.args.voucherId||s.tradingRules.stackReceiving)&&s.audit.filter(x=>x.action==="route_request"&&new Date(x.at).toISOString().startsWith(today)).length<20;
-          if(permitted)s.audit.push({id:crypto.randomUUID(),at:now,actor:current.id,action:"route_request",detail:{listingId:l!.id}});
-          return {place:current.place,shop:permitted?shop:undefined};
-        });
-        placeId=context.place?.id;
-        if(context.place&&context.shop&&deps.routeDistance)try{distance=await deps.routeDistance(context.place,context.shop);}catch{distance=null;}
-      }
       return response(await run(s => {
-        const current=s.users.find(u=>u.id===user.id)!; if(current.approved) issue(s,current,now);
-        if(body.action==="quote"&&body.args.fulfillment!=="delivery"&&s.tradingRules?.version!==1&&current.place?.id!==placeId)throw new ClientError("Vị trí đã đổi; kiểm tra lại báo giá",409);
-        // Maps intentionally disabled on the zero-budget deployment.
-        if(!current.approved && body.action!=="meal_request")throw new ClientError("Tài khoản đang chờ vận hành duyệt",403);
-        const args={...body.args}; delete args.location;
-        return act(s,current,body.action,args,now,distance,deps.config.policy);
+        const current=s.users.find(u=>u.id===user.id)!; if(current.approved&&body.action!=="preview_receiving") issue(s,current,now);
+        if(body.action==="preview_receiving")return previewReceiving(s,current,body.args,now,null,deps.config.policy.production);
+        if(!current.approved && !["meal_request","save_place"].includes(body.action))throw new ClientError("Tài khoản đang chờ vận hành duyệt",403);
+        const args={...body.args}; delete args.location;delete args.distance;
+        return act(s,current,body.action,args,now,null,deps.config.policy);
       }));
     } catch (e) {
       if (e instanceof GeocodingError) return response({error:e.message},e.status);

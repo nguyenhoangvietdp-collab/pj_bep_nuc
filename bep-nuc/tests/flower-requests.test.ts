@@ -1,3 +1,4 @@
+import {checkoutSelection} from "../lib/checkout-selection";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {act,tradingDemoState,issue,view,type State} from "../lib/domain";
@@ -16,7 +17,7 @@ test("real flower inquiry snapshots canonical goal/units without reserving inven
  const f=setup(),stock=f.s.listings[1].stock,budget=f.s.quotes.length;
  const args={key:"same-request-key",productId:f.p.id,name:"Client attempts another name",qty:2,rate:9000,fulfillment:"pickup",targetPrice:1,product:{targetPrice:1}};
  const a=f.call("student","meal_request",args);assert.deepEqual(f.call("student","meal_request",args),a);
- const r=f.s.mealRequests![0];assert.equal(r.name,"Ly kép trắng");assert.equal(r.product!.targetPrice,90300);assert.equal(requestUnit(r.product!),"5 cành");assert.equal(r.qty,2);assert.equal(r.status,"pending");
+ const r=f.s.mealRequests![0];assert.equal(r.name,"Ly kép trắng");assert.equal(r.product!.targetPrice,90300);assert.equal(r.product!.catalogueSale!.originalPrice,129000);assert.equal(r.product!.catalogueSale!.discountPercent,5);assert.equal(requestUnit(r.product!),"5 cành");assert.equal(r.qty,2);assert.equal(r.status,"pending");
  assert.equal(f.s.listings[1].stock,stock);assert.equal(f.s.quotes.length,budget);assert.equal(f.s.orders.length,0);assert.ok(f.s.vouchers.every(v=>v.state==="available"));
  assert.throws(()=>f.call("student","meal_request",{...args,key:crypto.randomUUID(),productId:"unknown"}),/Mã sản phẩm/);
 });
@@ -53,8 +54,9 @@ test("flower quote expiry and private request access follow the common request f
 test("production request to verified quote to consented order uses existing pilot/payment gates",()=>{
  const f=setup();for(let i=2;i<=3;i++){f.s.shops.push({...f.s.shops[0],id:`real-test-shop-${i}`});f.s.listings.push({...f.s.listings[0],id:`real-test-lot-${i}`,shopId:`real-test-shop-${i}`});}
  const production={production:true,pilotEnabled:true,bankReady:true};
+ f.s.users[0].place={id:"confirmed-place",label:"Nhà",address:"Địa chỉ kiểm thử Hà Nội",lat:21.02,lng:105.82,savedAt:now};
  const call=(who:string,action:string,args:any={})=>act(f.s,f.s.users.find(u=>u.id===who)!,action,{key:crypto.randomUUID(),...args},now,null,production) as any;
- const r=call("student","meal_request",{name:f.p.name,productId:f.p.id,qty:1,rate:0,fulfillment:"pickup"});assert.equal(f.s.orders.length,0);
+ const r=call("student","meal_request",{name:f.p.name,productId:f.p.id,qty:1,rate:0,fulfillment:"pickup",checkout:checkoutSelection(f.s.users[0].place,"pickup")});assert.equal(f.s.orders.length,0);
  call("ops","confirm_meal_request",{requestId:r.id,listingId:"flowers",fee:0,appliedRate:0,sourceConfirmed:true});assert.equal(f.s.orders.length,0);const request=f.s.mealRequests![0];
  assert.throws(()=>call("student","order",{quoteId:request.quoteId}),/đồng ý báo giá/);
  call("student","accept_meal_request",{requestId:r.id,revision:request.revision});assert.equal(f.s.orders.length,1);assert.equal(f.s.orders[0].status,"awaiting_payment");assert.equal(f.s.payments.length,0);

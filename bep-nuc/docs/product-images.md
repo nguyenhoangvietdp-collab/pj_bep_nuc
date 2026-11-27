@@ -21,3 +21,8 @@ Catalogue GitHub Pages thay 4 món giả cũ bằng 14 món có ảnh tương �
 Vẫn dùng công thức giảm nền 5%, voucher 7%/10%/20%, số lượng 1–3 và logic đơn demo. Kho lưu trình duyệt chuyển sang v2 để đơn từ menu cũ không bị ghép sai món/giá; chỉ dữ liệu thử cũ không được nạp lại, không đụng dữ liệu pilot thật. Ứng dụng giao dịch chính không tự nhập quán hoặc thay database từ các ảnh này.
 
 Ảnh card và chi tiết dùng object-fit: contain để giữ toàn bộ bố cục ảnh, tải lười cho catalogue; không tạo chứng nhận dị ứng từ ảnh. Kiểm tra mapping asset, số món, giá và lọc trong tests/pages-demo.test.ts.
+
+
+## Cập nhật 04/11/2026: công thức đã được nối lại vào giao dịch v2
+
+Haversine và8 điểm phần trăm/km (cap2km) ở trên được giữ làm cơ sở; không dùng lại bộ voucher7/10/20% hoặc điều kiện demo cũ. Luồng hiện tại có voucher cơ bản15%/10%/9k và voucher tự lấy riêng, tính trên giá sale sau5%, trước voucher cơ bản. Khoản cộng thêm bị chặn theo biên và ngân sách, khoản trả tiệm cố định giữ nguyên. Xem `voucher-payment-summary.md` mục khôi phục công thức. Không còn cần Google Routes để tính thưởng đường chim bay.

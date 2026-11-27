@@ -1,6 +1,9 @@
+import {retailCategories,retailLabel,normalizeRetailCategory,nearDateCategory} from "./near-date.ts";
+import {thresholdFor,type promotionThresholds} from "./promotion-threshold.ts";
+import type {CustomerPricing} from "./catalogue-sale.ts";
 import {voucherCurrent,voucherDiscount,type Lot,type VoucherValue} from "./trading.ts";
-export const foodCategories = ["Cơm", "Bún/mì", "Bánh", "Đồ uống", "Món khác", "Hoa cắm nhà"];
-export const mealCategories = foodCategories.filter(c=>c!=="Hoa cắm nhà");
+export const foodCategories = ["Cơm", "Bún/mì", "Bánh", "Đồ uống", "Món khác", "Hoa cắm nhà",...retailCategories];
+export const mealCategories = foodCategories.filter(c=>c!=="Hoa cắm nhà"&&!c.startsWith(retailLabel));
 export const money = (n: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
     n,
@@ -32,7 +35,9 @@ export function estimate(menuTotal: number, rate = 0) {
   };
 }
 export type Food = {
+  promotionThresholds?:ReturnType<typeof promotionThresholds>;
   saleVerified?:boolean;
+  customerPricing?:CustomerPricing;
   lot?:Lot;
   pricingVersion?:number;
   eligibleFixed?:boolean;
@@ -50,6 +55,8 @@ export type Food = {
   eligible: number[];
 };
 export type PublicShop = {
+  label?:string;pickupEntrance?:string;driverNotes?:string;
+  lat?:number|null; lng?:number|null;
   mock?: boolean;
   story?: string;
   id: string;
@@ -60,8 +67,9 @@ export type PublicShop = {
 export type DisplayVoucher = VoucherValue & { id?:string; state: string; day: string };
 export function lotEstimate(food:Food,qty=1,v?:DisplayVoucher){
   if(food.pricingVersion!==2)return estimate(food.price*qty,v?.rate||0);
-  const base=food.price*qty,discount=voucherDiscount(base,v);
-  return {pricingVersion:2,menuTotal:base,baseDiscount:0,voucherDiscount:discount,bonusDiscount:0,total:base-discount,saved:discount};
+  const threshold=thresholdFor(food.promotionThresholds,v?.amount===9000?9000:v?.rate??0);
+  const base=food.price*qty,discount=threshold===undefined||threshold!==null&&qty>=threshold.qty?voucherDiscount(base,v):0,menuTotal=(food.customerPricing?.originalUnitPrice??food.price)*qty;
+  return {pricingVersion:2,customerPricing:food.customerPricing,saleTotal:base,menuTotal,baseDiscount:menuTotal-base,voucherDiscount:discount,bonusDiscount:0,total:base-discount,saved:menuTotal-base+discount};
 }
 export function displayPrice(food: Food, vouchers: DisplayVoucher[], now: number, qty = 1) {
   if(food.pricingVersion===2){
@@ -112,7 +120,7 @@ export function filterFood(
         l.end > now &&
         (category!=="" || l.lot?.kind!=="flowers"&&l.category!=="Hoa cắm nhà") &&
         (!budget || displayPrice(l, vouchers, now).total <= budget) &&
-        (!category || l.category === category) &&
+        (normalizeRetailCategory(category)===retailLabel?l.lot?.kind==="goods":!category?l.lot?.kind!=="flowers"&&l.lot?.kind!=="goods":normalizeRetailCategory(l.lot?.kind==="goods"&&l.lot.nearDate?nearDateCategory(l.lot.nearDate.group):l.category)===normalizeRetailCategory(category)) &&
         (!shopId || l.shopId === shopId) &&
         (!stockOnly || l.stock > 0) &&
         (!receiving || (l.start <= now && l.end > now)) &&
