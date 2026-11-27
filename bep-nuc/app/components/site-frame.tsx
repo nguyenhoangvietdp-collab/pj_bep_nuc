@@ -1,6 +1,7 @@
 "use client";
 import Link from "./navigation";
 import BrandLogo from "./brand-logo";
+import BrandGarden from "./brand-garden";
 import PilotDisclaimer from "./pilot-disclaimer";
 import { useAppPathname as usePathname } from "./navigation";
 import { isCloudMvp } from "../../lib/app-navigation";
@@ -12,7 +13,6 @@ type HeaderProps = { role?: string; name?: string; approved?: boolean };
 export function SiteHeader({ role, name, approved }: HeaderProps) {
   const path = usePathname();
   const internal = path === "/internal";
-  const showHeaderArt = !internal && path !== "/";
   const links = internal && role
     ? [
         { href: role === "merchant" ? "#inventory" : role === "ops" ? "#operations" : "#catalogue", label: role === "merchant" ? "Lô hàng" : role === "ops" ? "Đối soát" : "Bữa hôm nay" },
@@ -27,7 +27,7 @@ export function SiteHeader({ role, name, approved }: HeaderProps) {
       ];
   return <>
     <Link className="skip-link" href="#content">Đến nội dung chính</Link>
-    <header className={`frame-header${showHeaderArt?" frame-header-with-art":""}`}><div className="frame-header-inner">
+    <header className="frame-header"><div className="frame-header-inner">
       <Link className="frame-brand" href="/" aria-label="Bếp Núc — trang chủ"><BrandLogo/></Link>
       <nav aria-label="Điều hướng chính">{links.map(link => {
         const active = !link.href.startsWith("#") && (path === link.href || path.startsWith(link.href + "/") || link.href === "/meals" && (path.startsWith("/shops/") || path === "/checkout"));
@@ -37,7 +37,7 @@ export function SiteHeader({ role, name, approved }: HeaderProps) {
         <Link className="frame-account-link" href={role && role !== "student" ? "/internal" : "/login"}>{role ? "Tài khoản" : "Đăng nhập"}</Link>
         {name && <span className="frame-account" title={name}>{approved === false ? "Chờ duyệt" : role === "merchant" ? "Cửa hàng" : role === "ops" ? "Vận hành" : "Sinh viên"}</span>}
         {isCloudMvp && role && <button className="text-button" onClick={() => logoutMvp().catch(() => window.location.hash="/login")}>Đăng xuất</button>}
-      </div>{showHeaderArt&&<FoodFriendsArt className="frame-header-art"/>}</div>
+      </div></div>
     </div></header>
   </>;
 }
@@ -47,7 +47,7 @@ export function FoodFriendsArt({className}:{className:string}) {
 export function SiteFooter({ children, supportEmail }: { children?: ReactNode; supportEmail?: string }) {
   const support = supportLink(supportEmail, "");
   const path=usePathname();
-  return <footer className="frame-footer commerce-footer"><div className="footer-columns">
+  return <footer className="frame-footer commerce-footer"><BrandGarden className="garden-footer-pattern"/><div className="footer-columns">
     <section><h2>Chăm sóc khách hàng</h2>{children || <details><summary>Cách mua và theo dõi đơn</summary><p>Chọn món, gửi yêu cầu và kiểm tra báo giá trước khi thanh toán. Theo dõi xử lý trong Đơn hàng.</p></details>}{support&&<a href={support}>Liên hệ hỗ trợ</a>}</section>
     <nav aria-label="Về Bếp Núc"><h2>Về Bếp Núc</h2><Link href="/">Giới thiệu Bếp Núc</Link><Link href="/meals">Sản phẩm</Link><Link href="/offers">Ưu đãi</Link><Link href="/orders">Đơn hàng của bạn</Link></nav>
     <section><h2>Thanh toán</h2><p>Chuyển khoản ngân hàng</p><p>Chỉ chuyển tiền sau khi lô, thời gian nhận/giao và tổng tiền đã được xác nhận, đồng ý.</p><p>Vận hành xác nhận thanh toán thủ công.</p></section>

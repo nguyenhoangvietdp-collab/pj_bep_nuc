@@ -12,7 +12,14 @@ Bếp Núc connects Hanoi buyers with end-of-day meals, flowers for home and goo
 | GitHub Pages | [`pages-site/`](../pages-site/) | Introduction and link to Workers. `npm run build:pages` exports to `pages-site/out/`. |
 | Older pilot | [`apps/buachot-pilot/`](../../apps/buachot-pilot/) | Historical BữaChốt implementation. |
 
-Shared components live in [`app/components/`](../app/components/). The Workers CSS build combines `app/style.css`, `app/commerce.css`, `app/frame.css` and `mvp-site/mvp.css`. Source product and brand assets live in [`public/`](../public/). Builds copy them into the target exports.
+Shared components live in [`app/components/`](../app/components/). The Workers CSS build combines `app/style.css`, `app/commerce.css`, `app/frame.css`, `mvp-site/mvp.css` and `app/garden.css` (last). Source product and brand assets live in [`public/`](../public/). Builds copy them into the target exports.
+
+## Illustrated visual direction
+
+- `app/garden.css` is the shared visual layer for the fresh green, yellow and cream theme. Keep checkout inputs and price breakdowns on light backgrounds with strong text contrast.
+- `app/components/brand-garden.tsx` draws reusable, decorative geometric tiles with CSS; it is hidden from assistive technology. Preserve the stepped top/right arrangement and avoid placing patterns behind information or controls.
+- `app/components/customer-home.tsx` leads with self-pickup savings and an illustration of students receiving food. Optimized WebP illustrations live in `public/brand/`; they are brand art, not evidence of suppliers or customer activity. The original introduction video remains available on demand rather than autoplaying behind the headline.
+- Apply visual changes to both Next.js and Workers. Do not replace voucher eligibility, contribution checks or accepted prices with frontend calculations. The receiving selector explains the extra pickup benefit separately from the base voucher.
 
 ## Get a local baseline
 
