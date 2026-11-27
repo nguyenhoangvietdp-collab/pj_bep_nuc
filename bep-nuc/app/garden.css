@@ -76,6 +76,9 @@
 .commerce .fulfillment-choice label { border-radius:12px; min-height:76px; }
 .commerce .fulfillment-choice label.is-selected { background:#f0f5df; border:2px solid #39754a; padding:15px; }
 .commerce .pickup-reward-ticket { background:#fff5c9; border-color:#cfb44e; }
+.commerce .retail-reference-grid .reference-packshot { object-fit:contain; padding:16px; background:white; }
+.commerce .retail-reference-grid .menu-preview-price span { display:block; font-size:14px; color:var(--muted); }
+.commerce .menu-preview-info .help-heading h3 { min-width:0; }
 @media(max-width:900px) {
  .garden-hero { min-height:580px; padding:80px 24px 40px; }.garden-hero-pattern { grid-template-columns:repeat(6,48px); width:288px; }
  .garden-hero-illustration { margin:70px -10px 0 -55px; }.garden-category-image img { height:180px; }

@@ -1,5 +1,7 @@
 "use client";
 import HelpTip from "./help-tip";
+import ProductReferenceInfo from "./product-reference-info";
+import {catalogueIllustration} from "../../lib/public-catalogue";
 import PaymentSummary from "./payment-summary";
 import ReceivingSavings from "./receiving-savings";
 import LaunchBenefitEstimate from "./launch-benefit-estimate";
@@ -45,7 +47,7 @@ export default function MealRequests({name,product,ops=false,rules,shops=[]}:{na
  return <section className="meal-requests"><h2>{ops?"Yêu cầu cần xác nhận":"Sản phẩm của bạn"}</h2>{error&&<p role="alert" className="error">{error}</p>}
  {auth&&!auth.approved&&<div className="account-status help-heading"><span>Chờ duyệt tài khoản</span><HelpTip title="Quyền của tài khoản chờ duyệt"><p>Bạn được chọn vị trí, tính quyền lợi và gửi nhu cầu. Đồng ý báo giá và thanh toán cần tài khoản được duyệt.</p></HelpTip></div>}
  {label&&loaded&&!ops&&<div className="checkout-layout request-checkout-layout"><div className="checkout-main">
- <section className="checkout-item"><img src={item?.image} alt={label} width="112" height="112"/><div><h3>{label}</h3><p>{item?requestUnit(item):"Quy cách sẽ được xác nhận"}</p><p className="fine">Chờ xác nhận cửa hàng & khả năng phục vụ</p>{item&&<SalePrice unitLabel={requestUnit(item)} item={{price:requestPrice(item),customerPricing:item.catalogueSale?.discountPercent===5?{originalUnitPrice:item.catalogueSale.originalPrice,saleUnitPrice:requestPrice(item),baseDiscountPercent:5}:undefined}} now={now}/>}</div></section>
+ <section className="checkout-item"><img src={item?catalogueIllustration(item.id,item.image):undefined} alt={label} width="112" height="112"/><div><div className="help-heading"><h3>{label}</h3>{item&&<ProductReferenceInfo id={item.id}/>}</div><p>{item?requestUnit(item):"Quy cách sẽ được xác nhận"}</p><p className="fine">Chờ xác nhận cửa hàng & khả năng phục vụ</p>{item&&<SalePrice unitLabel={requestUnit(item)} item={{price:requestPrice(item),customerPricing:item.catalogueSale?.discountPercent===5?{originalUnitPrice:item.catalogueSale.originalPrice,saleUnitPrice:requestPrice(item),baseDiscountPercent:5}:undefined}} now={now}/>}</div></section>
  <label className="checkout-quantity">{item?.kind==="flowers"?"Số đơn vị mua":"Số suất"}<select name="qty" disabled={busy} value={draft.qty||"1"} onChange={e=>change("qty",e.target.value)}>{[1,2,3].map(n=><option key={n}>{n}</option>)}</select></label>
  {item&&<div className="help-heading"><p>Bạn nhận: {qty*item.quantity.amount} {item.quantity.unit}</p><HelpTip title="Cách tính số lượng"><p>{qty} đơn vị mua × {requestUnit(item)} = {qty*item.quantity.amount} {item.quantity.unit}.</p>{item.note&&<p>{item.note}</p>}<p>Với quy cách bó, số bó không tự quy đổi thành số cành hoặc bông.</p></HelpTip></div>}
  <CheckoutReceiving method={method} place={place} delivery={delivery} note={draft.addressNote} signedIn={!!auth} loginHref={"/login?returnTo="+encodeURIComponent(checkout)} disabled={busy} demo={data?.demo===true} confirmed={ready} changeMethod={m=>changeReceiving("method",m)} changeContact={(k,v)=>changeReceiving(k,v)} changeNote={v=>changeReceiving("addressNote",v)} invalidate={()=>setConfirmedSelection("")} confirm={()=>setConfirmedSelection(key)} save={args=>{setConfirmedSelection("");return send("save_place",args);}}/>

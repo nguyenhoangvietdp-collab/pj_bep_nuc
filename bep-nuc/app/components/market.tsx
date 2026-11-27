@@ -14,6 +14,7 @@ import {productAssets} from "../../lib/product-assets";
 import NearDateInfo from "./near-date-info";
 import {retailCategories,retailLabel,normalizeRetailCategory,isNonFoodGroup} from "../../lib/near-date";
 import HelpTip from "./help-tip";
+import RetailReferenceCatalogue from "./retail-reference-catalogue";
 import PickupBenefit from "./pickup-benefit";
 import PickupPoint from "./pickup-point";
 import MealRequests from "./meal-requests";
@@ -709,6 +710,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                     </ul>
                   </section>
                 )}
+                {nearDateGroup&&!shopFilter&&!receiving&&<RetailReferenceCatalogue query={query} category={category} budget={budget} sort={sort}/>}
                   </>
                   </section>
                 </div>

@@ -52,6 +52,8 @@ The [MVP workflow](../../.github/workflows/mvp-checks.yml) checks changes under 
 
 ## Follow one feature at a time
 
+Public catalogue media and price observations are in `lib/public-catalogue-references.json` (checked 28 November 2026). `lib/public-catalogue.ts` filters retail references and selects illustration overrides for the UI. Keep `product-assets.ts`, canonical product IDs and old image files intact: their amounts are inputs to the negotiated pricing policy, not scraped market prices. Public reference observations must never set a shop's original/negotiated price, stock, expiry, pickup window or approved supplier status. The seven retail references are read-only until a real lot is confirmed; only their source links are actionable. Source, licence and quantity information is available through help buttons and `public/food-images/sources.html`. `tests/public-catalogue.test.ts` checks the boundary and asset provenance.
+
 | Work area | Start here | Checks that cover the important edges |
 |---|---|---|
 | Catalogue, sale and listings | `app/components/market.tsx`, `reference-product.tsx`, `sale-price.tsx`, `lib/request-catalogue.ts`, `lib/catalogue-sale.ts` | `catalogue-sale.test.ts`, `sale.test.ts`, `sale-countdown.test.ts`, `flower-requests.test.ts` |
