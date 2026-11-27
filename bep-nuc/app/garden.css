@@ -77,8 +77,27 @@
 .commerce .fulfillment-choice label.is-selected { background:#f0f5df; border:2px solid #39754a; padding:15px; }
 .commerce .pickup-reward-ticket { background:#fff5c9; border-color:#cfb44e; }
 .commerce .retail-reference-grid .reference-packshot { object-fit:contain; padding:16px; background:white; }
-.commerce .retail-reference-grid .menu-preview-price span { display:block; font-size:14px; color:var(--muted); }
 .commerce .menu-preview-info .help-heading h3 { min-width:0; }
+.commerce .source-price-reference { padding:14px 0; margin:12px 0 18px; border-block:1px solid var(--line); }
+.commerce .source-price-reference p { margin:0 0 6px; color:var(--muted); font-size:14px; line-height:1.5; }
+.commerce .source-price-amount { display:flex; flex-wrap:wrap; gap:6px; align-items:baseline; }
+.commerce .source-price-amount strong { font-size:20px; font-weight:650; color:var(--ink); }
+.commerce .source-price-amount span { font-size:14px; color:var(--muted); }
+.commerce .source-price-reference a { display:inline-block; margin:6px 0; font-size:14px; line-height:1.5; }
+.commerce .source-price-reference .source-price-scope { margin:0; }
+.commerce .reference-prices.has-source { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr)); gap:16px; align-items:start; }
+.commerce .reference-prices.has-source > .source-price-reference { margin:0 0 16px; }
+.commerce .checkout-item > div { flex:1; }
+.commerce .retail-reference-grid .menu-preview-info { padding:20px; }
+.commerce .retail-reference-grid h3 { font-weight:700; line-height:1.35; }
+.commerce .retail-reference-grid .retail-purchase-unit { font-size:16px; margin-bottom:20px; }
+.commerce .retail-reference-price { display:flex; flex-direction:column; gap:6px; margin-top:auto; padding-top:16px; }
+.commerce .retail-reference-price span,.commerce .retail-reference-price small { font-size:14px; color:var(--muted); }
+.commerce .retail-reference-price strong { font-size:32px; font-weight:750; color:var(--ink); line-height:1.2; }
+.commerce .retail-source-link { display:inline-flex; align-items:center; align-self:flex-start; min-height:44px; margin-top:12px; }
+.commerce .market-empty.retail-stock-status { padding:16px 20px; margin:12px 0 24px; border:0; border-radius:12px; background:#f5f4e8; text-align:left; }
+.commerce .retail-stock-status h3 { font-size:16px; margin:0 0 6px; }
+.commerce .retail-stock-status p { font-size:14px; margin:0; }
 @media(max-width:900px) {
  .garden-hero { min-height:580px; padding:80px 24px 40px; }.garden-hero-pattern { grid-template-columns:repeat(6,48px); width:288px; }
  .garden-hero-illustration { margin:70px -10px 0 -55px; }.garden-category-image img { height:180px; }
