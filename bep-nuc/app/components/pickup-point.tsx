@@ -1,0 +1,5 @@
+import HelpTip from "./help-tip";
+export type PickupStore={id:string;name:string;address:string;lat:number|null;lng:number|null;label?:string;pickupEntrance?:string;driverNotes?:string};
+export default function PickupPoint({store,showName=true}:{store:PickupStore;showName?:boolean}){
+ return <section className="pickup-point" aria-label="Điểm nhận hàng"><div className="help-heading"><h3>{showName?store.name:"Điểm nhận hàng"}</h3><HelpTip title="Chỉ dẫn nhận hàng">{store.label&&<p>Tên nhãn: {store.label}</p>}<p>{store.address}</p>{store.pickupEntrance&&<p><b>Cửa nhận:</b> {store.pickupEntrance}</p>}{store.driverNotes&&<p>{store.driverNotes}</p>}{typeof store.lat==="number"&&typeof store.lng==="number"&&<><p>GPS: {store.lat}, {store.lng}</p><a href={`https://www.google.com/maps/search/?api=1&query=${store.lat},${store.lng}`} target="_blank" rel="noreferrer">Mở bản đồ</a></>}</HelpTip></div><p>{store.address}</p>{store.pickupEntrance&&<p className="pickup-entrance">{store.pickupEntrance}</p>}</section>;
+}

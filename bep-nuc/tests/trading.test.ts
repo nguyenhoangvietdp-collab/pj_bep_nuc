@@ -19,14 +19,14 @@ test("Monday Vietnam boundary and weekly quota2/2/configured9k never issue twice
  issue(s,s.users[0],now+7*86400000);assert.equal(s.vouchers.length,16);assert.equal(view(s,s.users[0],now+7*86400000).vouchers.length,8);
 });
 test("production default has no funded promotion and no silently activated9k quota",()=>{const s=empty();s.users=fixture().users;issue(s,s.users[0],now);assert.equal(s.vouchers.length,0);assert.equal(defaultTradingRules().shippingCap,0);});
-test("new lots follow their published window, including flower pickup before18h",()=>{const at=Date.parse("2026-11-02T16:30:00+07:00"),s=modernDemoState(at);issue(s,s.users[0],at);const q=call(s,"student","quote",{listingId:"flowers",qty:1},at);assert.equal(q.total,59000);assert.equal(q.expires,at+600000);});
+test("new lots follow their published window, including flower pickup before18h",()=>{const at=Date.parse("2026-11-02T16:30:00+07:00"),s=modernDemoState(at);issue(s,s.users[0],at);const q=call(s,"student","quote",{listingId:"flowers",qty:1},at);assert.equal(q.total,56050);assert.equal(q.expires,at+600000);});
 test("9k is fixed across60k/90k boundaries; percentage caps are independent",()=>{
  for(const b of [59999,60000,60001,89999,90000,90001])assert.equal(voucherDiscount(b,{rate:0,amount:9000}),9000);
  assert.equal(voucherDiscount(100000,{rate:.15,cap:9000}),9000);assert.equal(voucherDiscount(40000,{rate:.15,cap:9000}),6000);
 });
-test("voucher requires saved place; no-voucher price is full lot price without hidden5%",()=>{const s=fixture();assert.throws(()=>quote(s,.1),/vị trí/);const q=quote(s);assert.equal(q.total,50000);assert.equal(q.baseDiscount,0);assert.equal(q.voucherId,"");call(s,"student","release_quote",{quoteId:q.id});place(s);const v=quote(s,9000);assert.equal(v.total,41000);assert.equal(v.voucherDiscount,9000);assert.equal(v.baseDiscount,0);});
+test("basic voucher requires a saved place; only the pickup discount applies without it",()=>{const s=fixture();assert.throws(()=>quote(s,.1),/vị trí/);const q=quote(s);assert.equal(q.total,47500);assert.equal(q.baseDiscount,0);assert.equal(q.voucherId,"");call(s,"student","release_quote",{quoteId:q.id});place(s);const v=quote(s,9000);assert.equal(v.total,38500);assert.equal(v.voucherDiscount,9000);assert.equal(v.baseDiscount,0);});
 test("budget and stock reservation are idempotent; releasing and expiration restore both",()=>{
- const s=fixture();place(s);const args={listingId:"meal",qty:1,voucherId:voucher(s,.1).id,key:"same-key-retry"};const a=call(s,"student","quote",args),b=call(s,"student","quote",args);assert.equal(a.id,b.id);assert.equal(s.listings[0].stock,11);assert.equal(promotionUsed(s,weekStart(now)),5000);
+ const s=fixture();place(s);const args={listingId:"meal",qty:1,voucherId:voucher(s,.1).id,key:"same-key-retry"};const a=call(s,"student","quote",args),b=call(s,"student","quote",args);assert.equal(a.id,b.id);assert.equal(s.listings[0].stock,11);assert.equal(promotionUsed(s,weekStart(now)),7500);
  assert.throws(()=>call(s,"student","save_place",{label:"Khác",address:"Địa chỉ khác Hà Nội",lat:21,lng:105.8}),/Bỏ giữ/);
  expire(s,now+600001);assert.equal(s.listings[0].stock,12);assert.equal(voucher(s,.1).state,"available");assert.equal(promotionUsed(s,weekStart(now)),0);
 });
@@ -34,8 +34,8 @@ test("insufficient margin and weekly budget never reserve a voucher or stock",()
  const s=fixture();place(s);s.listings[0].floor=45000;assert.throws(()=>quote(s,9000),/ngân sách/);assert.equal(voucher(s,9000).state,"available");assert.equal(s.listings[0].stock,12);
  s.listings[0].floor=32500;s.tradingRules!.weeklyBudget=4999;assert.throws(()=>quote(s,.1),/Ngân sách/);assert.equal(s.quotes.length,0);
 });
-test("farther support grows within bands, route unavailable earns none; no implicit stacking",()=>{
- const s=fixture();place(s);const a=quote(s,0,"pickup","meal",2.5);assert.equal(a.bonusDiscount,2000);call(s,"student","release_quote",{quoteId:a.id});const b=quote(s,0,"pickup","meal",null);assert.equal(b.bonusDiscount,0);call(s,"student","release_quote",{quoteId:b.id});const c=quote(s,.1,"pickup","meal",2.5);assert.equal(c.bonusDiscount,0);assert.equal(c.voucherDiscount,5000);
+test("pickup gives the same 5% at any distance and stacks with a basic voucher",()=>{
+ const s=fixture();place(s);s.users[0].place!.lat+=.03;const a=quote(s,0,"pickup","meal",999);assert.equal(a.bonusDiscount,2500);assert.equal(a.pickupPricing.method,"fixed");call(s,"student","release_quote",{quoteId:a.id});s.shops[0].lat=null;const b=quote(s,0,"pickup","meal",999);assert.equal(b.bonusDiscount,2500);call(s,"student","release_quote",{quoteId:b.id});s.shops[0].lat=21.0285;const c=quote(s,.1,"pickup","meal",999);assert.equal(c.bonusDiscount,2500);assert.equal(c.voucherDiscount,5000);assert.equal(c.total,42500);assert.equal(c.pickupPricing.nominal,2500);assert.equal(c.pickupPricing.limited,false);
 });
 test("ship30% is capped, revised price needs consent and totals use only customer share",()=>{
  const s=fixture();const q=quote(s,0,"delivery"),o=call(s,"student","order",{quoteId:q.id,delivery:{recipient:"Khách thử",phone:"0912345678",address:"Hồ Hoàn Kiếm, Hà Nội"}});call(s,"ops","delivery_fee",{orderId:o.id,fee:20000});assert.equal(s.orders[0].delivery!.support,6000);call(s,"ops","delivery_fee",{orderId:o.id,fee:40000});assert.equal(s.orders[0].delivery!.support,9000);assert.throws(()=>call(s,"student","accept_delivery_fee",{orderId:o.id,revision:1}),/đổi/);call(s,"student","accept_delivery_fee",{orderId:o.id,revision:2});assert.equal(orderTotal(s,s.orders[0]),81000);assert.equal(s.orders[0].delivery!.customerFee,31000);
@@ -45,7 +45,7 @@ test("ship support with voucher is off unless funded stacking is explicitly enab
 });
 test("weekly voucher is consumed at handover, with a snapshot unaffected by policy changes",()=>{
  const s=fixture();place(s);const {q,order}=paid(s,.1);assert.equal(voucher(s,.1).state,"reserved");const original=s.quotes.find(x=>x.id===q.id)!;s.listings[0].lot!.condition="Tình trạng đã thay đổi";s.tradingRules!.cap10=1000;
- assert.notEqual(original.lotSnapshot!.condition,s.listings[0].lot!.condition);call(s,"merchant","pickup",{orderId:order.id,code:order.code});assert.equal(voucher(s,.1).state,"used");assert.equal(original.price,45000);assert.throws(()=>call(s,"merchant","pickup",{orderId:order.id,code:order.code}),/Mã/);
+ assert.notEqual(original.lotSnapshot!.condition,s.listings[0].lot!.condition);call(s,"merchant","pickup",{orderId:order.id,code:order.code});assert.equal(voucher(s,.1).state,"used");assert.equal(original.price,42500);assert.throws(()=>call(s,"merchant","pickup",{orderId:order.id,code:order.code}),/Mã/);
 });
 test("refund after shop handover keeps merchant obligation, avoids duplicate refund",()=>{
  const s=fixture();const {order}=paid(s,0,"delivery","flowers");call(s,"ops","pickup",{orderId:order.id,code:order.code});call(s,"student","report_issue",{orderId:order.id,description:"Hoa nhận khác tình trạng đã công bố"});const id=s.issues![0].id;call(s,"ops","resolve_issue",{id,refund:true,resolution:"Lô nhận sai, hoàn tiền khách"});assert.equal(ledger(s).merchantDue,40000);assert.equal(s.refunds.length,1);assert.equal(s.refunds[0].amount,80000);assert.throws(()=>call(s,"ops","resolve_issue",{id,refund:true,resolution:"Không lặp lại"}),/đang mở/);

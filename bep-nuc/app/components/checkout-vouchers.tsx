@@ -1,0 +1,7 @@
+"use client";
+import HelpTip from "./help-tip";
+import {money} from "../../lib/commerce";
+export type CheckoutVoucherOption={value:string;label:string;detail:string;discount:number;disabled?:boolean};
+export default function CheckoutVouchers({ready,value,options,change,busy=false,request=false}:{ready:boolean;value:string;options:CheckoutVoucherOption[];change:(value:string)=>void;busy?:boolean;request?:boolean}){
+ return <section className="checkout-promotions"><div className="help-heading"><h2>Voucher cơ bản</h2><HelpTip title="Cách dùng voucher"><p>Chọn một voucher cơ bản trước khi chọn cách nhận. Tự đến lấy có thể nhận thêm voucher tự lấy; hỗ trợ giao hàng được tính riêng.</p><p>Lượt dùng, điều kiện, ngân sách và tổng tiền được kiểm tra trong báo giá.</p></HelpTip></div>{!ready&&<p role="status">Đăng nhập để xem voucher của bạn.</p>}<fieldset disabled={!ready||busy} className="bill-vouchers"><legend className="sr-only">Chọn voucher{request?" mong muốn":""}</legend>{options.map(o=><label key={o.value} className={`bill-voucher ${value===o.value?"selected":""}`}><input type="radio" name="bill-voucher" value={o.value} checked={value===o.value} disabled={o.disabled} onChange={()=>change(o.value)}/><span><b>{o.label}</b>{!request&&ready&&<small>{o.detail}</small>}</span><strong>{ready&&o.discount>0?`−${money(o.discount)}`:o.value==="0"||o.value===""?"—":""}</strong></label>)}</fieldset></section>;
+}

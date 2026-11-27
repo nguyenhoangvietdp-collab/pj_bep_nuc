@@ -2,12 +2,15 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Market from "../../app/components/market";
+import CartPage from "../../app/components/cart-page";
 import Link from "../../app/components/navigation";
 import { SiteHeader, SiteFooter } from "../../app/components/site-frame";
 import LoadingScreen from "../../app/components/loading-screen";
 import { readAppLocation,replaceAppUrl } from "../../lib/app-navigation";
 import { finishGoogleLogin, mvpAuth, mvpConfigured } from "../../lib/mvp-client";
 import CustomerHome from "../../app/components/customer-home";
+import { nearDateTemplates } from "../../lib/near-date-templates";
+import { requestProduct } from "../../lib/request-catalogue";
 const Internal=dynamic(()=>import("../../app/internal/page"),{ssr:false,loading:()=> <LoadingScreen/>});
 export default function MvpApp(){
  const [route,setRoute]=useState({pathname:"/",search:""}),[ready,setReady]=useState(false),[authError,setAuthError]=useState(""),[user,setUser]=useState("guest");
@@ -31,15 +34,18 @@ export default function MvpApp(){
   const frame=requestAnimationFrame(()=>{
    document.getElementById("content")?.focus({preventScroll:true});
    window.scrollTo(0,0);
-   document.title=({"/":"Bếp Núc — Đồ ăn và hoa đúng lúc","/meals":"Đồ ăn & hoa — Bếp Núc","/offers":"Ưu đãi — Bếp Núc","/checkout":"Kiểm tra lô — Bếp Núc","/orders":"Đơn hàng — Bếp Núc","/login":"Đăng nhập — Bếp Núc"} as Record<string,string>)[route.pathname] || "Chi tiết — Bếp Núc";
+   document.title=({"/":"Bếp Núc — Đồ ăn và hoa đúng lúc","/meals":"Đồ ăn & hoa — Bếp Núc","/offers":"Ưu đãi — Bếp Núc","/cart":"Giỏ hàng — Bếp Núc","/checkout":"Kiểm tra lô — Bếp Núc","/orders":"Đơn hàng — Bếp Núc","/login":"Đăng nhập — Bếp Núc"} as Record<string,string>)[route.pathname] || "Chi tiết — Bếp Núc";
   });return()=>cancelAnimationFrame(frame);
  },[ready,route.pathname]);
  if(!ready)return <div className="site-frame commerce"><SiteHeader/><main id="content" tabIndex={-1}><LoadingScreen/></main><SiteFooter/></div>;
  const match=route.pathname.match(/^\/(meals|shops|orders)\/([A-Za-z0-9_-]+)$/);
  const view=match?(match[1]==="meals"?"meal":match[1]==="shops"?"shop":"order"):({"/meals":"browse","/offers":"offers","/orders":"orders","/checkout":"checkout","/login":"login"} as Record<string,string>)[route.pathname];
  const key=route.pathname+route.search+":"+user;
+ if(route.pathname==="/cart")return <CartPage key={key}/>;
  if(mvpConfigured()&&route.pathname==="/internal")return <Internal key={key}/>;
  if(mvpConfigured()&&view)return <>{authError&&<p className="error" role="alert">{authError}</p>}<Market key={key} view={view} id={match?.[2]}/></>;
  if(!mvpConfigured()&&route.pathname==="/meals")return <Market key={key} view="browse" offline/>;
+ if(!mvpConfigured()&&view==="meal"&&(nearDateTemplates.some(template=>template.id===match?.[2])||requestProduct(match?.[2]||" ")))return <Market key={key} view="meal" id={match?.[2]} offline/>;
+ if(!mvpConfigured()&&view==="checkout"&&nearDateTemplates.some(template=>template.id===new URLSearchParams(route.search).get("product")))return <Market key={key} view="checkout" offline/>;
  return <CustomerHome configured={mvpConfigured()} authError={authError} authenticated={user!=="guest"}/>;
 }

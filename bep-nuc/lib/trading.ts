@@ -1,16 +1,21 @@
+import {validNearDate,type NearDate} from "./near-date.ts";
 export type SavedPlace = { id: string; label: string; address: string; lat: number; lng: number; savedAt: number };
 export type Lot = {
-  kind: "food" | "flowers"; offer: "surplus" | "promotion";
-  reason: string; contents: string; condition: string; checkedAt: number;
+  kind: "food" | "flowers" | "goods"; offer: "surplus" | "promotion" | "near_expiry";
+  nearDate?:NearDate;
+  reason: string; contents: string; condition: string; checkedAt: number; preparedAt?: number;
   referencePrice?: number; referenceEvidence?: string;
   referenceKind?: "store_regular"; referenceConfirmedAt?: number; saleStart?: number; saleEnd?: number;
   stems?: number; species?: string; packaging?: string;
   quantity?: {amount:number;unit:"cành"|"bông"|"bó"};
   catalogueProductId?:string;
 };
+export const isStoredLotImage = (value: unknown): value is string =>
+  typeof value === "string" && /^https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/bep-nuc-lots\/[a-f0-9-]{36}\.(jpg|png|webp)$/.test(value);
 export type TradingRules = {
   version: 1 | 2; enabled: boolean; cap15: number; cap10: number; fixedWeekly: number;
   minimumBasket: number; weeklyBudget: number; shippingCap: number;
+  // Shipping subsidy stacking only; pickup commitment is always additive when funded.
   stackReceiving: boolean; pickupBands: { maxKm: number; amount: number }[];
 };
 // Financial commitments stay off until an operator records a funded policy.
@@ -36,10 +41,11 @@ export function flowerQuantityLabel(lot:Lot){
   return lot.quantity ? `${lot.quantity.amount} ${lot.quantity.unit}${lot.quantity.unit==="bó"&&lot.stems===undefined?" · chưa xác định số cành":""}` : `${lot.stems} cành dùng được`;
 }
 export function validLot(lot: Lot | undefined, now: number, end: number, allowDemoQuantity=false) {
-  return !!lot && ["food","flowers"].includes(lot.kind) && ["surplus","promotion"].includes(lot.offer) &&
+  return !!lot && ["food","flowers","goods"].includes(lot.kind) && ["surplus","promotion","near_expiry"].includes(lot.offer) && (lot.kind==="goods"?lot.offer==="near_expiry"&&validNearDate(lot.nearDate,now,end):lot.offer!=="near_expiry"&&lot.nearDate===undefined) &&
     (lot.quantity===undefined || !!lot.quantity && typeof lot.quantity==="object" && Number.isSafeInteger(lot.quantity.amount)&&lot.quantity.amount>0&&lot.quantity.amount<=1000&&["cành","bông","bó"].includes(lot.quantity.unit)&&(lot.quantity.unit!=="cành"||lot.stems===lot.quantity.amount)) &&
     [lot.reason,lot.contents,lot.condition].every(v => typeof v === "string" && v.trim().length >= 3 && v.length <= 1000) &&
     Number.isFinite(lot.checkedAt) && lot.checkedAt <= now && lot.checkedAt > 0 && lot.checkedAt < end &&
+    (lot.preparedAt === undefined || Number.isSafeInteger(lot.preparedAt) && lot.preparedAt > 0 && lot.preparedAt <= lot.checkedAt) &&
     (lot.referencePrice === undefined || (Number.isSafeInteger(lot.referencePrice) && lot.referencePrice > 0 && typeof lot.referenceEvidence === "string" && lot.referenceEvidence.trim().length >= 3)) &&
     (lot.kind !== "flowers" || ((Number.isSafeInteger(lot.stems) && lot.stems! > 0 || allowDemoQuantity && lot.stems===undefined && !!lot.quantity && Number.isSafeInteger(lot.quantity.amount) && lot.quantity.amount>0 && lot.quantity.amount<=1000 && ["cành","bông","bó"].includes(lot.quantity.unit)) && typeof lot.species === "string" && lot.species.trim().length >= 2 && typeof lot.packaging === "string" && lot.packaging.trim().length >= 3));
 }
@@ -57,6 +63,7 @@ export function validateRules(r: TradingRules) {
   if (r.enabled && r.weeklyBudget <= 0) throw new Error("Cần cấp ngân sách trước khi bật ưu đãi");
   if(r.enabled&&(r.cap15<=0||r.cap10<=0||r.fixedWeekly<3))throw new Error("Cần cap15%/10% và ít nhất3lượt9k trước khi bật bộ ưu đãi");
 }
+// Historical band policy retained for old integrations; new quotes use pickup-pricing.ts.
 export function pickupSupport(r: TradingRules, distance: number | null) {
   if (!r.enabled || distance === null || !Number.isFinite(distance) || distance < 0) return 0;
   return r.pickupBands.find(b=>distance <= b.maxKm)?.amount ?? 0;

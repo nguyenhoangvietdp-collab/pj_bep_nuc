@@ -1,6 +1,7 @@
 "use client";
 import Link from "./navigation";
 import BrandLogo from "./brand-logo";
+import BrandGarden from "./brand-garden";
 import PilotDisclaimer from "./pilot-disclaimer";
 import { useAppPathname as usePathname } from "./navigation";
 import { isCloudMvp } from "../../lib/app-navigation";
@@ -20,7 +21,7 @@ export function SiteHeader({ role, name, approved }: HeaderProps) {
         { href: "#how-it-works", label: "Cách nhận bữa" },
       ]
     : [
-        { href: "/meals", label: "Đồ ăn & hoa" },
+        { href: "/meals", label: "Sản phẩm" },
         { href: "/offers", label: "Ưu đãi" },
         { href: "/orders", label: "Đơn hàng" },
       ];
@@ -32,21 +33,24 @@ export function SiteHeader({ role, name, approved }: HeaderProps) {
         const active = !link.href.startsWith("#") && (path === link.href || path.startsWith(link.href + "/") || link.href === "/meals" && (path.startsWith("/shops/") || path === "/checkout"));
         return <Link key={link.href} href={link.href} aria-current={active ? "page" : undefined}>{link.label}</Link>;
       })}</nav>
-      <div className="frame-account-actions">
+      <div className="frame-account-stack"><div className="frame-account-actions">
         <Link className="frame-account-link" href={role && role !== "student" ? "/internal" : "/login"}>{role ? "Tài khoản" : "Đăng nhập"}</Link>
         {name && <span className="frame-account" title={name}>{approved === false ? "Chờ duyệt" : role === "merchant" ? "Cửa hàng" : role === "ops" ? "Vận hành" : "Sinh viên"}</span>}
         {isCloudMvp && role && <button className="text-button" onClick={() => logoutMvp().catch(() => window.location.hash="/login")}>Đăng xuất</button>}
-      </div>
+      </div></div>
     </div></header>
   </>;
+}
+export function FoodFriendsArt({className}:{className:string}) {
+  return <div className={`food-friends-art ${className}`} aria-hidden="true"><img src="/brand/header-food-friends.png" alt="" width="2172" height="724" decoding="async"/></div>;
 }
 export function SiteFooter({ children, supportEmail }: { children?: ReactNode; supportEmail?: string }) {
   const support = supportLink(supportEmail, "");
   const path=usePathname();
-  return <footer className="frame-footer commerce-footer"><div className="footer-columns">
+  return <footer className="frame-footer commerce-footer"><BrandGarden className="garden-footer-pattern"/><div className="footer-columns">
     <section><h2>Chăm sóc khách hàng</h2>{children || <details><summary>Cách mua và theo dõi đơn</summary><p>Chọn món, gửi yêu cầu và kiểm tra báo giá trước khi thanh toán. Theo dõi xử lý trong Đơn hàng.</p></details>}{support&&<a href={support}>Liên hệ hỗ trợ</a>}</section>
-    <nav aria-label="Về Bếp Núc"><h2>Về Bếp Núc</h2><Link href="/">Giới thiệu Bếp Núc</Link><Link href="/meals">Đồ ăn & hoa</Link><Link href="/offers">Ưu đãi</Link><Link href="/orders">Đơn hàng của bạn</Link></nav>
+    <nav aria-label="Về Bếp Núc"><h2>Về Bếp Núc</h2><Link href="/">Giới thiệu Bếp Núc</Link><Link href="/meals">Sản phẩm</Link><Link href="/offers">Ưu đãi</Link><Link href="/orders">Đơn hàng của bạn</Link></nav>
     <section><h2>Thanh toán</h2><p>Chuyển khoản ngân hàng</p><p>Chỉ chuyển tiền sau khi lô, thời gian nhận/giao và tổng tiền đã được xác nhận, đồng ý.</p><p>Vận hành xác nhận thanh toán thủ công.</p></section>
     <section><h2>Nhận hàng</h2><p>Tự đến lấy tại quán</p><p>Hoặc giao tận nơi do đội Bếp Núc điều phối. Phí giao được báo trước khi thanh toán.</p><Link href="/orders">Theo dõi yêu cầu & đơn hàng</Link></section>
-  </div><div className="footer-bottom"><Link className="frame-brand footer-logo" href="/" aria-label="Bếp Núc — trang chủ"><BrandLogo/></Link><p>Sản phẩm đang trong giai đoạn thử nghiệm, chưa thương mại hoá.</p><PilotDisclaimer autoOpen={isCloudMvp && /^\/(meals|shops|checkout|offers)(\/|$)/.test(path)}/><details><summary>Nguồn ảnh minh hoạ quán</summary><p>Ảnh không mô tả mặt tiền của quán được ghi tên. Xem tác giả, giấy phép và thay đổi trong <a href="/shop-images/credits.html">nguồn ảnh</a>.</p></details></div></footer>;
+  </div><div className="footer-bottom"><Link className="frame-brand footer-logo" href="/" aria-label="Bếp Núc — trang chủ"><BrandLogo/></Link><PilotDisclaimer autoOpen={isCloudMvp && /^\/(meals|shops|checkout|offers)(\/|$)/.test(path)}/><details><summary>Nguồn ảnh minh hoạ quán</summary><p>Ảnh không mô tả mặt tiền của quán được ghi tên. Xem tác giả, giấy phép và thay đổi trong <a href="/shop-images/credits.html">nguồn ảnh</a>.</p></details><details><summary>Nguồn ảnh & giá sản phẩm</summary><p>Xem nguồn, tác giả, giấy phép ảnh và quy cách của từng mức giá trong <a href="/food-images/sources.html">bảng đối chiếu sản phẩm</a>.</p></details></div></footer>;
 }
