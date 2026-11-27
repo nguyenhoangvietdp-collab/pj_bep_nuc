@@ -1,6 +1,8 @@
 "use client";
 import Link from "./navigation";
-import { SiteHeader, SiteFooter } from "./site-frame";
+import { SiteHeader, SiteFooter, FoodFriendsArt } from "./site-frame";
+import HeroVideo from "./hero-video";
+import BrandLogo from "./brand-logo";
 import BrandGarden from "./brand-garden";
 import { productAssets } from "../../lib/product-assets";
 
@@ -9,27 +11,26 @@ const categories = [
   { name: "Hoa cắm nhà", detail: "Mang một chút tươi vui về nhà.", href: "/meals?category=Hoa%20c%E1%BA%AFm%20nh%C3%A0", image: "/brand/flowers-home.webp" },
   { name: "Hàng gần hạn sử dụng", detail: "Chọn đúng nhu cầu, xem kỹ hạn dùng.", href: "/meals?category=H%C3%A0ng+g%E1%BA%A7n+h%E1%BA%A1n+s%E1%BB%AD+d%E1%BB%A5ng", image: "/brand/shop-supply.webp" },
 ];
+const heroPoster = productAssets.find(p => p.name === "Bún riêu")!.image;
 
 export default function CustomerHome({ configured = true, authError = "", authenticated = false, supportEmail }: { configured?: boolean; authError?: string; authenticated?: boolean; supportEmail?: string }) {
   return <div className="site-frame commerce home-page garden-home">
     <SiteHeader role={authenticated ? "student" : undefined} />
     <main id="content" tabIndex={-1}>
-      <section className="garden-hero">
-        <BrandGarden className="garden-hero-pattern" />
-        <div className="garden-hero-copy">
+      <section className="home-centered-hero" style={{ "--hero-image": `url("${heroPoster}")` } as React.CSSProperties}>
+        <div className="hero-background" aria-hidden="true" />
+        <HeroVideo poster={heroPoster} />
+        <div className="hero-shade" aria-hidden="true" />
+        <div className="hero-centered-content">
+          <BrandLogo className="hero-wordmark" />
           <h1>Tự đến lấy,<br /><strong>tiết kiệm thêm.</strong></h1>
           <p>Giữ voucher của bạn, nhận thêm ưu đãi khi tự lấy đồ ăn, hoa hoặc hàng gần hạn sử dụng.</p>
           {authError && <p className="error" role="alert">{authError}</p>}
           {!configured && <p role="status">Bếp Núc đang chuẩn bị kết nối dịch vụ đặt hàng.</p>}
-          <div className="garden-hero-actions">
-            <Link className="button-link garden-primary" href="/meals">Chọn sản phẩm <span aria-hidden="true">↗</span></Link>
-            <Link href="/offers">Xem quyền lợi tự lấy</Link>
-          </div>
-          <p className="garden-hero-note">Chọn vị trí để xem khoản tiết kiệm dự tính của bạn.</p>
+          <Link className="button-link hero-primary" href="/meals">Chọn sản phẩm</Link>
+          <p className="hero-caption">Chọn vị trí để xem khoản tiết kiệm thêm khi tự lấy.</p>
         </div>
-        <figure className="garden-hero-illustration">
-          <img src="/brand/pickup-students.webp" width="1536" height="1024" alt="Sinh viên vui vẻ mang cơm, bún và ghé tiệm tự nhận túi đồ ăn." fetchPriority="high" />
-        </figure>
+        <FoodFriendsArt className="home-hero-art" />
       </section>
       <section className="garden-categories" aria-labelledby="category-heading">
         <div className="garden-section-heading"><h2 id="category-heading">Hôm nay, bạn muốn mang gì về?</h2><Link href="/meals">Khám phá sản phẩm ↗</Link></div>
@@ -50,7 +51,6 @@ export default function CustomerHome({ configured = true, authError = "", authen
       <section className="garden-trust">
         <h2>Giá tốt, có lý do.</h2>
         <div><p>Một mẻ bánh còn lại, một phần ăn chưa bán hết, hay hoa còn đủ đẹp để cắm trong nhà. Mỗi lô cần có thông tin đúng tình trạng và khung nhận rõ ràng.</p><p>Kiểm tra thành phần, quy cách và hướng dẫn bảo quản trước khi chọn. Hàng có thể không còn mỗi tối; khả năng phục vụ được xác nhận trong báo giá.</p></div>
-        <details><summary>Xem câu chuyện Bếp Núc</summary><video controls preload="none" poster="/brand/pickup-students.webp" aria-label="Video giới thiệu Bếp Núc"><source src="/brand/hero-meal.mp4" type="video/mp4" /></video></details>
       </section>
     </main>
     <SiteFooter supportEmail={supportEmail} />

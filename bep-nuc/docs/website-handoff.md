@@ -18,7 +18,7 @@ Shared components live in [`app/components/`](../app/components/). The Workers C
 
 - `app/garden.css` is the shared visual layer for the fresh green, yellow and cream theme. Keep checkout inputs and price breakdowns on light backgrounds with strong text contrast.
 - `app/components/brand-garden.tsx` draws reusable, decorative geometric tiles with CSS; it is hidden from assistive technology. Preserve the stepped top/right arrangement and avoid placing patterns behind information or controls.
-- `app/components/customer-home.tsx` leads with self-pickup savings and an illustration of students receiving food. Optimized WebP illustrations live in `public/brand/`; they are brand art, not evidence of suppliers or customer activity. The original introduction video remains available on demand rather than autoplaying behind the headline.
+- `app/components/customer-home.tsx` leads with self-pickup savings over the original `hero-meal.mp4` background video, restored at the user's request. `HeroVideo` provides a pause/play control, poster fallback and reduced-motion support. The fresh visual direction continues below the hero. Optimized WebP illustrations in `public/brand/` are brand art, not evidence of suppliers or customer activity.
 - Apply visual changes to both Next.js and Workers. Do not replace voucher eligibility, contribution checks or accepted prices with frontend calculations. The receiving selector explains the extra pickup benefit separately from the base voucher.
 
 ## Get a local baseline
