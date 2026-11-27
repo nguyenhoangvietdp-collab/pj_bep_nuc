@@ -6,23 +6,23 @@ const now=Date.parse("2026-10-27T18:30:00+07:00");
 test("merchant gets 90% of final food receipts with conservative whole-dong rounding",()=>{
   const l={...demoState(now).listings[0],floor:0,payoutShare:.9 as const,cost:0,margin:0};
   for(const menu of [30000,35000,45000,50000,60000,100001])for(const qty of [1,2,3])for(const voucher of [.07,.1,.2]){
-    const q=price({...l,price:menu},qty,voucher,null);
+    const q=price({...l,price:menu},qty,voucher,false);
     assert.equal(q.payout,Math.ceil(q.price*9/10));
     assert.equal(q.price-q.payout,Math.floor(q.price/10));
   }
-  assert.equal(price({...l,price:50000},1,.2,null).payout,34200);
+  assert.equal(price({...l,price:50000},1,.2,false).payout,34200);
 });
 
 test("10% platform share must cover configured cost and margin; bonus stops at that bound",()=>{
   const l={...demoState(now).listings[0],price:50000,floor:0,payoutShare:.9 as const,cost:2000,margin:1000};
   for(const qty of [1,2,3])for(const voucher of [.07,.1,.2]){
-    const q=price(l,qty,voucher,2);
+    const q=price(l,qty,voucher,true);
     assert.ok(q.price-q.payout>=q.cost+q.margin);
     assert.ok(q.rate>=voucher);
   }
-  assert.throws(()=>price({...l,cost:3000,margin:2000},1,.2,null),/ngân sách/);
-  assert.throws(()=>price({...l,payoutShare:.8 as any},1,.2,null),/Tỷ lệ/);
-  assert.equal(price({...l,payoutShare:undefined,floor:32500,cost:3000,margin:2000},1,.2,null).payout,32500);
+  assert.throws(()=>price({...l,cost:3000,margin:2000},1,.2,false),/ngân sách/);
+  assert.throws(()=>price({...l,payoutShare:.8 as any},1,.2,false),/Tỷ lệ/);
+  assert.equal(price({...l,payoutShare:undefined,floor:32500,cost:3000,margin:2000},1,.2,false).payout,32500);
 });
 
 test("shipping is excluded from merchant percentage and settlement snapshots the confirmed food amount",()=>{

@@ -1275,6 +1275,8 @@ html:has(.commerce dialog[open]), body:has(.commerce dialog[open]) { overflow: h
 .commerce .flower-showcase .food-card-body button{margin-top:auto}
 .commerce .catalogue-results .flower-image{max-width:none;max-height:none}
 .commerce .food-card .flower-image .demo-image-label{position:absolute;bottom:10px;left:10px;max-width:calc(100% - 20px)}
+.commerce .catalogue-results .food-card .near-date-template-image{aspect-ratio:4/3;min-height:0}
+.commerce .meal-detail-visual .near-date-image-credit{margin:8px 0 0}
 
 .flower-showcase-embedded{padding:0}.flower-shop-details{margin:20px 0}.flower-shop-details article{margin:20px 0}
 

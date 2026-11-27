@@ -30,7 +30,7 @@ Chất lượng cần được thể hiện bằng thông tin đúng lô: thời
 
 Khách được tiếp cận giá sản phẩm và ưu đãi theo điều kiện; cửa hàng có cơ hội thu hồi thêm doanh thu từ hàng phù hợp để bán; Bếp Núc giữ lại phần chênh lệch hoặc khoản phí đã thỏa thuận để chi trả vận hành. Lợi ích tăng thêm của cửa hàng phải được so với phương án bán hoặc xử lý hàng thực tế của chính cửa hàng, không mặc định toàn bộ tiền thu là lợi nhuận tăng thêm.
 
-Với mỗi đơn, theo dõi: tiền khách trả cho hàng sau voucher, trừ khoản phải trả cửa hàng, chi phí xử lý và hỗ trợ giao hàng do Bếp Núc chịu. Khoản ưu đãi đã phản ánh trong tiền thực thu được tính một lần. Phần còn lại là **đóng góp sau các chi phí đã tính**, chưa phải lợi nhuận ròng. Chi phí thu hút khách, công vận hành, sai lệch, hoàn tiền và chi phí cố định cần được đo riêng. Ngưỡng áp dụng ưu đãi phải dựa trên dữ liệu chi phí và ngân sách, đặc biệt với suất giá thấp.
+Với mỗi đơn, theo dõi: tiền khách trả cho hàng sau voucher, trừ khoản phải trả cửa hàng, chi phí xử lý, phần Bếp Núc tài trợ voucher và hỗ trợ giao hàng. Phần còn lại là **đóng góp sau các chi phí đã tính**, chưa phải lợi nhuận ròng. Chi phí thu hút khách, công vận hành, sai lệch, hoàn tiền và chi phí cố định cần được đo riêng. Ngưỡng áp dụng ưu đãi phải dựa trên dữ liệu chi phí và ngân sách, đặc biệt với suất giá thấp.
 
 **Lời trình bày:** “Chúng tôi không lấy mức giảm làm doanh thu của mình. Giá khách trả, nghĩa vụ trả cửa hàng và chi phí ưu đãi là các dòng tiền khác nhau. Mỗi đơn cần được kiểm tra biên trước khi ưu đãi được xác nhận.”
 

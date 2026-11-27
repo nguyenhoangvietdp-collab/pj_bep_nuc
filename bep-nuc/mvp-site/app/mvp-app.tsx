@@ -8,6 +8,7 @@ import LoadingScreen from "../../app/components/loading-screen";
 import { readAppLocation,replaceAppUrl } from "../../lib/app-navigation";
 import { finishGoogleLogin, mvpAuth, mvpConfigured } from "../../lib/mvp-client";
 import CustomerHome from "../../app/components/customer-home";
+import { nearDateTemplates } from "../../lib/near-date-templates";
 const Internal=dynamic(()=>import("../../app/internal/page"),{ssr:false,loading:()=> <LoadingScreen/>});
 export default function MvpApp(){
  const [route,setRoute]=useState({pathname:"/",search:""}),[ready,setReady]=useState(false),[authError,setAuthError]=useState(""),[user,setUser]=useState("guest");
@@ -41,5 +42,6 @@ export default function MvpApp(){
  if(mvpConfigured()&&route.pathname==="/internal")return <Internal key={key}/>;
  if(mvpConfigured()&&view)return <>{authError&&<p className="error" role="alert">{authError}</p>}<Market key={key} view={view} id={match?.[2]}/></>;
  if(!mvpConfigured()&&route.pathname==="/meals")return <Market key={key} view="browse" offline/>;
+ if(!mvpConfigured()&&view==="meal"&&nearDateTemplates.some(template=>template.id===match?.[2]))return <Market key={key} view="meal" id={match?.[2]} offline/>;
  return <CustomerHome configured={mvpConfigured()} authError={authError} authenticated={user!=="guest"}/>;
 }

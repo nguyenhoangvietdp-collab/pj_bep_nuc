@@ -27,5 +27,5 @@ test("catalogue and new quotes use the same canonical store point without rewrit
  const saved=structuredClone(s),published=catalogue(s,now,true).shops[0];
  assert.equal(published.name,store.name);assert.equal(published.lat,store.lat);assert.equal(published.pickupEntrance,store.pickupEntrance);
  const p=previewReceiving(s,u,{listingId:listing.id,qty:1,rate:0},now,999,false);
- assert.equal(p.distance,0);assert.equal(p.amounts.bonusDiscount,0);assert.deepEqual(s,saved);
+ assert.equal(p.distance,0);assert.equal(p.amounts.bonusDiscount,2500);assert.deepEqual(s,saved);
 });

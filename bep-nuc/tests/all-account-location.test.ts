@@ -15,7 +15,7 @@ test("every authenticated role can save their own location and preview during pa
   assert.deepEqual(s.users.filter(x=>x.id!==u.id),other);assert.equal(u.approved,approved);
   const snapshot=structuredClone(s);
   const preview=await request("preview_receiving",{listingId:s.listings[0].id,qty:1,rate:0,checkout:checkoutSelection(u.place,"pickup"),distance:999,location:{lat:0,lng:0}});
-  assert.equal(preview.status,200,`${role}/${approved}`);assert.equal(preview.data.pickupPricing.method,"haversine");assert.ok(preview.data.distance>=0&&preview.data.distance<10);
+  assert.equal(preview.status,200,`${role}/${approved}`);assert.equal(preview.data.pickupPricing.method,"fixed");assert.ok(preview.data.distance>=0&&preview.data.distance<10);
   assert.deepEqual(s,snapshot);assert.equal(s.orders.length,0);assert.equal(s.quotes.length,0);
   if(!approved)assert.throws(()=>act(s,u,"order",{key:crypto.randomUUID(),quoteId:"not-issued"},now),/chưa được duyệt/);
  }

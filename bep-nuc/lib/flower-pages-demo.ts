@@ -2,7 +2,7 @@ import {flowerCatalogue,flowerDemoVersion} from "./flower-demo";
 import {voucherDiscount,weekStart} from "./trading";
 
 export type FlowerVoucher="none"|"15"|"10"|"9k";
-export type FlowerDemoOrder={id:string;productId:string;qty:number;voucher:FlowerVoucher;week:string;created:number;expires:number;total:number;discount:number;payout:number;status:"held"|"paid"|"received"|"issue"|"refunded"|"cancelled";receivedAt?:number;issue?:string};
+export type FlowerDemoOrder={id:string;productId:string;qty:number;voucher:FlowerVoucher;week:string;created:number;expires:number;total:number;discount:number;payout:number;pricingVersion?:3;status:"held"|"paid"|"received"|"issue"|"refunded"|"cancelled";receivedAt?:number;issue?:string};
 export type FlowerDemoSession={version:number;startedAt:number;place:string;orders:FlowerDemoOrder[]};
 export const flowerDemoBudget=500000;
 export const flowerVoucherLimits={none:Infinity,"15":2,"10":2,"9k":4};
@@ -11,12 +11,12 @@ export function flowerOrderExpired(o:FlowerDemoOrder,now:number){return o.status
 export function flowerCommitted(o:FlowerDemoOrder,now:number){return !flowerOrderExpired(o,now)&&o.status!=="cancelled"&&(o.status!=="refunded"||!!o.receivedAt);}
 export function flowerStock(s:FlowerDemoSession,id:string,now:number){return 3-s.orders.filter(o=>o.productId===id&&flowerCommitted(o,now)).reduce((n,o)=>n+o.qty,0);}
 export function flowerVoucherRemaining(s:FlowerDemoSession,voucher:FlowerVoucher,now:number){return flowerVoucherLimits[voucher]-s.orders.filter(o=>o.voucher===voucher&&o.week===weekStart(now)&&flowerCommitted(o,now)).length;}
-export function flowerDemoPrice(id:string,qty:number,voucher:FlowerVoucher){
+export function flowerDemoPrice(id:string,qty:number,voucher:FlowerVoucher,legacy=false){
   const item=flowerCatalogue.find(x=>x.id===id);
   if(!item||!Number.isSafeInteger(qty)||qty<1||qty>3||!Object.hasOwn(flowerVoucherLimits,voucher))throw Error("Kiểm tra sản phẩm, số lượng và voucher.");
-  const base=item.price*qty;
+  const base=(legacy?item.legacyPrice:item.price)*qty;
   const discount=voucherDiscount(base,voucher==="none"?undefined:voucher==="9k"?{rate:0,amount:9000}:{rate:voucher==="15"?.15:.1,cap:9000});
-  return {base,discount,total:base-discount,payout:Math.floor(item.price*60/100)*qty,cost:3000*qty,minimumMargin:1000*qty};
+  return {base,discount,total:base-discount,payout:(legacy?Math.floor(item.legacyPrice*60/100):item.catalogueSale.negotiatedPrice)*qty,cost:3000*qty,minimumMargin:1000*qty};
 }
 export function flowerQuoteError(s:FlowerDemoSession,id:string,qty:number,voucher:FlowerVoucher,now:number){
   try{
@@ -37,7 +37,7 @@ export function reserveFlower(s:FlowerDemoSession,id:string,qty:number,voucher:F
   if(duplicate){if(duplicate.productId!==id||duplicate.qty!==qty||duplicate.voucher!==voucher)throw Error("Mã thử đã dùng cho lựa chọn khác.");return s;}
   const error=flowerQuoteError(s,id,qty,voucher,now);if(error)throw Error(error);
   const p=flowerDemoPrice(id,qty,voucher),boundary=Date.parse(weekStart(now)+"T00:00:00+07:00")+7*86400000;
-  return {...s,orders:[{id:orderId,productId:id,qty,voucher,week:weekStart(now),created:now,expires:Math.min(now+600000,s.startedAt+10800000,boundary),total:p.total,discount:p.discount,payout:p.payout,status:"held"},...s.orders]};
+  return {...s,orders:[{id:orderId,productId:id,qty,voucher,week:weekStart(now),created:now,expires:Math.min(now+600000,s.startedAt+10800000,boundary),total:p.total,discount:p.discount,payout:p.payout,pricingVersion:3,status:"held"},...s.orders]};
 }
 export function progressFlower(s:FlowerDemoSession,id:string,action:"pay"|"receive"|"cancel"|"issue"|"refund",now:number,description=""):FlowerDemoSession{
   const o=s.orders.find(o=>o.id===id);if(!o)throw Error("Không có đơn DEMO này.");
@@ -59,7 +59,8 @@ export function restoreFlowerSession(raw:string|null,now:number):FlowerDemoSessi
     if(!s||s.version!==flowerDemoVersion||!Number.isFinite(s.startedAt)||s.startedAt<=0||s.startedAt>now||typeof s.place!=="string"||s.place.length>150||!Array.isArray(s.orders)||s.orders.length>100)return newFlowerSession(now);
     const seen=new Set<string>();
     for(const o of s.orders){
-      const p=flowerDemoPrice(o.productId,o.qty,o.voucher);
+      if(o.pricingVersion!==undefined&&o.pricingVersion!==3)return newFlowerSession(now);
+      const p=flowerDemoPrice(o.productId,o.qty,o.voucher,o.pricingVersion===undefined);
       if(typeof o.id!=="string"||!/^FLOWER-[a-z0-9-]{1,60}$/i.test(o.id)||seen.has(o.id)||!Number.isFinite(o.created)||o.created<s.startedAt||o.created>now||o.week!==weekStart(o.created)||!Number.isFinite(o.expires)||o.expires<=o.created||o.expires>o.created+600000||o.expires>s.startedAt+10800000||o.total!==p.total||o.discount!==p.discount||o.payout!==p.payout||!["held","paid","received","issue","refunded","cancelled"].includes(o.status)||(o.status==="received"&&!o.receivedAt)||(o.receivedAt!==undefined&&(!Number.isFinite(o.receivedAt)||o.receivedAt<o.created||o.receivedAt>now)))return newFlowerSession(now);
       seen.add(o.id);
     }

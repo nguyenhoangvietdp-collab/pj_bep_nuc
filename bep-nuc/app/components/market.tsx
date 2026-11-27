@@ -12,7 +12,8 @@ import SalePrice from "./sale-price";
 import ShopPicture from "./shop-picture";
 import {productAssets} from "../../lib/product-assets";
 import NearDateInfo from "./near-date-info";
-import {retailCategories,retailLabel,normalizeRetailCategory,isNonFoodGroup} from "../../lib/near-date";
+import {retailCategories,retailLabel,normalizeRetailCategory,isNonFoodGroup,nearDateGroups} from "../../lib/near-date";
+import {nearDateTemplates,visibleNearDateTemplates,type NearDateTemplate} from "../../lib/near-date-templates";
 import HelpTip from "./help-tip";
 import PickupBenefit from "./pickup-benefit";
 import PickupPoint from "./pickup-point";
@@ -29,7 +30,7 @@ import SavedPlace from "./saved-place";
 import {flowerImageCaption} from "../../lib/flower-demo";
 import {ReferenceCard,ReferenceDetails,ReferencePrice} from "./reference-product";
 import {filterRequestFlowers,requestProduct,requestUnit} from "../../lib/request-catalogue";
-import {voucherLabel,voucherCurrent,flowerQuantityLabel,saleState,saleOrderable,type PublicTradingRules} from "../../lib/trading";
+import {voucherLabel,voucherCurrent,flowerQuantityLabel,saleState,saleOrderable,isStoredLotImage,type PublicTradingRules} from "../../lib/trading";
 import {
   estimate,
   lotEstimate,
@@ -54,6 +55,7 @@ type Catalog = {
   tradingRules?:PublicTradingRules;
 };
 type Filters = { category: string; budget: number; shop: string; stock: boolean; receiving: boolean };
+const pickupNoShowPolicy = "Nếu bạn không đến lấy trong khung giờ nhận, Bếp Núc hoàn 100% số tiền đã thanh toán.";
 const defaultFilters: Filters = { category: "", budget: 0, shop: "", stock: true, receiving: false };
 type Draft = { listingId: string; qty: number; voucherId?: string; fulfillment?: "pickup"|"delivery" };
 const states: Record<string, string> = {
@@ -502,6 +504,9 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
       )
     : [];
   if(nearDateGroup&&sort==="end")shown.sort((a,b)=>(a.lot?.nearDate?.expiresAt??Infinity)-(b.lot?.nearDate?.expiresAt??Infinity)||a.end-b.end);
+  const templates = catalog && view === "browse" && nearDateGroup && !shopFilter && !budget && !receiving
+    ? visibleNearDateTemplates(catalog.listings, category, query, now)
+    : [];
   const browseShops = [...(catalog?.shops || []), ...(isCloudMvp ? menuShops.filter(p=>!catalog?.shops.some(s=>s.id===p.id)) : [])];
   const upcoming = isCloudMvp && view === "browse" && !receiving
     ? (nearDateGroup?[]:flowerGroup?filterRequestFlowers(query,budget,sort).map(p=>({...p,shop:undefined})):filterLaunchMenu(query,category,budget,sort).map(p=>({...requestProduct(undefined,p.name)!,shop:p.shop}))).filter(p=>(!shopFilter||p.shop?.id===shopFilter)&&!catalog?.listings.some(l=>l.stock>0&&saleOrderable(l,now)&&(l.image===p.image||l.lot?.catalogueProductId===p.id)))
@@ -515,14 +520,15 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
       <div className="meal-detail">
         <div className="meal-detail-visual">
           <FoodImage l={l} />
-          <details className="food-safety"><summary>Bảo quản & cách dùng</summary><p>{l.storage || "Hỏi quán trước khi đặt."}</p></details>
         </div>
         <div className="meal-detail-info">
           <div className="meal-heading">
             <Heading>{l.name}</Heading>
             <Link href={`/shops/${l.shopId}`}>{s?.name}</Link>
           </div>
+          <p className="menu-availability">Lô sẵn – giữ suất 10 phút</p>
           <PickupBenefit/>
+          <LotPreparation lot={l}/>
           {l.lot?.nearDate&&<NearDateInfo value={l.lot.nearDate}/>}
           {l.lot&&<section className="lot-proof"><p className="lot-reason">{l.lot.offer==="near_expiry"?"Hàng gần hạn sử dụng":l.lot.offer==="surplus"?"Còn lại cuối phiên":"Ưu đãi cửa hàng"} · {l.lot.kind==="goods"?"Hàng gần hạn sử dụng":l.lot.kind==="flowers"?"Hoa cắm nhà":"Đồ ăn"}</p><h3>Vì sao giá giảm?</h3><p>{l.lot.reason}</p><p><b>Bạn nhận:</b> {l.lot.contents}</p><p><b>Tình trạng:</b> {l.lot.condition}</p><p>{s?.mock?"Dữ liệu mô phỏng tạo lúc":"Tiệm cập nhật lúc"} {time(l.lot.checkedAt)}</p>{l.lot.kind==="flowers"&&<p>{flowerQuantityLabel(l.lot)} · {l.lot.species} · {l.lot.packaging}</p>}{l.lot.referencePrice&&<details><summary>Giá tham chiếu {money(l.lot.referencePrice)}</summary><p>{l.lot.referenceEvidence}</p><p>Mốc tham chiếu chưa bao gồm công đi lại hoặc lựa chọn thay thế của bạn.</p></details>}</section>}
           <section className="meal-collection" aria-label="Nơi và giờ nhận">
@@ -657,7 +663,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                     {sort === "price" && <button className="secondary" onClick={() => setSort("end")}>Giá tăng dần ×</button>}
                   </div>
                   {hasFilters && <button className="text-button clear-result-filters" onClick={reset}>Xóa tất cả điều kiện</button>}
-                {!shown.length && (catalog.listings.length > 0 || !upcoming.length) && (
+                {!shown.length && !templates.length && (catalog.listings.length > 0 || !upcoming.length) && (
                   <section className="market-empty">
                     <h3>
                       {nearDateGroup?"Chưa có sản phẩm phù hợp":catalog.listings.length
@@ -689,23 +695,43 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                           <Link className="shop-meta" href={`/shops/${l.shopId}`}>{catalog.shops.find(s => s.id === l.shopId)?.name}</Link>
                           <p className="food-address">{catalog.shops.find(s => s.id === l.shopId)?.address || "Chưa có địa chỉ nhận"}</p>
                           <p className="pickup-line"><b>Nhận {time(l.start)}–{time(l.end)}</b></p>
+                          <p className="fine">Lô sẵn – giữ suất 10 phút</p>
+                          <LotPreparation lot={l}/>
                           <span className="stock-label">{l.stock ? `Còn ${l.stock} ${l.lot?"lô":"suất"}` : "Hết hàng"}</span>
                         </div>
                         <div className="food-card-purchase">
                           {(l.customerPricing||saleState(l,now))?<SalePrice item={l} now={now}/>:<div className="food-price-row"><strong className="food-price">{money(displayed.total)}</strong><span className="food-menu-price">{l.lot?"Giá lô":"Giá menu"} {money(l.price)}</span></div>}
-                          {l.id.startsWith("flower-")&&<p className="fine">{flowerImageCaption}</p>}{l.lot&&<p className="fine">{l.lot.offer==="surplus"?"Lô còn lại cuối phiên":"Khuyến mãi cửa hàng"} · {l.lot.kind==="flowers"?`${flowerQuantityLabel(l.lot)} · gói cơ bản`:l.lot.contents}</p>}
+                          {l.id.startsWith("flower-")&&!isStoredLotImage(l.image)&&<p className="fine">{flowerImageCaption}</p>}{l.lot&&<p className="fine">{l.lot.offer==="surplus"?"Lô còn lại cuối phiên":"Khuyến mãi cửa hàng"} · {l.lot.kind==="flowers"?`${flowerQuantityLabel(l.lot)} · gói cơ bản`:l.lot.contents}</p>}
                           <p className="price-condition">{displayed.voucher ? `Với voucher ${voucherLabel(displayed.voucher)}` : displayed.rate ? `Với voucher ${percent(displayed.rate)}` : "Chưa áp voucher"}{fulfillment === "delivery" && " · Chưa gồm phí giao"}</p>
                           <button disabled={!l.stock || now >= l.end} onClick={() => openFood(l)}>Xem lô này</button>
                         </div>
                       </div>
                     </article>
                   ); })}
+                  {templates.map(template => (
+                    <article className="food-card" key={template.id}>
+                      <Link className="food-picture-button" href={`/meals/${template.id}`} aria-label={`Xem ${template.title}`}>
+                        <FoodImage template={template} />
+                      </Link>
+                      <div className="food-card-body">
+                        <div className="food-card-description">
+                          <p className="fine">{nearDateGroups[template.group]}</p>
+                          <h3><Link className="plain-title" href={`/meals/${template.id}`}>{template.title}</Link></h3>
+                          <p>{template.subtitle}</p>
+                          {template.credit?.license.startsWith("CC BY-SA") && (
+                            <p className="fine">Ảnh: {template.credit.author}, {template.credit.license}</p>
+                          )}
+                        </div>
+                        <div className="food-card-purchase"><button type="button" disabled>Chờ quán đăng lô</button></div>
+                      </div>
+                    </article>
+                  ))}
                 </section>
                 {!!upcoming.length && (
                   <section className="menu-preview" aria-labelledby="menu-preview-title">
                     <header><h2 id="menu-preview-title">{flowerGroup?"Hoa đang ưu đãi":"Thực đơn đang ưu đãi"}</h2><p>{flowerGroup?"Giá sale trước voucher. Gửi yêu cầu để Bếp Núc xác nhận nguồn hoa, quy cách và tổng tiền.":"Giá sale trước voucher. Gửi yêu cầu để Bếp Núc kiểm tra khả năng phục vụ và xác nhận tổng tiền."}</p></header>
                     <ul className="menu-preview-grid">
-                      {upcoming.map(p=><ReferenceCard key={p.id} product={p} shop={p.shop} origin={user?.place} store={catalog.shops.find(s=>s.id===p.shopId)}/>)}
+                      {upcoming.map(p=><ReferenceCard key={p.id} product={p} shop={p.shop}/>)}
                     </ul>
                   </section>
                 )}
@@ -740,12 +766,13 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
             {view === "meal" &&
               (() => {
                 const l = catalog.listings.find((l) => l.id === id);
+                const template = nearDateTemplates.find(p => p.id === id);
                 return (
                   <section className="standalone-meal">
-                    <Link href={browseHref}>Quay lại tìm món</Link>
+                    <Link href={template ? `/meals?category=${encodeURIComponent(retailLabel)}` : browseHref}>{template ? "Quay lại danh mục" : "Quay lại tìm món"}</Link>
                     {l ? (
                       foodDetails(l, qty, setQty)
-                    ) : requestProduct(id) ? <ReferenceDetails product={requestProduct(id)!} origin={user?.place} store={catalog.shops.find(s=>s.id===requestProduct(id)?.shopId)}/> : (
+                    ) : template ? <NearDateTemplateDetails template={template}/> : requestProduct(id) ? <ReferenceDetails product={requestProduct(id)!}/> : (
                       <h1>Món đã kết thúc hoặc chưa được công bố.</h1>
                     )}
                   </section>
@@ -779,7 +806,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                       <div className="checkout-food">
                         <FoodImage l={item} />
                         <div>
-                          <h2>{item.name}</h2>{(held?.lotSnapshot?.nearDate??item.lot?.nearDate)&&<NearDateInfo value={held?.lotSnapshot?.nearDate??item.lot!.nearDate!} compact/>}
+                          <h2>{item.name}</h2><p className="fine">Lô sẵn – giữ suất 10 phút</p>{(held?.lotSnapshot?.nearDate??item.lot?.nearDate)&&<NearDateInfo value={held?.lotSnapshot?.nearDate??item.lot!.nearDate!} compact/>}
                           <Link href={`/shops/${item.shopId}`}>
                             {shop?.name}
                           </Link>
@@ -802,7 +829,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                       />
                       <details className="food-safety">
                         <summary>{(item.lot?.kind==="flowers"||item.lot?.kind==="goods")?"Chăm hoa & gói cơ bản":"Bảo quản & thông tin dị ứng"}</summary>
-                        <p>{item.storage || "Chưa có hướng dẫn bảo quản. Hỏi quán trước khi đặt."}</p>
+                        <LotPreparation lot={item} preparedAt={held?.lotSnapshot?.preparedAt ?? item.lot?.preparedAt}/>
                         {item.lot?.kind!=="flowers"&&<p>{item.allergens || "Chưa có thông tin dị ứng. Hỏi quán trước khi đặt."}</p>}
                       </details>
                       {!user ? (
@@ -841,7 +868,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                               ? `Đang giữ hàng · ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
                               : "Báo giá đã hết hạn"}
                           </b>
-                          <p>{held.bonusReason}</p>
+                          <p>{held.pickupPricing?.method==="haversine"?"Ưu đãi tự lấy theo báo giá đã lưu":held.bonusReason}</p>
                           {draft && draft.listingId !== held.listingId && (
                             <p>
                               Bạn có báo giá cũ đang giữ. Bỏ giữ hàng để tiếp
@@ -875,7 +902,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                     </section>
                     <aside className="checkout-summary" ref={summary} tabIndex={-1}>
                       {!held&&<CheckoutVouchers ready={user?.role==="student"} value={user&&!user.approved?(previewRate?String(previewRate):""):voucher} options={billVoucherOptions} busy={busy} request={!!user&&!user.approved} change={value=>user&&!user.approved?setPreviewRate(Number(value)||0):setVoucher(value)}/>}
-                      {modern&&!held&&<ReceivingSavings rules={catalog.tradingRules} method={receiveMethod} committed={receivingConfirmed} hasSource hasPlace={!!user?.place} signedIn={!!user} {...receivingPreview}/>}
+                      {modern&&!held&&<ReceivingSavings rules={catalog.tradingRules} method={receiveMethod} committed={receivingConfirmed} hasSource signedIn={!!user} {...receivingPreview}/>}
                       <h2>Chi tiết thanh toán</h2>{!held&&desiredRate>0&&requestedThreshold!==undefined&&(requestedThreshold===null||count<requestedThreshold.qty)&&<p className="promotion-threshold" role="status">{requestedThreshold?`Ưu đãi này cần tiền hàng từ ${money(requestedThreshold.subtotal)} (${requestedThreshold.qty} đơn vị mua).`:"Ưu đãi này chưa đủ điều kiện trong tối đa 3 đơn vị mua."}</p>}
                       {receiveMethod==="delivery" && user?.approved && !deliveryValid && <p className="fine">Điền đủ tên người nhận, số điện thoại hợp lệ và địa chỉ để giữ suất.</p>}{receiveMethod==="delivery" && <p className="delivery-fee-pending">Phí giao hàng: chờ vận hành báo. Số tiền bên dưới chỉ là tiền hàng.</p>}
                       {amounts && <PaymentSummary amounts={amounts} qty={count} unit={(item.lot?.kind==="flowers"||item.lot?.kind==="goods")?"đơn vị mua":"suất"} method={receiveMethod} mode={held?"confirmed":user&&!user.approved?"request":"estimate"} voucher={user&&!user.approved?(previewRate===9000?"9.000đ":previewRate?`${previewRate*100}%`:"Không dùng voucher"):held?.voucherId?(profile?.vouchers?.find((v:any)=>v.id===held.voucherId)?voucherLabel(profile.vouchers.find((v:any)=>v.id===held.voucherId)):"Đã xác nhận"):activeVoucher?voucherLabel(activeVoucher):"Không dùng voucher"}/>}{voucher&&!activeVoucher&&!held&&<p role="status">Voucher đã chọn chưa đủ điều kiện; chưa trừ vào số tiền bên trên.</p>}
@@ -886,6 +913,7 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
                       </p>
                       <div className="checkout-action">
                         {amounts && <div className="action-total"><span>{receiveMethod==="delivery"?"Tiền hàng (chưa gồm phí giao)":held ? "Tổng thanh toán" : user&&!user.approved||receivingPreview.preview ? "Tổng dự tính theo lựa chọn" : activeVoucher ? "Tổng ước tính đã chọn voucher" : "Giá trước voucher"}</span><strong>{money(amounts.total)}</strong></div>}
+                        {receiveMethod==="pickup"&&<p className="fine">{pickupNoShowPolicy}</p>}
                         {held && <p>{seconds ? `Giữ suất còn ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}` : "Đã hết hạn. Kiểm tra lại giá trước khi thanh toán."}</p>}
                       {!user&&<Link className="button-link bill-continue" href={loginHref}>Đăng nhập để tiếp tục</Link>}
                       {user&&!user.approved&&<p className="fine">Chỉ tính thử; thanh toán sau khi tài khoản được duyệt.</p>}
@@ -1152,23 +1180,64 @@ export default function Market({ view, id, offline=false }: { view: string; id?:
     </div>
   );
 }
-function FoodImage({ l }: { l: Food }) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [l.image]);
+function LotPreparation({lot,preparedAt=lot.lot?.preparedAt}:{lot:Food;preparedAt?:number}) {
+  return <div className="fine"><p><b>Bảo quản</b> · {lot.storage?.trim() || "Quán chưa cung cấp"}</p>{(!lot.lot||lot.lot.kind==="food")&&<p><b>Giờ chế biến</b> · {preparedAt===undefined?"Quán chưa cung cấp":time(preparedAt)}</p>}</div>;
+}
+function NearDateTemplateDetails({ template }: { template: NearDateTemplate }) {
+  const { credit } = template;
   return (
-    <div className={`food-image ${(l.lot?.kind==="flowers"||l.lot?.kind==="goods")?"flower-image":""}`}>
-      {l.image && !failed ? (
+    <div className="meal-detail">
+      <div className="meal-detail-visual">
+        <FoodImage template={template}/>
+        {credit && (
+          <p className="fine near-date-image-credit">
+            Ảnh: {credit.author}
+            {credit.license.startsWith("CC BY-SA") ? (
+              <> · <a href={credit.licenseUrl} target="_blank" rel="noopener noreferrer">{credit.license}</a>
+                {" · "}<a href={credit.pageUrl} target="_blank" rel="noopener noreferrer">Nguồn ảnh</a></>
+            ) : (
+              <> / <a href={credit.pageUrl} target="_blank" rel="noopener noreferrer">{credit.license.replace(/ License$/, "")}</a></>
+            )}
+          </p>
+        )}
+      </div>
+      <div className="meal-detail-info">
+        <h1>{template.title}</h1>
+        <p>{template.description}</p>
+        <section className="lot-proof">
+          <h3>Vì sao giá giảm?</h3>
+          <p>{template.whyDiscount}</p>
+          <p><b>Bảo quản:</b> {template.storage}</p>
+          {template.allergenNote && <p><b>Dị ứng:</b> {template.allergenNote}</p>}
+          <p><b>Quán sẽ cập nhật:</b> {template.fieldsForShop.join(", ")}.</p>
+        </section>
+        <button type="button" disabled>Chờ quán đăng lô</button>
+      </div>
+    </div>
+  );
+}
+function FoodImage({ l, template }: { l: Food; template?: never } | { template: NearDateTemplate; l?: never }) {
+  const image = template?.credit ? `/near-date-illustrations/${template.id}.jpg` : l?.image;
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [image]);
+  return (
+    <div className={`food-image ${template ? "flower-image near-date-template-image" : (l?.lot?.kind === "flowers" || l?.lot?.kind === "goods") ? "flower-image" : ""}`}>
+      {image && !failed ? (
         <img
-          src={l.image}
-          alt={l.name}
+          src={image}
+          alt={template?.imageAlt ?? l?.name}
           loading="lazy"
           onError={() => setFailed(true)}
         />
+      ) : template && !template.credit ? (
+        <span role="img" aria-label={template.imageAlt}>{nearDateGroups[template.group]}</span>
       ) : (
-        <span>Chưa có ảnh lô</span>
+        <span>{template ? nearDateGroups[template.group] : "Chưa có ảnh lô"}</span>
       )}
-      {(l.image?.includes("demo-") || l.id.startsWith("flower-")) && (
-        <span className="demo-image-label">{l.id.startsWith("flower-")?"Ảnh minh họa · Nhận theo quy cách":"Ảnh minh họa · DEMO"}</span>
+      {template ? (
+        <span className="demo-image-label">{image && !failed ? "Ảnh minh họa" : "Chưa có ảnh"}</span>
+      ) : image && !failed && !isStoredLotImage(image) && (
+        <span className="demo-image-label">{l?.id.startsWith("flower-")?"Ảnh minh họa · Nhận theo quy cách":"Ảnh minh họa · DEMO"}</span>
       )}
     </div>
   );
@@ -1214,7 +1283,7 @@ function PriceLines({ a, hideTotal = false }: { a: any; hideTotal?: boolean }) {
     <>
       <dl className="price-lines">
         <div>
-          <dt>{a.customerPricing?"Giá gốc trước giảm":a.pricingVersion===2?"Giá lô trước ưu đãi":"Giá menu"}</dt>
+          <dt>{a.customerPricing?(a.customerPricing.version===3?"Giá menu":"Giá gốc trước giảm"):a.pricingVersion===2?"Giá lô trước ưu đãi":"Giá menu"}</dt>
           <dd>{money(a.menuTotal)}</dd>
         </div>
         <div>
@@ -1293,6 +1362,7 @@ function CustomerOrder({
           {o.status === "awaiting_payment" && data.bank && (
             <section className="bank-instructions">
               <h3>Chuyển khoản {money(o.total)}</h3>
+              {o.fulfillment!=="delivery"&&<p>{pickupNoShowPolicy}</p>}
               <p>
                 Trước {time(o.expires)}.{" "}
                 {o.expires <= now

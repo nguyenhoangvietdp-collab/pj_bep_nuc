@@ -53,7 +53,7 @@ test("Edge API has anonymous catalogue, verified identity and role-scoped financ
 });
 test("Edge API preserves server prices, voucher reservation, payment/pickup idempotency and export privacy",async()=>{
  const f=setup();const voucherId=f.getState().vouchers.find(v=>v.userId==="student"&&v.rate===.2)!.id;
- const quote=await f.request("pilot","student",{action:"quote",args:{listingId:"meal",qty:1,voucherId,price:1,key:"edge-quote-key"}});assert.equal(quote.status,200);assert.equal(f.getState().quotes[0].price,38000);
+ const quote=await f.request("pilot","student",{action:"quote",args:{listingId:"meal",qty:1,voucherId,price:1,key:"edge-quote-key"}});assert.equal(quote.status,200);assert.equal(f.getState().quotes[0].price,37500);
  const q=f.getState().quotes[0];
  const order=await f.request("pilot","student",{action:"order",args:{quoteId:q.id,key:"edge-order-key"}});assert.equal(order.status,200);
  const replay=await f.request("pilot","student",{action:"order",args:{quoteId:q.id,key:"edge-order-key"}});assert.equal(replay.data.id,order.data.id);assert.equal(f.getState().orders.length,1);

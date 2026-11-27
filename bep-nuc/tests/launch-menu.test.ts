@@ -10,9 +10,9 @@ test("owner menu searches actual merchant name and address without accents",()=>
  assert.equal(filterLaunchMenu("khong co").length,0);
 });
 test("catalogue budget and sort use customer5% sale price, not the negotiated supplier price",()=>{
- assert.equal(filterLaunchMenu("bo to","",47499).length,0);
- assert.deepEqual(filterLaunchMenu("bo to","",47500).map(p=>p.name),["Bánh dày"]);
- assert.deepEqual(filterLaunchMenu("bo to","",0,"price").map(p=>p.cataloguePrice),[47500,61072,81430]);
+ assert.equal(filterLaunchMenu("bo to","",33249).length,0);
+ assert.deepEqual(filterLaunchMenu("bo to","",33250).map(p=>p.name),["Bánh dày"]);
+ assert.deepEqual(filterLaunchMenu("bo to","",0,"price").map(p=>p.cataloguePrice),[33250,42750,57000]);
  assert.equal(filterLaunchMenu("bo to","Bánh").length,1);
 });
 test("owner-confirmed real shops cover the menu without changing legacy IDs",()=>{
@@ -23,7 +23,7 @@ test("owner-confirmed real shops cover the menu without changing legacy IDs",()=
  assert.deepEqual(remaining.map(s=>all.filter(p=>p.shop.id===s.id).length),[4,4,3]);
  assert.deepEqual(remaining.map(s=>s.id),["mock-nguyen-chi-thanh-8","mock-giai-phong-10","mock-dien-bien-phu-30"]);
  for(const [q,count] of [["8 nguyen chi thanh",4],["10 giai phong",4],["30 dien bien phu",3]] as const){assert.equal(filterLaunchMenu(q).length,count);}
- assert.equal(filterLaunchMenu("","",6785).length,0);assert.equal(filterLaunchMenu("","",6786).length,1);
+ assert.equal(filterLaunchMenu("","",4749).length,0);assert.equal(filterLaunchMenu("","",4750).length,1);
 });
 test("simulated partners cannot satisfy readiness or appear as live sale partners",()=>{
  const now=Date.now(),s=demoState(now);
